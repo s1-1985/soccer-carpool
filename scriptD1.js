@@ -510,7 +510,7 @@ function navigateToCarpool(eventId) {
     if (event) {
         sessionStorage.setItem('selectedEvent', JSON.stringify(event));
         // D2のページに移動（同じディレクトリにある場合）
-        window.location.href = 'carpool.html';
+        window.location.href = 'indexD2.html';
         // もしD2が別のディレクトリにある場合は適切なパスを指定
         // window.location.href = '../directory2/index.html';
     }
