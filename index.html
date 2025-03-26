@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>サッカー少年団送迎管理</title>
+    <title>FC尾島ジュニア　日程・出欠・配車管理</title>
+    <!-- 外部CSSファイルへのリンク -->
+    <link rel="stylesheet" href="styles.css">
     <style>
         body {
             font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
@@ -12,7 +14,7 @@
             max-width: 1000px;
             margin: 0 auto;
             padding: 10px;
-            background-color: #f5f5f5;
+            background-color: #FFFF00;
         }
         
         h1, h2, h3 {
@@ -197,7 +199,7 @@
 </head>
 <body>
     <header>
-        <h1>サッカー少年団送迎管理</h1>
+        <h1>FC尾島ジュニア　日程・出欠・配車管理</h1>
     </header>
     
     <div class="container">
@@ -206,198 +208,6 @@
             <button class="tablinks" onclick="openTab(event, 'cars')">車提供</button>
             <button class="tablinks" onclick="openTab(event, 'assignments')">割り当て</button>
             <button class="tablinks" onclick="openTab(event, 'notifications')">連絡</button>
-        </div>
-        
-        <!-- 試合スケジュールタブ -->
-        <div id="games" class="tabcontent">
-            <h2>試合スケジュール</h2>
-            <div id="gameList" class="table-container">
-                <table id="gameTable">
-                    <thead>
-                        <tr>
-                            <th>日付</th>
-                            <th>時間</th>
-                            <th>対戦相手</th>
-                            <th>場所</th>
-                            <th>車両数</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>2025/03/29</td>
-                            <td>13:00-15:00</td>
-                            <td>青葉FC</td>
-                            <td>市民グラウンド</td>
-                            <td>3台</td>
-                            <td><button onclick="viewGame(0)">詳細</button></td>
-                        </tr>
-                        <tr>
-                            <td>2025/04/05</td>
-                            <td>10:00-12:00</td>
-                            <td>さくらSC</td>
-                            <td>第二運動公園</td>
-                            <td>4台</td>
-                            <td><button onclick="viewGame(1)">詳細</button></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            
-            <h3>新規試合登録</h3>
-            <form id="newGameForm">
-                <div>
-                    <label for="date">日付:</label>
-                    <input type="date" id="date" required>
-                </div>
-                <div>
-                    <label for="time">時間:</label>
-                    <input type="text" id="time" placeholder="13:00-15:00" required>
-                </div>
-                <div>
-                    <label for="opponent">対戦相手:</label>
-                    <input type="text" id="opponent" required>
-                </div>
-                <div>
-                    <label for="location">場所:</label>
-                    <input type="text" id="location" required>
-                </div>
-                <div>
-                    <label for="cars">必要車両数:</label>
-                    <input type="number" id="cars" min="1" required>
-                </div>
-                <div style="margin-top: 15px;">
-                    <button type="button" onclick="addGame()">登録</button>
-                </div>
-            </form>
-        </div>
-        
-        <!-- 車の提供タブ -->
-        <div id="cars" class="tabcontent">
-            <h2>車の提供</h2>
-            <div id="gameSelector">
-                <label for="selectGame">試合を選択:</label>
-                <select id="selectGame">
-                    <option value="0">2025/03/29 - 青葉FC (市民グラウンド)</option>
-                    <option value="1">2025/04/05 - さくらSC (第二運動公園)</option>
-                </select>
-            </div>
-            
-            <h3>車の提供登録</h3>
-            <form id="carForm">
-                <div>
-                    <label for="parentName">保護者名:</label>
-                    <input type="text" id="parentName" required>
-                </div>
-                <div>
-                    <label for="childName">お子様の名前:</label>
-                    <input type="text" id="childName" required>
-                </div>
-                <div>
-                    <label for="canDrive">車の提供:</label>
-                    <select id="canDrive">
-                        <option value="yes">可能</option>
-                        <option value="no">不可</option>
-                    </select>
-                </div>
-                <div id="carDetails" style="margin-top: 10px;">
-                    <div>
-                        <label for="capacity">乗車可能人数（お子様のみ）:</label>
-                        <input type="number" id="capacity" min="1" value="3">
-                    </div>
-                    <div>
-                        <label for="notes">備考:</label>
-                        <input type="text" id="notes" placeholder="例: 帰りのみ可能、荷物が多いため2名まで など">
-                    </div>
-                </div>
-                <div style="margin-top: 15px;">
-                    <button type="button" onclick="registerCar()">登録</button>
-                </div>
-            </form>
-            
-            <h3>登録済み車両</h3>
-            <div class="table-container">
-                <table id="registeredCars">
-                    <thead>
-                        <tr>
-                            <th>保護者名</th>
-                            <th>お子様</th>
-                            <th>提供</th>
-                            <th>乗車人数</th>
-                            <th>備考</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>山田太郎</td>
-                            <td>山田一郎</td>
-                            <td>可能</td>
-                            <td>3名</td>
-                            <td></td>
-                        </tr>
-                        <tr>
-                            <td>鈴木花子</td>
-                            <td>鈴木雄太</td>
-                            <td>可能</td>
-                            <td>4名</td>
-                            <td>帰りのみ可能</td>
-                        </tr>
-                        <tr>
-                            <td>佐藤次郎</td>
-                            <td>佐藤光</td>
-                            <td>不可</td>
-                            <td>-</td>
-                            <td>出張のため</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        
-        <!-- 乗車割り当てタブ -->
-        <div id="assignments" class="tabcontent">
-            <h2>乗車割り当て</h2>
-            <div id="assignmentGameSelector">
-                <label for="assignmentSelectGame">試合を選択:</label>
-                <select id="assignmentSelectGame">
-                    <option value="0">2025/03/29 - 青葉FC (市民グラウンド)</option>
-                    <option value="1">2025/04/05 - さくらSC (第二運動公園)</option>
-                </select>
-                <button onclick="generateAssignments()" style="margin-top: 10px;">割り当て生成</button>
-            </div>
-            
-            <div id="carAssignments" style="margin-top: 20px;">
-                <div class="player-card">
-                    <h3>山田太郎さんの車</h3>
-                    <p><strong>乗車可能人数:</strong> 3名</p>
-                    <p><strong>乗車メンバー:</strong></p>
-                    <ul>
-                        <li>山田一郎 (自分の子)</li>
-                        <li>佐藤光</li>
-                        <li>高橋健太</li>
-                    </ul>
-                    <button onclick="editAssignment(0)">編集</button>
-                </div>
-                
-                <div class="player-card">
-                    <h3>鈴木花子さんの車</h3>
-                    <p><strong>乗車可能人数:</strong> 4名</p>
-                    <p><strong>備考:</strong> 帰りのみ可能</p>
-                    <p><strong>乗車メンバー:</strong></p>
-                    <ul>
-                        <li>鈴木雄太 (自分の子)</li>
-                        <li>田中将太</li>
-                        <li>伊藤誠</li>
-                        <li>小林和樹</li>
-                    </ul>
-                    <button onclick="editAssignment(1)">編集</button>
-                </div>
-            </div>
-            
-            <div style="margin-top: 20px;" class="action-buttons">
-                <button onclick="saveAssignments()">保存</button>
-                <button onclick="shareAssignments()">共有</button>
-            </div>
         </div>
         
         <!-- 連絡事項タブ -->
@@ -784,3 +594,281 @@
                     passengers: passengers
                 });
             });
+            
+            // 割り当て結果を保存
+            appData.assignments[selectedGame] = assignments;
+            
+            // UI更新
+            saveData();
+            updateAssignments();
+            
+            if (remainingKids.length > 0) {
+                alert(`注意: ${remainingKids.length}名の子供に乗車スペースがありません。必要に応じて手動で調整してください。`);
+            } else {
+                alert('乗車割り当てが完了しました！');
+            }
+        }
+        
+        // 乗車割り当ての編集
+        function editAssignment(index) {
+            // 実際の実装ではモーダルウィンドウなどで編集UI表示
+            alert('この機能は現在開発中です');
+        }
+        
+        // 割り当て結果の保存
+        function saveAssignments() {
+            saveData();
+            alert('割り当て情報を保存しました');
+        }
+        
+        // 割り当て結果の共有
+        function shareAssignments() {
+            // 実際の実装ではメール送信や共有リンク生成など
+            alert('この機能は現在開発中です。将来的にはLINEやメールでの共有が可能になります。');
+        }
+        
+        // 新規連絡事項の送信
+        function sendNotification() {
+            const text = document.getElementById('notificationText').value;
+            
+            if (!text) {
+                alert('連絡内容を入力してください');
+                return;
+            }
+            
+            // 現在日時
+            const now = new Date();
+            const formattedDate = now.toLocaleDateString('ja-JP', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+            const formattedTime = now.toLocaleTimeString('ja-JP', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            // 新しい通知を追加
+            appData.notifications.unshift({
+                date: `${formattedDate} ${formattedTime}`,
+                text: text,
+                type: 'info'
+            });
+            
+            // 保存とUI更新
+            saveData();
+            
+            // フォームリセット
+            document.getElementById('notificationText').value = '';
+            
+            alert('連絡事項を送信しました');
+            
+            // 連絡事項タブを更新（実際の実装では更新関数を呼び出す）
+            alert('この実装では連絡一覧の更新機能がまだ実装されていません。ページをリロードすることで更新されます。');
+        }
+        
+        // ページ読み込み時にデータをロード
+        window.addEventListener('load', function() {
+            // 初期タブを開く
+            document.getElementsByClassName('tablinks')[0].click();
+            
+            // データをロード
+            loadData();
+        });
+    </script>
+    
+    <!-- 外部JavaScriptファイルへのリンク -->
+    <script src="script.js"></script>
+</body>
+</html>
+        <!-- 試合スケジュールタブ -->
+        <div id="games" class="tabcontent">
+            <h2>試合スケジュール</h2>
+            <div id="gameList" class="table-container">
+                <table id="gameTable">
+                    <thead>
+                        <tr>
+                            <th>日付</th>
+                            <th>時間</th>
+                            <th>対戦相手</th>
+                            <th>場所</th>
+                            <th>車両数</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>2025/03/29</td>
+                            <td>13:00-15:00</td>
+                            <td>青葉FC</td>
+                            <td>市民グラウンド</td>
+                            <td>3台</td>
+                            <td><button onclick="viewGame(0)">詳細</button></td>
+                        </tr>
+                        <tr>
+                            <td>2025/04/05</td>
+                            <td>10:00-12:00</td>
+                            <td>さくらSC</td>
+                            <td>第二運動公園</td>
+                            <td>4台</td>
+                            <td><button onclick="viewGame(1)">詳細</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <h3>新規試合登録</h3>
+            <form id="newGameForm">
+                <div>
+                    <label for="date">日付:</label>
+                    <input type="date" id="date" required>
+                </div>
+                <div>
+                    <label for="time">時間:</label>
+                    <input type="text" id="time" placeholder="13:00-15:00" required>
+                </div>
+                <div>
+                    <label for="opponent">対戦相手:</label>
+                    <input type="text" id="opponent" required>
+                </div>
+                <div>
+                    <label for="location">場所:</label>
+                    <input type="text" id="location" required>
+                </div>
+                <div>
+                    <label for="cars">必要車両数:</label>
+                    <input type="number" id="cars" min="1" required>
+                </div>
+                <div style="margin-top: 15px;">
+                    <button type="button" onclick="addGame()">登録</button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- 車の提供タブ -->
+        <div id="cars" class="tabcontent">
+            <h2>車の提供</h2>
+            <div id="gameSelector">
+                <label for="selectGame">試合を選択:</label>
+                <select id="selectGame">
+                    <option value="0">2025/03/29 - 青葉FC (市民グラウンド)</option>
+                    <option value="1">2025/04/05 - さくらSC (第二運動公園)</option>
+                </select>
+            </div>
+            
+            <h3>車の提供登録</h3>
+            <form id="carForm">
+                <div>
+                    <label for="parentName">保護者名:</label>
+                    <input type="text" id="parentName" required>
+                </div>
+                <div>
+                    <label for="childName">お子様の名前:</label>
+                    <input type="text" id="childName" required>
+                </div>
+                <div>
+                    <label for="canDrive">車の提供:</label>
+                    <select id="canDrive">
+                        <option value="yes">可能</option>
+                        <option value="no">不可</option>
+                    </select>
+                </div>
+                <div id="carDetails" style="margin-top: 10px;">
+                    <div>
+                        <label for="capacity">乗車可能人数（お子様のみ）:</label>
+                        <input type="number" id="capacity" min="1" value="3">
+                    </div>
+                    <div>
+                        <label for="notes">備考:</label>
+                        <input type="text" id="notes" placeholder="例: 帰りのみ可能、荷物が多いため2名まで など">
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <button type="button" onclick="registerCar()">登録</button>
+                </div>
+            </form>
+            
+            <h3>登録済み車両</h3>
+            <div class="table-container">
+                <table id="registeredCars">
+                    <thead>
+                        <tr>
+                            <th>保護者名</th>
+                            <th>お子様</th>
+                            <th>提供</th>
+                            <th>乗車人数</th>
+                            <th>備考</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>山田太郎</td>
+                            <td>山田一郎</td>
+                            <td>可能</td>
+                            <td>3名</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td>鈴木花子</td>
+                            <td>鈴木雄太</td>
+                            <td>可能</td>
+                            <td>4名</td>
+                            <td>帰りのみ可能</td>
+                        </tr>
+                        <tr>
+                            <td>佐藤次郎</td>
+                            <td>佐藤光</td>
+                            <td>不可</td>
+                            <td>-</td>
+                            <td>出張のため</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 乗車割り当てタブ -->
+        <div id="assignments" class="tabcontent">
+            <h2>乗車割り当て</h2>
+            <div id="assignmentGameSelector">
+                <label for="assignmentSelectGame">試合を選択:</label>
+                <select id="assignmentSelectGame">
+                    <option value="0">2025/03/29 - 青葉FC (市民グラウンド)</option>
+                    <option value="1">2025/04/05 - さくらSC (第二運動公園)</option>
+                </select>
+                <button onclick="generateAssignments()" style="margin-top: 10px;">割り当て生成</button>
+            </div>
+            
+            <div id="carAssignments" style="margin-top: 20px;">
+                <div class="player-card">
+                    <h3>山田太郎さんの車</h3>
+                    <p><strong>乗車可能人数:</strong> 3名</p>
+                    <p><strong>乗車メンバー:</strong></p>
+                    <ul>
+                        <li>山田一郎 (自分の子)</li>
+                        <li>佐藤光</li>
+                        <li>高橋健太</li>
+                    </ul>
+                    <button onclick="editAssignment(0)">編集</button>
+                </div>
+                
+                <div class="player-card">
+                    <h3>鈴木花子さんの車</h3>
+                    <p><strong>乗車可能人数:</strong> 4名</p>
+                    <p><strong>備考:</strong> 帰りのみ可能</p>
+                    <p><strong>乗車メンバー:</strong></p>
+                    <ul>
+                        <li>鈴木雄太 (自分の子)</li>
+                        <li>田中将太</li>
+                        <li>伊藤誠</li>
+                        <li>小林和樹</li>
+                    </ul>
+                    <button onclick="editAssignment(1)">編集</button>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;" class="action-buttons">
+                <button onclick="saveAssignments()">保存</button>
+                <button onclick="shareAssignments()">共有</button>
+            </div>
+        </div>
