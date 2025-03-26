@@ -1,0 +1,422 @@
+/* styles-d1.css - FC尾島ジュニア カレンダーページ用スタイルシート */
+
+/* 全体のリセットとベーススタイル */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+}
+
+body {
+    line-height: 1.6;
+    color: #333;
+    background-color: #FFFF00;
+}
+
+/* ヘッダー */
+header {
+    background-color: #3498db;
+    color: white;
+    padding: 15px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* コンテナ */
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 15px 20px;
+}
+
+/* 操作コントロール */
+.controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.month-control {
+    display: flex;
+    align-items: center;
+}
+
+.month-control button {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #3498db;
+    padding: 0 10px;
+}
+
+.month-control h2 {
+    margin: 0 10px;
+}
+
+.view-toggle button {
+    background-color: #f1f1f1;
+    border: 1px solid #ddd;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.view-toggle button:first-child {
+    border-radius: 4px 0 0 4px;
+}
+
+.view-toggle button:last-child {
+    border-radius: 0 4px 4px 0;
+}
+
+.view-toggle button.active {
+    background-color: #3498db;
+    color: white;
+    border-color: #3498db;
+}
+
+/* カレンダー表示 */
+.view-container {
+    background-color: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.hidden {
+    display: none;
+}
+
+.weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-weight: bold;
+    margin-bottom: 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.weekdays div {
+    padding: 10px;
+}
+
+.weekdays div:first-child {
+    color: #dc3545;  /* 日曜日は赤色 */
+}
+
+.weekdays div:last-child {
+    color: #0d6efd;  /* 土曜日は青色 */
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+}
+
+.calendar-day {
+    min-height: 80px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 5px;
+    position: relative;
+}
+
+.calendar-day .date {
+    font-weight: bold;
+    margin-bottom: 5px;
+    text-align: right;
+}
+
+.calendar-day.other-month {
+    background-color: #f8f9fa;
+    color: #adb5bd;
+}
+
+.calendar-day.today {
+    background-color: #e8f4fd;
+    border-color: #3498db;
+}
+
+.calendar-day.sunday .date {
+    color: #dc3545;
+}
+
+.calendar-day.saturday .date {
+    color: #0d6efd;
+}
+
+.event {
+    font-size: 12px;
+    padding: 2px 4px;
+    margin-bottom: 3px;
+    border-radius: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.event.game {
+    background-color: #f8d7da;
+    border-left: 3px solid #dc3545;
+}
+
+.event.practice {
+    background-color: #fff3cd;
+    border-left: 3px solid #ffc107;
+}
+
+.event.other {
+    background-color: #d1e7dd;
+    border-left: 3px solid #198754;
+}
+
+/* リスト表示 */
+.events-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.event-item {
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.event-item:hover {
+    background-color: #f8f9fa;
+}
+
+.event-item .event-date {
+    font-weight: bold;
+}
+
+.event-item .event-title {
+    font-size: 16px;
+    margin: 5px 0;
+}
+
+.event-item .event-details {
+    font-size: 14px;
+    color: #6c757d;
+}
+
+.event-item.game {
+    border-left: 4px solid #dc3545;
+}
+
+.event-item.practice {
+    border-left: 4px solid #ffc107;
+}
+
+.event-item.other {
+    border-left: 4px solid #198754;
+}
+
+.date-heading {
+    background-color: #f8f9fa;
+    padding: 8px;
+    border-radius: 4px;
+    margin-top: 10px;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+/* アクションボタン */
+.action-buttons {
+    text-align: center;
+}
+
+.action-buttons button {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.action-buttons button:hover {
+    background-color: #2980b9;
+}
+
+/* モーダルスタイル */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 10% auto;
+    padding: 20px;
+    border-radius: 5px;
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+}
+
+.close {
+    position: absolute;
+    right: 20px;
+    top: 10px;
+    font-size: 30px;
+    cursor: pointer;
+}
+
+/* フォームスタイル */
+.form-group {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+input[type="text"],
+input[type="date"],
+select,
+textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+textarea {
+    height: 100px;
+    resize: vertical;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.form-actions button {
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.form-actions button[type="submit"] {
+    background-color: #3498db;
+    color: white;
+    border: none;
+}
+
+.form-actions button[type="button"] {
+    background-color: #f1f1f1;
+    border: 1px solid #ddd;
+}
+
+/* イベント詳細モーダル */
+#event-details-content {
+    margin-bottom: 20px;
+}
+
+#event-details-content h3 {
+    margin-bottom: 10px;
+    color: #3498db;
+}
+
+.detail-item {
+    margin-bottom: 8px;
+}
+
+.detail-label {
+    font-weight: bold;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.modal-actions button {
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#manage-event {
+    background-color: #3498db;
+    color: white;
+    border: none;
+}
+
+#edit-event {
+    background-color: #ffc107;
+    color: #212529;
+    border: none;
+}
+
+/* スマホ対応のためのレスポンシブデザイン */
+@media (max-width: 768px) {
+    .controls {
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+    }
+    
+    .month-control {
+        justify-content: space-between;
+    }
+    
+    .view-toggle {
+        display: flex;
+    }
+    
+    .view-toggle button {
+        flex: 1;
+    }
+    
+    .weekdays {
+        font-size: 14px;
+    }
+    
+    .calendar-grid {
+        gap: 2px;
+    }
+    
+    .calendar-day {
+        min-height: 60px;
+        font-size: 12px;
+    }
+    
+    .event {
+        font-size: 10px;
+        padding: 1px 2px;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 5% auto;
+        padding: 15px;
+    }
+}

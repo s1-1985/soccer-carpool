@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FC尾島ジュニア　カレンダー</title>
+    <link rel="stylesheet" href="styles-d1.css">
+</head>
+<body>
+    <header>
+        <h1>FC尾島ジュニア　カレンダー</h1>
+    </header>
+
+    <div class="container">
+        <div class="controls">
+            <div class="month-control">
+                <button id="prev-month">&lt;</button>
+                <h2 id="current-month">2025年4月</h2>
+                <button id="next-month">&gt;</button>
+            </div>
+            <div class="view-toggle">
+                <button id="calendar-view" class="active">カレンダー</button>
+                <button id="list-view">リスト</button>
+            </div>
+        </div>
+
+        <!-- カレンダー表示 -->
+        <div id="calendar-container" class="view-container">
+            <div class="weekdays">
+                <div>日</div>
+                <div>月</div>
+                <div>火</div>
+                <div>水</div>
+                <div>木</div>
+                <div>金</div>
+                <div>土</div>
+            </div>
+            <div id="calendar-grid" class="calendar-grid">
+                <!-- カレンダーの日付がJSで動的に生成される -->
+            </div>
+        </div>
+
+        <!-- リスト表示 -->
+        <div id="list-container" class="view-container hidden">
+            <div id="events-list" class="events-list">
+                <!-- イベントリストがJSで動的に生成される -->
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button id="add-event">予定を追加</button>
+        </div>
+    </div>
+
+    <!-- 予定追加モーダル -->
+    <div id="event-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>予定を追加</h2>
+            <form id="event-form">
+                <div class="form-group">
+                    <label for="event-date">日付</label>
+                    <input type="date" id="event-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="event-type">種類</label>
+                    <select id="event-type" required>
+                        <option value="game">試合</option>
+                        <option value="practice">練習</option>
+                        <option value="other">その他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="event-title">タイトル</label>
+                    <input type="text" id="event-title" placeholder="例: vs青葉FC" required>
+                </div>
+                <div class="form-group">
+                    <label for="event-time">時間</label>
+                    <input type="text" id="event-time" placeholder="例: 13:00-15:00">
+                </div>
+                <div class="form-group">
+                    <label for="event-location">場所</label>
+                    <input type="text" id="event-location" placeholder="例: 市民グラウンド">
+                </div>
+                <div class="form-group">
+                    <label for="event-notes">備考</label>
+                    <textarea id="event-notes" placeholder="例: ユニフォームは緑色"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit">保存</button>
+                    <button type="button" id="cancel-event">キャンセル</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- イベント詳細モーダル -->
+    <div id="event-details-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="event-details-content">
+                <!-- イベント詳細がJSで動的に生成される -->
+            </div>
+            <div class="modal-actions">
+                <button id="manage-event">配車管理画面へ</button>
+                <button id="edit-event">編集</button>
+                <button id="delete-event">削除</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script-d1.js"></script>
+</body>
+</html>
