@@ -1,0 +1,216 @@
+// script.js - サッカーチーム送迎管理アプリのメイン JavaScript ファイル
+
+// ページロード時の初期化
+document.addEventListener('DOMContentLoaded', function() {
+    // スケジュールデータの読み込み
+    loadSchedule();
+    
+    // カープールデータの読み込み
+    loadCarpools();
+    
+    // フォームイベントリスナーの設定
+    setupFormListeners();
+    
+    // ナビゲーションのアクティブ状態設定
+    setActiveNavItem();
+    
+    // モーダル関連の設定
+    setupModals();
+});
+
+// ナビゲーションのアクティブ状態を設定
+function setActiveNavItem() {
+    const currentUrl = window.location.pathname;
+    const navLinks = document.querySelectorAll('nav a');
+    
+    navLinks.forEach(link => {
+        // 現在のURLにリンクのパスが含まれている場合、activeクラスを追加
+        if (currentUrl.includes(link.getAttribute('href'))) {
+            link.classList.add('active');
+        }
+    });
+}
+
+// スケジュールデータの読み込み（モックデータ）
+function loadSchedule() {
+    // 実際の実装ではAPIからデータを取得
+    const schedules = [
+        {
+            id: 1,
+            type: 'game',
+            opponent: 'FCレッドスター',
+            date: '2025-04-05',
+            time: '14:00',
+            location: '中央公園サッカー場',
+            address: '東京都中央区日本橋1-1-1',
+            notes: 'ユニフォームは緑色。13:00に集合してください。'
+        },
+        {
+            id: 2,
+            type: 'practice',
+            date: '2025-04-10',
+            time: '19:00',
+            location: '市民グラウンド',
+            address: '東京都新宿区西新宿2-8-1',
+            notes: 'ボールとシューズを忘れずに。'
+        },
+        {
+            id: 3,
+            type: 'game',
+            opponent: 'ブルーイーグルス',
+            date: '2025-04-18',
+            time: '15:30',
+            location: '多摩川河川敷グラウンド',
+            address: '東京都大田区田園調布1-1',
+            notes: 'アウェイゲーム。白いユニフォームを着用。'
+        }
+    ];
+    
+    displaySchedule(schedules);
+}
+
+// スケジュールの表示
+function displaySchedule(schedules) {
+    const scheduleTable = document.getElementById('schedule-table');
+    if (!scheduleTable) return;
+    
+    const tableBody = scheduleTable.querySelector('tbody') || scheduleTable;
+    tableBody.innerHTML = '';
+    
+    schedules.forEach(event => {
+        const row = document.createElement('tr');
+        row.dataset.eventId = event.id;
+        
+        // 日付フォーマット
+        const eventDate = new Date(event.date + 'T' + event.time);
+        const formattedDate = eventDate.toLocaleDateString('ja-JP', { 
+            year: 'numeric', 
+            month: '2-digit', 
+            day: '2-digit',
+            weekday: 'short'
+        });
+        
+        const formattedTime = eventDate.toLocaleTimeString('ja-JP', { 
+            hour: '2-digit', 
+            minute: '2-digit'
+        });
+        
+        // イベントタイプのバッジ
+        const typeLabel = event.type === 'game' ? '試合' : '練習';
+        const typeClass = event.type === 'game' ? 'game' : 'practice';
+        
+        row.innerHTML = `
+            <td>
+                <span class="match-type ${typeClass}">${typeLabel}</span>
+                ${event.type === 'game' ? `<span>vs ${event.opponent}</span>` : ''}
+            </td>
+            <td>${formattedDate}<br>${formattedTime}</td>
+            <td>${event.location}<br><small>${event.address}</small></td>
+            <td>
+                <button class="btn-text show-carpool" data-event-id="${event.id}">送迎を確認</button>
+                <button class="btn-text offer-ride" data-event-id="${event.id}">送迎を提供</button>
+            </td>
+        `;
+        
+        tableBody.appendChild(row);
+    });
+    
+    // イベントリスナーの設定
+    const showCarpoolButtons = document.querySelectorAll('.show-carpool');
+    showCarpoolButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const eventId = this.getAttribute('data-event-id');
+            showCarpoolsForEvent(eventId);
+        });
+    });
+    
+    const offerRideButtons = document.querySelectorAll('.offer-ride');
+    offerRideButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const eventId = this.getAttribute('data-event-id');
+            openOfferRideModal(eventId);
+        });
+    });
+}
+
+// イベントIDからイベント情報を取得
+function getEventById(eventId) {
+    // 実際の実装ではAPIから取得するか、ローカルストレージから取得
+    const schedules = [
+        {
+            id: 1,
+            type: 'game',
+            opponent: 'FCレッドスター',
+            date: '2025-04-05',
+            time: '14:00',
+            location: '中央公園サッカー場',
+            address: '東京都中央区日本橋1-1-1',
+            notes: 'ユニフォームは緑色。13:00に集合してください。'
+        },
+        {
+            id: 2,
+            type: 'practice',
+            date: '2025-04-10',
+            time: '19:00',
+            location: '市民グラウンド',
+            address: '東京都新宿区西新宿2-8-1',
+            notes: 'ボールとシューズを忘れずに。'
+        },
+        {
+            id: 3,
+            type: 'game',
+            opponent: 'ブルーイーグルス',
+            date: '2025-04-18',
+            time: '15:30',
+            location: '多摩川河川敷グラウンド',
+            address: '東京都大田区田園調布1-1',
+            notes: 'アウェイゲーム。白いユニフォームを着用。'
+        }
+    ];
+    
+    return schedules.find(event => event.id === parseInt(eventId));
+}
+
+// 特定イベントのカープール情報を表示
+function showCarpoolsForEvent(eventId) {
+    // イベント情報の取得
+    const event = getEventById(eventId);
+    if (!event) return;
+    
+    // カープールセクションを表示
+    const carpoolSection = document.getElementById('carpool-section');
+    if (!carpoolSection) return;
+    
+    // セクションタイトルの更新
+    const carpoolTitle = document.querySelector('.carpool-section h2');
+    if (carpoolTitle) {
+        const eventDate = new Date(event.date + 'T' + event.time);
+        const formattedDate = eventDate.toLocaleDateString('ja-JP', { 
+            month: '2-digit', 
+            day: '2-digit',
+            weekday: 'short'
+        });
+        
+        carpoolTitle.textContent = `${formattedDate} ${event.type === 'game' ? `vs ${event.opponent}` : '練習'} の送迎情報`;
+    }
+    
+    // カープール情報の取得・表示
+    const carpools = getCarpoolsByEventId(eventId);
+    displayCarpools(carpools, eventId);
+    
+    // カープールがない場合のメッセージ
+    const carpoolList = document.getElementById('carpool-list');
+    if (carpools.length === 0 && carpoolList) {
+        carpoolList.innerHTML = `
+            <div class="alert alert-info">
+                この予定の送迎情報はまだ登録されていません。「送迎を提供」ボタンから登録してください。
+            </div>
+        `;
+    }
+    
+    // セクションを表示
+    carpoolSection.style.display = 'block';
+    
+    // セクションまでスクロール
+    carpoolSection.scrollIntoView({ behavior: 'smooth' });
+}
