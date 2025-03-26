@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FC尾島ジュニア　日程・出欠・配車管理</title>
+    <!-- 外部CSSファイルへのリンク -->
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 10px;
+            background-color: #FFFF00;
+        }
+        
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        
+        header {
+            background-color: #3498db;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .container {
+            background-color: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px 2px;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        input, select, textarea {
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 16px; /* スマホでも読みやすいサイズ */
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            overflow-x: auto;
+            display: block;
+        }
+        
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #f2f2f2;
+        }
+        
+        .tab {
+            overflow: hidden;
+            border: 1px solid #ccc;
+            background-color: #f1f1f1;
+            border-radius: 5px 5px 0 0;
+            display: flex;
+            flex-wrap: wrap;
+        }
+        
+        .tab button {
+            background-color: inherit;
+            float: left;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 12px;
+            transition: 0.3s;
+            color: #333;
+            flex-grow: 1;
+            margin: 0;
+        }
+        
+        .tab button:hover {
+            background-color: #ddd;
+        }
+        
+        .tab button.active {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .tabcontent {
+            display: none;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+            background-color: white;
+        }
+        
+        .player-card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        
+        .alert {
+            padding: 15px;
+            background-color: #f8d7da;
+            color: #721c24;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+        
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        form > div {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        /* スマホ向け調整 */
+        @media (max-width: 768px) {
+            .tab button {
+                padding: 8px 5px;
+                font-size: 14px;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+            
+            h2 {
+                font-size: 20px;
+            }
+            
+            h3 {
+                font-size: 18px;
+            }
+            
+            .container {
+                padding: 10px;
+            }
+            
+            button {
+                width: 100%;
+                margin: 5px 0;
+            }
+            
+            .action-buttons {
+                display: flex;
+                flex-direction: column;
+            }
+            
+            /* テーブルのスクロール対応 */
+            .table-container {
+                overflow-x: auto;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>FC尾島ジュニア　日程・出欠・配車管理</h1>
+    </header>
+    
+    <div class="container">
+        <div class="tab">
+            <button class="tablinks" onclick="openTab(event, 'games')">試合</button>
+            <button class="tablinks" onclick="openTab(event, 'cars')">車提供</button>
+            <button class="tablinks" onclick="openTab(event, 'assignments')">割り当て</button>
+            <button class="tablinks" onclick="openTab(event, 'notifications')">連絡</button>
+        </div>
+        
+        <!-- 連絡事項タブ -->
+        <div id="notifications" class="tabcontent">
+            <h2>連絡事項</h2>
+            <div class="alert success">
+                2025/03/27 18:30 - 「2025/03/29の試合の乗車割り当てが完了しました。確認してください。」
+            </div>
+            
+            <h3>新規連絡事項</h3>
+            <form id="notificationForm">
+                <div>
+                    <label for="notificationText">内容:</label>
+                    <textarea id="notificationText" rows="4" style="width: 100%;"></textarea>
+                </div>
+                <div style="margin-top: 10px;">
+                    <button type="button" onclick="sendNotification()">送信</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // タブ切り替え関数
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tabcontent");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("tablinks");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+        }
+        
+        // 車提供フォームの表示切り替え
+        document.getElementById('canDrive').addEventListener('change', function() {
+            const carDetails = document.getElementById('carDetails');
+            if (this.value === 'yes') {
+                carDetails.style.display = 'block';
+            } else {
+                carDetails.style.display = 'none';
+            }
+        });
+        
+        // データ保存用オブジェクト
+        let appData = {
+            games: [
+                {
+                    id: 0,
+                    date: '2025/03/29',
+                    time: '13:00-15:00',
+                    opponent: '青葉FC',
+                    location: '市民グラウンド',
+                    cars: 3
+                },
+                {
+                    id: 1,
+                    date: '2025/04/05',
+                    time: '10:00-12:00',
+                    opponent: 'さくらSC',
+                    location: '第二運動公園',
+                    cars: 4
+                }
+            ],
+            carRegistrations: {
+                0: [
+                    {
+                        parent: '山田太郎',
+                        child: '山田一郎',
+                        canDrive: 'yes',
+                        capacity: 3,
+                        notes: ''
+                    },
+                    {
+                        parent: '鈴木花子',
+                        child: '鈴木雄太',
+                        canDrive: 'yes',
+                        capacity: 4,
+                        notes: '帰りのみ可能'
+                    },
+                    {
+                        parent: '佐藤次郎',
+                        child: '佐藤光',
+                        canDrive: 'no',
+                        capacity: 0,
+                        notes: '出張のため'
+                    }
+                ],
+                1: []
+            },
+            assignments: {
+                0: [
+                    {
+                        driver: '山田太郎',
+                        capacity: 3,
+                        passengers: ['山田一郎', '佐藤光', '高橋健太']
+                    },
+                    {
+                        driver: '鈴木花子',
+                        capacity: 4,
+                        notes: '帰りのみ可能',
+                        passengers: ['鈴木雄太', '田中将太', '伊藤誠', '小林和樹']
+                    }
+                ],
+                1: []
+            },
+            notifications: [
+                {
+                    date: '2025/03/27 18:30',
+                    text: '2025/03/29の試合の乗車割り当てが完了しました。確認してください。',
+                    type: 'success'
+                }
+            ]
+        };
+        
+        // ローカルストレージからデータをロード
+        function loadData() {
+            const savedData = localStorage.getItem('soccerCarpoolApp');
+            if (savedData) {
+                appData = JSON.parse(savedData);
+                refreshUI();
+            }
+        }
+        
+        // ローカルストレージにデータを保存
+        function saveData() {
+            localStorage.setItem('soccerCarpoolApp', JSON.stringify(appData));
+        }
+        
+        // UIを更新する関数
+        function refreshUI() {
+            // 試合リストを更新
+            const gameTable = document.getElementById('gameTable').getElementsByTagName('tbody')[0];
+            gameTable.innerHTML = '';
+            
+            appData.games.forEach((game, index) => {
+                const row = gameTable.insertRow();
+                row.insertCell(0).textContent = game.date;
+                row.insertCell(1).textContent = game.time;
+                row.insertCell(2).textContent = game.opponent;
+                row.insertCell(3).textContent = game.location;
+                row.insertCell(4).textContent = game.cars + '台';
+                
+                const actionCell = row.insertCell(5);
+                const viewButton = document.createElement('button');
+                viewButton.textContent = '詳細';
+                viewButton.onclick = function() { viewGame(index); };
+                actionCell.appendChild(viewButton);
+            });
+            
+            // セレクトボックスを更新
+            updateGameSelectors();
+            
+            // 車の登録リストを更新
+            updateCarRegistrations();
+            
+            // 割り当て一覧を更新
+            updateAssignments();
+        }
+        
+        // ゲームセレクタを更新
+        function updateGameSelectors() {
+            const selectors = [
+                document.getElementById('selectGame'),
+                document.getElementById('assignmentSelectGame')
+            ];
+            
+            selectors.forEach(selector => {
+                selector.innerHTML = '';
+                appData.games.forEach((game, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `${game.date} - ${game.opponent} (${game.location})`;
+                    selector.appendChild(option);
+                });
+            });
+        }
+        
+        // 車の登録リストを更新
+        function updateCarRegistrations() {
+            const selectedGame = document.getElementById('selectGame').value;
+            const carsTable = document.getElementById('registeredCars').getElementsByTagName('tbody')[0];
+            carsTable.innerHTML = '';
+            
+            if (appData.carRegistrations[selectedGame]) {
+                appData.carRegistrations[selectedGame].forEach(registration => {
+                    const row = carsTable.insertRow();
+                    row.insertCell(0).textContent = registration.parent;
+                    row.insertCell(1).textContent = registration.child;
+                    row.insertCell(2).textContent = registration.canDrive === 'yes' ? '可能' : '不可';
+                    row.insertCell(3).textContent = registration.canDrive === 'yes' ? registration.capacity + '名' : '-';
+                    row.insertCell(4).textContent = registration.notes;
+                });
+            }
+        }
+        
+        // 割り当て一覧を更新
+        function updateAssignments() {
+            const selectedGame = document.getElementById('assignmentSelectGame').value;
+            const assignmentsDiv = document.getElementById('carAssignments');
+            assignmentsDiv.innerHTML = '';
+            
+            if (appData.assignments[selectedGame]) {
+                appData.assignments[selectedGame].forEach((assignment, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'player-card';
+                    
+                    const title = document.createElement('h3');
+                    title.textContent = assignment.driver + 'さんの車';
+                    card.appendChild(title);
+                    
+                    const capacity = document.createElement('p');
+                    capacity.innerHTML = '<strong>乗車可能人数:</strong> ' + assignment.capacity + '名';
+                    card.appendChild(capacity);
+                    
+                    if (assignment.notes) {
+                        const notes = document.createElement('p');
+                        notes.innerHTML = '<strong>備考:</strong> ' + assignment.notes;
+                        card.appendChild(notes);
+                    }
+                    
+                    const passengerTitle = document.createElement('p');
+                    passengerTitle.innerHTML = '<strong>乗車メンバー:</strong>';
+                    card.appendChild(passengerTitle);
+                    
+                    const passengerList = document.createElement('ul');
+                    assignment.passengers.forEach(passenger => {
+                        const item = document.createElement('li');
+                        item.textContent = passenger + (passenger === assignment.passengers[0] ? ' (自分の子)' : '');
+                        passengerList.appendChild(item);
+                    });
+                    card.appendChild(passengerList);
+                    
+                    const editButton = document.createElement('button');
+                    editButton.textContent = '編集';
+                    editButton.onclick = function() { editAssignment(index); };
+                    card.appendChild(editButton);
+                    
+                    assignmentsDiv.appendChild(card);
+                });
+            }
+        }
+        
+        // 新規試合登録
+        function addGame() {
+            const date = document.getElementById('date').value;
+            const time = document.getElementById('time').value;
+            const opponent = document.getElementById('opponent').value;
+            const location = document.getElementById('location').value;
+            const cars = document.getElementById('cars').value;
+            
+            if (!date || !time || !opponent || !location || !cars) {
+                alert('すべての項目を入力してください');
+                return;
+            }
+            
+            // 日付のフォーマット変換
+            const formattedDate = new Date(date).toLocaleDateString('ja-JP', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            }).replace(/\//g, '/');
+            
+            const newId = appData.games.length;
+            appData.games.push({
+                id: newId,
+                date: formattedDate,
+                time: time,
+                opponent: opponent,
+                location: location,
+                cars: parseInt(cars)
+            });
+            
+            // 新しいゲーム用の車両登録・割り当て配列を初期化
+            appData.carRegistrations[newId] = [];
+            appData.assignments[newId] = [];
+            
+            // データ保存とUI更新
+            saveData();
+            refreshUI();
+            
+            // フォームリセット
+            document.getElementById('newGameForm').reset();
+            
+            alert('試合情報を登録しました');
+        }
+        
+        // 試合詳細の表示
+        function viewGame(index) {
+            const game = appData.games[index];
+            alert(`日付: ${game.date}\n時間: ${game.time}\n対戦相手: ${game.opponent}\n場所: ${game.location}\n必要車両数: ${game.cars}台`);
+        }
+        
+        // 車提供登録
+        function registerCar() {
+            const parentName = document.getElementById('parentName').value;
+            const childName = document.getElementById('childName').value;
+            const canDrive = document.getElementById('canDrive').value;
+            const capacity = document.getElementById('capacity').value;
+            const notes = document.getElementById('notes').value;
+            const selectedGame = document.getElementById('selectGame').value;
+            
+            if (!parentName || !childName) {
+                alert('保護者名とお子様の名前を入力してください');
+                return;
+            }
+            
+            // 既存登録のチェック - 同じ親子の組み合わせがあれば更新
+            const existingIndex = appData.carRegistrations[selectedGame].findIndex(
+                reg => reg.parent === parentName && reg.child === childName
+            );
+            
+            const registration = {
+                parent: parentName,
+                child: childName,
+                canDrive: canDrive,
+                capacity: canDrive === 'yes' ? parseInt(capacity) : 0,
+                notes: notes
+            };
+            
+            if (existingIndex >= 0) {
+                appData.carRegistrations[selectedGame][existingIndex] = registration;
+            } else {
+                appData.carRegistrations[selectedGame].push(registration);
+            }
+            
+            // データ保存とUI更新
+            saveData();
+            updateCarRegistrations();
+            
+            // フォームリセット
+            document.getElementById('carForm').reset();
+            
+            alert('車両情報を登録しました');
+        }
+        
+        // 割り当て生成
+        function generateAssignments() {
+            const selectedGame = document.getElementById('assignmentSelectGame').value;
+            const gameData = appData.games[selectedGame];
+            const registrations = appData.carRegistrations[selectedGame];
+            
+            if (!registrations || registrations.length === 0) {
+                alert('この試合には車両登録がありません');
+                return;
+            }
+            
+            // 運転可能な保護者リスト
+            const drivers = registrations.filter(reg => reg.canDrive === 'yes');
+            
+            if (drivers.length === 0) {
+                alert('運転可能な保護者がいません');
+                return;
+            }
+            
+            // 運転不可能な子供リスト
+            const needRide = registrations
+                .filter(reg => reg.canDrive === 'no')
+                .map(reg => reg.child);
+            
+            // 簡易的な割り当てアルゴリズム
+            let assignments = [];
+            let remainingKids = [...needRide];
+            
+            drivers.forEach(driver => {
+                // ドライバー自身の子を含める
+                let passengers = [driver.child];
+                let remainingCapacity = driver.capacity - 1;
+                
+                // 残りの席に子供を割り当て
+                while (remainingCapacity > 0 && remainingKids.length > 0) {
+                    passengers.push(remainingKids.shift());
+                    remainingCapacity--;
+                }
+                
+                assignments.push({
+                    driver: driver.parent,
+                    capacity: driver.capacity,
+                    notes: driver.notes,
+                    passengers: passengers
+                });
+            });
+            
+            // 割り当て結果を保存
+            appData.assignments[selectedGame] = assignments;
+            
+            // UI更新
+            saveData();
+            updateAssignments();
+            
+            if (remainingKids.length > 0) {
+                alert(`注意: ${remainingKids.length}名の子供に乗車スペースがありません。必要に応じて手動で調整してください。`);
+            } else {
+                alert('乗車割り当てが完了しました！');
+            }
+        }
+        
+        // 乗車割り当ての編集
+        function editAssignment(index) {
+            // 実際の実装ではモーダルウィンドウなどで編集UI表示
+            alert('この機能は現在開発中です');
+        }
+        
+        // 割り当て結果の保存
+        function saveAssignments() {
+            saveData();
+            alert('割り当て情報を保存しました');
+        }
+        
+        // 割り当て結果の共有
+        function shareAssignments() {
+            // 実際の実装ではメール送信や共有リンク生成など
+            alert('この機能は現在開発中です。将来的にはLINEやメールでの共有が可能になります。');
+        }
+        
+        // 新規連絡事項の送信
+        function sendNotification() {
+            const text = document.getElementById('notificationText').value;
+            
+            if (!text) {
+                alert('連絡内容を入力してください');
+                return;
+            }
+            
+            // 現在日時
+            const now = new Date();
+            const formattedDate = now.toLocaleDateString('ja-JP', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+            const formattedTime = now.toLocaleTimeString('ja-JP', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            // 新しい通知を追加
+            appData.notifications.unshift({
+                date: `${formattedDate} ${formattedTime}`,
+                text: text,
+                type: 'info'
+            });
+            
+            // 保存とUI更新
+            saveData();
+            
+            // フォームリセット
+            document.getElementById('notificationText').value = '';
+            
+            alert('連絡事項を送信しました');
+            
+            // 連絡事項タブを更新（実際の実装では更新関数を呼び出す）
+            alert('この実装では連絡一覧の更新機能がまだ実装されていません。ページをリロードすることで更新されます。');
+        }
+        
+        // ページ読み込み時にデータをロード
+        window.addEventListener('load', function() {
+            // 初期タブを開く
+            document.getElementsByClassName('tablinks')[0].click();
+            
+            // データをロード
+            loadData();
+        });
+    </script>
+    
+    <!-- 外部JavaScriptファイルへのリンク -->
+    <script src="script.js"></script>
+</body>
+</html>
+        <!-- 試合スケジュールタブ -->
+        <div id="games" class="tabcontent">
+            <h2>試合スケジュール</h2>
+            <div id="gameList" class="table-container">
+                <table id="gameTable">
+                    <thead>
+                        <tr>
+                            <th>日付</th>
+                            <th>時間</th>
+                            <th>対戦相手</th>
+                            <th>場所</th>
+                            <th>車両数</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>2025/03/29</td>
+                            <td>13:00-15:00</td>
+                            <td>青葉FC</td>
+                            <td>市民グラウンド</td>
+                            <td>3台</td>
+                            <td><button onclick="viewGame(0)">詳細</button></td>
+                        </tr>
+                        <tr>
+                            <td>2025/04/05</td>
+                            <td>10:00-12:00</td>
+                            <td>さくらSC</td>
+                            <td>第二運動公園</td>
+                            <td>4台</td>
+                            <td><button onclick="viewGame(1)">詳細</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <h3>新規試合登録</h3>
+            <form id="newGameForm">
+                <div>
+                    <label for="date">日付:</label>
+                    <input type="date" id="date" required>
+                </div>
+                <div>
+                    <label for="time">時間:</label>
+                    <input type="text" id="time" placeholder="13:00-15:00" required>
+                </div>
+                <div>
+                    <label for="opponent">対戦相手:</label>
+                    <input type="text" id="opponent" required>
+                </div>
+                <div>
+                    <label for="location">場所:</label>
+                    <input type="text" id="location" required>
+                </div>
+                <div>
+                    <label for="cars">必要車両数:</label>
+                    <input type="number" id="cars" min="1" required>
+                </div>
+                <div style="margin-top: 15px;">
+                    <button type="button" onclick="addGame()">登録</button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- 車の提供タブ -->
+        <div id="cars" class="tabcontent">
+            <h2>車の提供</h2>
+            <div id="gameSelector">
+                <label for="selectGame">試合を選択:</label>
+                <select id="selectGame">
+                    <option value="0">2025/03/29 - 青葉FC (市民グラウンド)</option>
+                    <option value="1">2025/04/05 - さくらSC (第二運動公園)</option>
+                </select>
+            </div>
+            
+            <h3>車の提供登録</h3>
+            <form id="carForm">
+                <div>
+                    <label for="parentName">保護者名:</label>
+                    <input type="text" id="parentName" required>
+                </div>
+                <div>
+                    <label for="childName">お子様の名前:</label>
+                    <input type="text" id="childName" required>
+                </div>
+                <div>
+                    <label for="canDrive">車の提供:</label>
+                    <select id="canDrive">
+                        <option value="yes">可能</option>
+                        <option value="no">不可</option>
+                    </select>
+                </div>
+                <div id="carDetails" style="margin-top: 10px;">
+                    <div>
+                        <label for="capacity">乗車可能人数（お子様のみ）:</label>
+                        <input type="number" id="capacity" min="1" value="3">
+                    </div>
+                    <div>
+                        <label for="notes">備考:</label>
+                        <input type="text" id="notes" placeholder="例: 帰りのみ可能、荷物が多いため2名まで など">
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <button type="button" onclick="registerCar()">登録</button>
+                </div>
+            </form>
+            
+            <h3>登録済み車両</h3>
+            <div class="table-container">
+                <table id="registeredCars">
+                    <thead>
+                        <tr>
+                            <th>保護者名</th>
+                            <th>お子様</th>
+                            <th>提供</th>
+                            <th>乗車人数</th>
+                            <th>備考</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>山田太郎</td>
+                            <td>山田一郎</td>
+                            <td>可能</td>
+                            <td>3名</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td>鈴木花子</td>
+                            <td>鈴木雄太</td>
+                            <td>可能</td>
+                            <td>4名</td>
+                            <td>帰りのみ可能</td>
+                        </tr>
+                        <tr>
+                            <td>佐藤次郎</td>
+                            <td>佐藤光</td>
+                            <td>不可</td>
+                            <td>-</td>
+                            <td>出張のため</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 乗車割り当てタブ -->
+        <div id="assignments" class="tabcontent">
+            <h2>乗車割り当て</h2>
+            <div id="assignmentGameSelector">
+                <label for="assignmentSelectGame">試合を選択:</label>
+                <select id="assignmentSelectGame">
+                    <option value="0">2025/03/29 - 青葉FC (市民グラウンド)</option>
+                    <option value="1">2025/04/05 - さくらSC (第二運動公園)</option>
+                </select>
+                <button onclick="generateAssignments()" style="margin-top: 10px;">割り当て生成</button>
+            </div>
+            
+            <div id="carAssignments" style="margin-top: 20px;">
+                <div class="player-card">
+                    <h3>山田太郎さんの車</h3>
+                    <p><strong>乗車可能人数:</strong> 3名</p>
+                    <p><strong>乗車メンバー:</strong></p>
+                    <ul>
+                        <li>山田一郎 (自分の子)</li>
+                        <li>佐藤光</li>
+                        <li>高橋健太</li>
+                    </ul>
+                    <button onclick="editAssignment(0)">編集</button>
+                </div>
+                
+                <div class="player-card">
+                    <h3>鈴木花子さんの車</h3>
+                    <p><strong>乗車可能人数:</strong> 4名</p>
+                    <p><strong>備考:</strong> 帰りのみ可能</p>
+                    <p><strong>乗車メンバー:</strong></p>
+                    <ul>
+                        <li>鈴木雄太 (自分の子)</li>
+                        <li>田中将太</li>
+                        <li>伊藤誠</li>
+                        <li>小林和樹</li>
+                    </ul>
+                    <button onclick="editAssignment(1)">編集</button>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;" class="action-buttons">
+                <button onclick="saveAssignments()">保存</button>
+                <button onclick="shareAssignments()">共有</button>
+            </div>
+        </div>
