@@ -1,429 +1,487 @@
-// script.js - サッカーチーム送迎管理アプリのメイン JavaScript ファイル
+// scriptd2.js - サッカーチーム送迎管理アプリのメイン JavaScript ファイル
 
 // ページロード時の初期化
 document.addEventListener('DOMContentLoaded', function() {
-    // スケジュールデータの読み込み
-    loadSchedule();
+    // イベント情報の読み込み
+    loadEventData();
     
-    // カープールデータの読み込み
-    loadCarpools();
+    // データをロード
+    loadData();
     
-    // フォームイベントリスナーの設定
-    setupFormListeners();
-    
-    // ナビゲーションのアクティブ状態設定
-    setActiveNavItem();
-    
-    // モーダル関連の設定
-    setupModals();
+    // 初期タブを開く - 概要タブをデフォルトで表示
+    document.getElementById('defaultTab').click();
 });
 
-// ナビゲーションのアクティブ状態を設定
-function setActiveNavItem() {
-    const currentUrl = window.location.pathname;
-    const navLinks = document.querySelectorAll('nav a');
-    
-    navLinks.forEach(link => {
-        // 現在のURLにリンクのパスが含まれている場合、activeクラスを追加
-        if (currentUrl.includes(link.getAttribute('href'))) {
-            link.classList.add('active');
+// セッションストレージからイベントデータを読み込む
+function loadEventData() {
+    const eventData = sessionStorage.getItem('selectedEvent');
+    if (eventData) {
+        const event = JSON.parse(eventData);
+        displayEventData(event);
+    } else {
+        const eventSummary = document.getElementById('event-summary');
+        if (eventSummary) {
+            eventSummary.innerHTML = '<div class="alert info">イベントが選択されていません。カレンダーページからイベントを選択してください。</div>';
         }
-    });
+    }
 }
 
-// スケジュールデータの読み込み（モックデータ）
-function loadSchedule() {
-    // 実際の実装ではAPIからデータを取得
-    const schedules = [
-        {
-            id: 1,
-            type: 'game',
-            opponent: 'FCレッドスター',
-            date: '2025-04-05',
-            time: '14:00',
-            location: '中央公園サッカー場',
-            address: '東京都中央区日本橋1-1-1',
-            notes: 'ユニフォームは緑色。13:00に集合してください。'
-        },
-        {
-            id: 2,
-            type: 'practice',
-            date: '2025-04-10',
-            time: '19:00',
-            location: '市民グラウンド',
-            address: '東京都新宿区西新宿2-8-1',
-            notes: 'ボールとシューズを忘れずに。'
-        },
-        {
-            id: 3,
-            type: 'game',
-            opponent: 'ブルーイーグルス',
-            date: '2025-04-18',
-            time: '15:30',
-            location: '多摩川河川敷グラウンド',
-            address: '東京都大田区田園調布1-1',
-            notes: 'アウェイゲーム。白いユニフォームを着用。'
-        }
-    ];
+// イベントデータを表示
+function displayEventData(event) {
+    // 概要タブにイベント情報を表示
+    const eventSummary = document.getElementById('event-summary');
+    if (eventSummary) {
+        eventSummary.innerHTML = `
+            <div class="event-detail-card">
+                <h3>${event.title}</h3>
+                <div class="detail-row">
+                    <span class="detail-label">日付:</span>
+                    <span class="detail-value">${formatDateForDisplay(event.date)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">時間:</span>
+                    <span class="detail-value">${event.time || '未設定'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">場所:</span>
+                    <span class="detail-value">${event.location || '未設定'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">種類:</span>
+                    <span class="detail-value">${getEventTypeLabel(event.type)}</span>
+                </div>
+                ${event.notes ? `
+                <div class="detail-row">
+                    <span class="detail-label">備考:</span>
+                    <span class="detail-value">${event.notes}</span>
+                </div>
+                ` : ''}
+            </div>
+        `;
+    }
     
-    displaySchedule(schedules);
+    // 車提供タブとアサインメントタブでも簡易情報を表示
+    const carEventInfo = document.getElementById('carEventInfo');
+    if (carEventInfo) {
+        carEventInfo.innerHTML = `
+            <div class="event-summary">
+                <strong>${event.title}</strong> (${formatDateForDisplay(event.date)} ${event.time || ''})
+            </div>
+        `;
+    }
+    
+    const assignmentEventInfo = document.getElementById('assignmentEventInfo');
+    if (assignmentEventInfo) {
+        assignmentEventInfo.innerHTML = `
+            <div class="event-summary">
+                <strong>${event.title}</strong> (${formatDateForDisplay(event.date)} ${event.time || ''})
+            </div>
+        `;
+    }
 }
 
-// スケジュールの表示
-function displaySchedule(schedules) {
-    const scheduleTable = document.getElementById('schedule-table');
-    if (!scheduleTable) return;
+// データ保存用オブジェクト
+let appData = {
+    eventId: null,
+    carRegistrations: [],
+    assignments: [],
+    attendance: [],
+    notifications: []
+};
+
+// ローカルストレージからデータをロード
+function loadData() {
+    const eventData = sessionStorage.getItem('selectedEvent');
+    if (eventData) {
+        const event = JSON.parse(eventData);
+        appData.eventId = event.id;
+        
+        // ローカルストレージからこのイベント用のデータを取得
+        const savedData = localStorage.getItem(`soccerCarpoolApp_event_${event.id}`);
+        if (savedData) {
+            const parsedData = JSON.parse(savedData);
+            appData = {...appData, ...parsedData};
+        }
+        
+        refreshUI();
+    }
+}
+
+// ローカルストレージにデータを保存
+function saveData() {
+    if (appData.eventId) {
+        localStorage.setItem(`soccerCarpoolApp_event_${appData.eventId}`, JSON.stringify({
+            carRegistrations: appData.carRegistrations,
+            assignments: appData.assignments,
+            attendance: appData.attendance,
+            notifications: appData.notifications
+        }));
+    }
+}
+
+// UIを更新する関数
+function refreshUI() {
+    // 車の登録リストを更新
+    updateCarRegistrations();
     
-    const tableBody = scheduleTable.querySelector('tbody') || scheduleTable;
+    // 割り当て一覧を更新
+    updateAssignments();
+    
+    // 出欠状況を更新
+    updateAttendance();
+    
+    // 連絡事項を更新
+    updateNotifications();
+}
+
+// 車の登録リストを更新
+function updateCarRegistrations() {
+    const carsTable = document.getElementById('registeredCars');
+    if (!carsTable) return;
+    
+    const tableBody = carsTable.querySelector('tbody');
     tableBody.innerHTML = '';
     
-    schedules.forEach(event => {
-        const row = document.createElement('tr');
-        row.dataset.eventId = event.id;
-        
-        // 日付フォーマット
-        const eventDate = new Date(event.date + 'T' + event.time);
-        const formattedDate = eventDate.toLocaleDateString('ja-JP', { 
-            year: 'numeric', 
-            month: '2-digit', 
-            day: '2-digit',
-            weekday: 'short'
-        });
-        
-        const formattedTime = eventDate.toLocaleTimeString('ja-JP', { 
-            hour: '2-digit', 
-            minute: '2-digit'
-        });
-        
-        // イベントタイプのバッジ
-        const typeLabel = event.type === 'game' ? '試合' : '練習';
-        const typeClass = event.type === 'game' ? 'game' : 'practice';
-        
-        row.innerHTML = `
-            <td>
-                <span class="match-type ${typeClass}">${typeLabel}</span>
-                ${event.type === 'game' ? `<span>vs ${event.opponent}</span>` : ''}
-            </td>
-            <td>${formattedDate}<br>${formattedTime}</td>
-            <td>${event.location}<br><small>${event.address}</small></td>
-            <td>
-                <button class="btn-text show-carpool" data-event-id="${event.id}">送迎を確認</button>
-                <button class="btn-text offer-ride" data-event-id="${event.id}">送迎を提供</button>
-            </td>
-        `;
-        
-        tableBody.appendChild(row);
-    });
-    
-    // イベントリスナーの設定
-    const showCarpoolButtons = document.querySelectorAll('.show-carpool');
-    showCarpoolButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const eventId = this.getAttribute('data-event-id');
-            showCarpoolsForEvent(eventId);
-        });
-    });
-    
-    const offerRideButtons = document.querySelectorAll('.offer-ride');
-    offerRideButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const eventId = this.getAttribute('data-event-id');
-            openOfferRideModal(eventId);
-        });
-    });
-}
-
-// イベントIDからイベント情報を取得
-function getEventById(eventId) {
-    // 実際の実装ではAPIから取得するか、ローカルストレージから取得
-    const schedules = [
-        {
-            id: 1,
-            type: 'game',
-            opponent: 'FCレッドスター',
-            date: '2025-04-05',
-            time: '14:00',
-            location: '中央公園サッカー場',
-            address: '東京都中央区日本橋1-1-1',
-            notes: 'ユニフォームは緑色。13:00に集合してください。'
-        },
-        {
-            id: 2,
-            type: 'practice',
-            date: '2025-04-10',
-            time: '19:00',
-            location: '市民グラウンド',
-            address: '東京都新宿区西新宿2-8-1',
-            notes: 'ボールとシューズを忘れずに。'
-        },
-        {
-            id: 3,
-            type: 'game',
-            opponent: 'ブルーイーグルス',
-            date: '2025-04-18',
-            time: '15:30',
-            location: '多摩川河川敷グラウンド',
-            address: '東京都大田区田園調布1-1',
-            notes: 'アウェイゲーム。白いユニフォームを着用。'
-        }
-    ];
-    
-    return schedules.find(event => event.id === parseInt(eventId));
-}
-
-// 特定イベントのカープール情報を表示
-function showCarpoolsForEvent(eventId) {
-    // イベント情報の取得
-    const event = getEventById(eventId);
-    if (!event) return;
-    
-    // カープールセクションを表示
-    const carpoolSection = document.getElementById('carpool-section');
-    if (!carpoolSection) return;
-    
-    // セクションタイトルの更新
-    const carpoolTitle = document.querySelector('.carpool-section h2');
-    if (carpoolTitle) {
-        const eventDate = new Date(event.date + 'T' + event.time);
-        const formattedDate = eventDate.toLocaleDateString('ja-JP', { 
-            month: '2-digit', 
-            day: '2-digit',
-            weekday: 'short'
-        });
-        
-        carpoolTitle.textContent = `${formattedDate} ${event.type === 'game' ? `vs ${event.opponent}` : '練習'} の送迎情報`;
+    if (appData.carRegistrations.length === 0) {
+        const row = tableBody.insertRow();
+        const cell = row.insertCell();
+        cell.colSpan = 5;
+        cell.innerHTML = '<div class="alert info">まだ車両提供の登録がありません。</div>';
+        return;
     }
     
-    // カープール情報の取得・表示
-    const carpools = getCarpoolsByEventId(eventId);
-    displayCarpools(carpools, eventId);
-    
-    // カープールがない場合のメッセージ
-    const carpoolList = document.getElementById('carpool-list');
-    if (carpools.length === 0 && carpoolList) {
-        carpoolList.innerHTML = `
-            <div class="alert alert-info">
-                この予定の送迎情報はまだ登録されていません。「送迎を提供」ボタンから登録してください。
-            </div>
-        `;
-    }
-    
-    // セクションを表示
-    carpoolSection.style.display = 'block';
-    
-    // セクションまでスクロール
-    carpoolSection.scrollIntoView({ behavior: 'smooth' });
-}
-
-// イベントIDからカープール情報を取得
-function getCarpoolsByEventId(eventId) {
-    // 実際の実装ではAPIから取得するか、ローカルストレージから取得
-    const carpools = [
-        {
-            id: 101,
-            eventId: 1,
-            driver: {
-                id: 201,
-                name: '山田太郎',
-                phone: '090-1234-5678',
-                role: 'parent'
-            },
-            departure: {
-                location: '新宿駅南口',
-                time: '12:30'
-            },
-            return: {
-                location: '新宿駅南口',
-                estimatedTime: '17:00'
-            },
-            capacity: 4,
-            passengers: [
-                { id: 301, name: '佐藤健太', role: 'player' },
-                { id: 302, name: '田中誠', role: 'player' }
-            ],
-            notes: '新宿駅南口のバスロータリー付近で待ち合わせ。白いミニバンです。'
-        },
-        {
-            id: 102,
-            eventId: 1,
-            driver: {
-                id: 202,
-                name: '鈴木一郎',
-                phone: '090-8765-4321',
-                role: 'coach'
-            },
-            departure: {
-                location: '渋谷駅東口',
-                time: '12:15'
-            },
-            return: {
-                location: '渋谷駅東口',
-                estimatedTime: '17:30'
-            },
-            capacity: 3,
-            passengers: [
-                { id: 303, name: '高橋和也', role: 'player' }
-            ],
-            notes: '渋谷駅東口のスクランブル交差点前のベンチで待ち合わせ。'
-        },
-        {
-            id: 103,
-            eventId: 2,
-            driver: {
-                id: 203,
-                name: '佐藤美咲',
-                phone: '090-2345-6789',
-                role: 'parent'
-            },
-            departure: {
-                location: '池袋駅西口',
-                time: '18:00'
-            },
-            return: {
-                location: '池袋駅西口',
-                estimatedTime: '21:30'
-            },
-            capacity: 3,
-            passengers: [],
-            notes: '池袋駅西口の地下街入口前で待ち合わせ。'
-        }
-    ];
-    
-    return carpools.filter(carpool => carpool.eventId === parseInt(eventId));
-}
-
-// カープール情報の表示
-function displayCarpools(carpools, eventId) {
-    const carpoolList = document.getElementById('carpool-list');
-    if (!carpoolList) return;
-    
-    carpoolList.innerHTML = '';
-    
-    carpools.forEach(carpool => {
-        const carpoolCard = document.createElement('div');
-        carpoolCard.className = 'carpool-card';
-        
-        // 残りの座席数を計算
-        const availableSeats = carpool.capacity - carpool.passengers.length;
-        const availableStatus = availableSeats > 0 ? 
-            `<span class="badge badge-success">残り${availableSeats}席</span>` :
-            `<span class="badge badge-danger">満席</span>`;
-        
-        // 乗客リスト
-        let passengerList = '';
-        if (carpool.passengers.length > 0) {
-            passengerList = '<div class="passengers"><strong>乗車予定者:</strong> ';
-            passengerList += carpool.passengers.map(p => p.name).join('、');
-            passengerList += '</div>';
-        }
-        
-        // 座席表示
-        let seatsHtml = '<div class="seats">';
-        for (let i = 0; i < carpool.capacity; i++) {
-            const seatClass = i < carpool.passengers.length ? 'filled' : 'available';
-            seatsHtml += `<div class="seat ${seatClass}"></div>`;
-        }
-        seatsHtml += '</div>';
-        
-        carpoolCard.innerHTML = `
-            <div class="carpool-info">
-                <div class="driver-name">${carpool.driver.name} ${getRoleLabel(carpool.driver.role)}</div>
-                <div class="carpool-details">
-                    <div>
-                        <div><strong>出発:</strong> ${carpool.departure.location} (${carpool.departure.time})</div>
-                        <div><strong>帰り:</strong> ${carpool.return.location} (${carpool.return.estimatedTime}予定)</div>
-                    </div>
-                    <div>
-                        <div>${availableStatus}</div>
-                        ${seatsHtml}
-                        ${passengerList}
-                    </div>
-                </div>
-                <div class="carpool-notes">
-                    <small>${carpool.notes}</small>
-                </div>
-            </div>
-            <div class="carpool-actions">
-                <button class="btn btn-small ${availableSeats > 0 ? '' : 'btn-secondary'}" 
-                    ${availableSeats > 0 ? '' : 'disabled'}
-                    data-carpool-id="${carpool.id}" 
-                    onclick="requestRide(${carpool.id})">
-                    乗車を申し込む
-                </button>
-            </div>
-        `;
-        
-        carpoolList.appendChild(carpoolCard);
+    appData.carRegistrations.forEach((registration, index) => {
+        const row = tableBody.insertRow();
+        row.insertCell(0).textContent = registration.parent;
+        row.insertCell(1).textContent = registration.child;
+        row.insertCell(2).textContent = registration.canDrive === 'yes' ? '可能' : '不可';
+        row.insertCell(3).textContent = registration.canDrive === 'yes' ? registration.capacity + '名' : '-';
+        row.insertCell(4).textContent = registration.notes || '';
     });
 }
 
-// 役割ラベルの取得
-function getRoleLabel(role) {
-    const roles = {
-        'coach': '(コーチ)',
-        'player': '(選手)',
-        'parent': '(保護者)',
-        'staff': '(スタッフ)'
+// 割り当て一覧を更新
+function updateAssignments() {
+    const assignmentsDiv = document.getElementById('carAssignments');
+    if (!assignmentsDiv) return;
+    
+    if (appData.assignments.length === 0) {
+        assignmentsDiv.innerHTML = '<div class="alert info">まだ乗車割り当てが生成されていません。</div>';
+        return;
+    }
+    
+    assignmentsDiv.innerHTML = '';
+    
+    appData.assignments.forEach((assignment, index) => {
+        const card = document.createElement('div');
+        card.className = 'player-card';
+        
+        const title = document.createElement('h3');
+        title.textContent = assignment.driver + 'さんの車';
+        card.appendChild(title);
+        
+        const capacity = document.createElement('p');
+        capacity.innerHTML = '<strong>乗車可能人数:</strong> ' + assignment.capacity + '名';
+        card.appendChild(capacity);
+        
+        if (assignment.notes) {
+            const notes = document.createElement('p');
+            notes.innerHTML = '<strong>備考:</strong> ' + assignment.notes;
+            card.appendChild(notes);
+        }
+        
+        const passengerTitle = document.createElement('p');
+        passengerTitle.innerHTML = '<strong>乗車メンバー:</strong>';
+        card.appendChild(passengerTitle);
+        
+        const passengerList = document.createElement('ul');
+        assignment.passengers.forEach(passenger => {
+            const item = document.createElement('li');
+            item.textContent = passenger + (passenger === assignment.passengers[0] ? ' (自分の子)' : '');
+            passengerList.appendChild(item);
+        });
+        card.appendChild(passengerList);
+        
+        const editButton = document.createElement('button');
+        editButton.textContent = '編集';
+        editButton.onclick = function() { editAssignment(index); };
+        card.appendChild(editButton);
+        
+        assignmentsDiv.appendChild(card);
+    });
+}
+
+// 出欠状況を更新
+function updateAttendance() {
+    const attendanceTable = document.getElementById('attendance-table');
+    if (!attendanceTable) return;
+    
+    // 既存の出欠データがあれば表示
+    if (appData.attendance.length > 0) {
+        const tableBody = attendanceTable.querySelector('tbody');
+        tableBody.innerHTML = '';
+        
+        appData.attendance.forEach(player => {
+            const row = tableBody.insertRow();
+            
+            const nameCell = row.insertCell(0);
+            nameCell.textContent = player.name;
+            
+            const statusCell = row.insertCell(1);
+            const statusSelect = document.createElement('select');
+            statusSelect.className = 'attendance-select';
+            statusSelect.innerHTML = `
+                <option value="present" ${player.status === 'present' ? 'selected' : ''}>参加</option>
+                <option value="absent" ${player.status === 'absent' ? 'selected' : ''}>欠席</option>
+                <option value="late" ${player.status === 'late' ? 'selected' : ''}>遅刻</option>
+                <option value="early-leave" ${player.status === 'early-leave' ? 'selected' : ''}>早退</option>
+                <option value="unknown" ${player.status === 'unknown' ? 'selected' : ''}>未回答</option>
+            `;
+            statusCell.appendChild(statusSelect);
+            
+            const notesCell = row.insertCell(2);
+            const notesInput = document.createElement('input');
+            notesInput.type = 'text';
+            notesInput.placeholder = '備考';
+            notesInput.value = player.notes || '';
+            notesCell.appendChild(notesInput);
+        });
+    }
+}
+
+// 連絡事項を更新
+function updateNotifications() {
+    const notificationsList = document.getElementById('notificationsList');
+    if (!notificationsList) return;
+    
+    if (appData.notifications.length === 0) {
+        notificationsList.innerHTML = '<div class="alert info">現在、連絡事項はありません。</div>';
+        return;
+    }
+    
+    notificationsList.innerHTML = '';
+    
+    appData.notifications.forEach(notification => {
+        const notificationDiv = document.createElement('div');
+        notificationDiv.className = `alert ${notification.type || 'info'}`;
+        notificationDiv.innerHTML = `${notification.date} - 「${notification.text}」`;
+        notificationsList.appendChild(notificationDiv);
+    });
+}
+
+// 車提供登録
+function registerCar() {
+    const parentName = document.getElementById('parentName').value;
+    const childName = document.getElementById('childName').value;
+    const canDrive = document.getElementById('canDrive').value;
+    const capacity = document.getElementById('capacity').value;
+    const notes = document.getElementById('notes').value;
+    
+    // 基本的な入力チェック
+    if (!parentName && !childName) {
+        alert('保護者名またはお子様の名前を入力してください');
+        return;
+    }
+    
+    // 既存登録のチェック - 同じ親子の組み合わせがあれば更新
+    const existingIndex = appData.carRegistrations.findIndex(
+        reg => reg.parent === parentName && reg.child === childName
+    );
+    
+    const registration = {
+        parent: parentName || '未入力',
+        child: childName || '未入力',
+        canDrive: canDrive,
+        capacity: canDrive === 'yes' ? parseInt(capacity) : 0,
+        notes: notes
     };
     
-    return roles[role] || '';
+    if (existingIndex >= 0) {
+        appData.carRegistrations[existingIndex] = registration;
+    } else {
+        appData.carRegistrations.push(registration);
+    }
+    
+    // データ保存とUI更新
+    saveData();
+    updateCarRegistrations();
+    
+    // フォームリセット
+    document.getElementById('carForm').reset();
+    
+    alert('車両情報を登録しました');
 }
 
-// 配車申し込み
-function requestRide(carpoolId) {
-    // 実際の実装ではAPIを使用して申し込み処理
-    console.log(`カープールID ${carpoolId} への申し込みを処理中...`);
+// 割り当て生成
+function generateAssignments() {
+    if (appData.carRegistrations.length === 0) {
+        alert('この予定には車両登録がありません');
+        return;
+    }
     
-    // 申し込みモーダルを表示
-    openRequestRideModal(carpoolId);
-}
-
-// カープールデータの読み込み（一覧表示用）
-function loadCarpools() {
-    // 実際の実装ではAPIからデータを取得
-    // この関数は今後のページで必要に応じて実装
-}
-
-// 送迎提供モーダルを開く
-function openOfferRideModal(eventId) {
-    const event = getEventById(eventId);
-    if (!event) return;
+    // 運転可能な保護者リスト
+    const drivers = appData.carRegistrations.filter(reg => reg.canDrive === 'yes');
     
-    const modal = document.getElementById('offer-ride-modal');
-    if (!modal) return;
+    if (drivers.length === 0) {
+        alert('運転可能な保護者がいません');
+        return;
+    }
     
-    // イベント情報をモーダル内に設定
-    const eventInfoElem = modal.querySelector('.event-info');
-    if (eventInfoElem) {
-        const eventDate = new Date(event.date + 'T' + event.time);
-        const formattedDate = eventDate.toLocaleDateString('ja-JP', { 
-            year: 'numeric', 
-            month: '2-digit', 
-            day: '2-digit',
-            weekday: 'short'
-        });
+    // 運転不可能な子供リスト
+    const needRide = appData.carRegistrations
+        .filter(reg => reg.canDrive === 'no')
+        .map(reg => reg.child);
+    
+    // 簡易的な割り当てアルゴリズム
+    let assignments = [];
+    let remainingKids = [...needRide];
+    
+    drivers.forEach(driver => {
+        // ドライバー自身の子を含める
+        let passengers = [driver.child];
+        let remainingCapacity = driver.capacity - 1;
         
-        const formattedTime = eventDate.toLocaleTimeString('ja-JP', { 
-            hour: '2-digit', 
-            minute: '2-digit'
-        });
+        // 残りの席に子供を割り当て
+        while (remainingCapacity > 0 && remainingKids.length > 0) {
+            passengers.push(remainingKids.shift());
+            remainingCapacity--;
+        }
         
-        eventInfoElem.innerHTML = `
-            <strong>${event.type === 'game' ? `試合 vs ${event.opponent}` : '練習'}</strong><br>
-            ${formattedDate} ${formattedTime}<br>
-            ${event.location}
-        `;
+        assignments.push({
+            driver: driver.parent,
+            capacity: driver.capacity,
+            notes: driver.notes,
+            passengers: passengers
+        });
+    });
+    
+    // 割り当て結果を保存
+    appData.assignments = assignments;
+    
+    // UI更新
+    saveData();
+    updateAssignments();
+    
+    if (remainingKids.length > 0) {
+        alert(`注意: ${remainingKids.length}名の子供に乗車スペースがありません。必要に応じて手動で調整してください。`);
+    } else {
+        alert('乗車割り当てが完了しました！');
+    }
+}
+
+// 乗車割り当ての編集
+function editAssignment(index) {
+    // 実際の実装ではモーダルウィンドウなどで編集UI表示
+    alert('この機能は現在開発中です');
+}
+
+// 割り当て結果の保存
+function saveAssignments() {
+    saveData();
+    alert('割り当て情報を保存しました');
+}
+
+// 割り当て結果の共有
+function shareAssignments() {
+    // 実際の実装ではメール送信や共有リンク生成など
+    alert('この機能は現在開発中です。将来的にはLINEやメールでの共有が可能になります。');
+}
+
+// 出欠確認を保存
+function saveAttendance() {
+    // テーブルから出欠データを取得
+    const table = document.getElementById('attendance-table');
+    const rows = table.querySelectorAll('tbody tr');
+    const attendanceData = [];
+    
+    rows.forEach(row => {
+        const name = row.cells[0].textContent;
+        const status = row.querySelector('select').value;
+        const notes = row.querySelector('input').value;
+        
+        attendanceData.push({
+            name: name,
+            status: status,
+            notes: notes
+        });
+    });
+    
+    // データを保存
+    appData.attendance = attendanceData;
+    saveData();
+    
+    alert('出欠データを保存しました');
+}
+
+// 未回答者にリマインド
+function reminderAttendance() {
+    // 未回答者を抽出
+    const unknownAttendees = appData.attendance.filter(player => player.status === 'unknown');
+    
+    if (unknownAttendees.length === 0) {
+        alert('未回答の選手はいません');
+        return;
     }
     
-    // イベントIDをフォームに設定
-    const eventIdInput = document.getElementById('offer-event-id');
-    if (eventIdInput) {
-        eventIdInput.value = eventId;
+    // 実際の実装ではメール送信など
+    alert(`${unknownAttendees.length}名の未回答者にリマインドを送信しました`);
+}
+
+// 新規連絡事項の送信
+function sendNotification() {
+    const text = document.getElementById('notificationText').value;
+    
+    if (!text) {
+        alert('連絡内容を入力してください');
+        return;
     }
     
-    // モーダルを表示
-    const modalOverlay = document.querySelector('.modal-overlay');
-    if (modalOverlay) {
-        modalOverlay.style.display = 'flex';
-    }
+    // 現在日時
+    const now = new Date();
+    const formattedDate = now.toLocaleDateString('ja-JP', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+    const formattedTime = now.toLocaleTimeString('ja-JP', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    
+    // 新しい通知を追加
+    appData.notifications.unshift({
+        date: `${formattedDate} ${formattedTime}`,
+        text: text,
+        type: 'info'
+    });
+    
+    // 保存とUI更新
+    saveData();
+    updateNotifications();
+    
+    // フォームリセット
+    document.getElementById('notificationText').value = '';
+    
+    alert('連絡事項を送信しました');
+}
+
+// 日付のフォーマット表示用
+function formatDateForDisplay(dateString) {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
+    
+    return `${year}年${month}月${day}日(${dayOfWeek})`;
+}
+
+// イベントタイプのラベルを取得
+function getEventTypeLabel(type) {
+    const types = {
+        'game': '試合',
+        'practice': '練習',
+        'other': 'その他'
+    };
+    return types[type] || type;
 }
