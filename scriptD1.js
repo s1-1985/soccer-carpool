@@ -1,4 +1,4 @@
-// script-d1.js - FC尾島ジュニア カレンダーページ用JavaScript
+// scriptd1.js - FC尾島ジュニア カレンダーページ用JavaScript
 
 // グローバル変数
 let currentDate = new Date();
@@ -188,7 +188,8 @@ function createDayElement(date, isOtherMonth, isToday = false) {
     
     // 日付クリックで予定追加モーダルを開く
     day.addEventListener('click', function() {
-        document.getElementById('event-date').valueAsDate = new Date(date);
+        // 日付ズレを修正 - 正確な日付を使用
+        document.getElementById('event-date').valueAsDate = date;
         document.getElementById('event-modal').style.display = 'block';
     });
     
@@ -288,65 +289,89 @@ function displayEvents() {
     });
 }
 
-// リスト表示を描画
+// リスト表示を描画（すべての日付を表示）
 function renderEventsList() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const listContainer = document.getElementById('events-list');
     listContainer.innerHTML = '';
     
-    // 現在の月のイベントをフィルタリングして日付順にソート
-    const monthEvents = events.filter(event => {
-        const eventDate = new Date(event.date);
-        return eventDate.getFullYear() === year && eventDate.getMonth() === month;
-    }).sort((a, b) => new Date(a.date) - new Date(b.date));
+    // 月の最初の日と最後の日を取得
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
     
-    if (monthEvents.length === 0) {
-        const noEvents = document.createElement('div');
-        noEvents.className = 'no-events';
-        noEvents.textContent = 'この月の予定はありません';
-        listContainer.appendChild(noEvents);
-        return;
+    // 月内の全日付を生成
+    const allDatesInMonth = [];
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+        allDatesInMonth.push(formatDate(new Date(year, month, day)));
     }
     
-    let currentDateString = '';
-    
-    monthEvents.forEach(event => {
-        const eventDate = new Date(event.date);
-        const dateString = formatDate(eventDate);
-        
-        // 日付が変わったら見出しを追加
-        if (dateString !== currentDateString) {
-            currentDateString = dateString;
-            const dateHeading = document.createElement('div');
-            dateHeading.className = 'date-heading';
-            dateHeading.textContent = formatDateForDisplay(dateString);
-            listContainer.appendChild(dateHeading);
-        }
-        
-        // イベント項目を作成
-        const eventItem = document.createElement('div');
-        eventItem.className = `event-item ${event.type}`;
-        eventItem.dataset.eventId = event.id;
-        
-        const title = document.createElement('div');
-        title.className = 'event-title';
-        title.textContent = event.title;
-        
-        const details = document.createElement('div');
-        details.className = 'event-details';
-        details.textContent = `${event.time} @ ${event.location}`;
-        
-        eventItem.appendChild(title);
-        eventItem.appendChild(details);
-        
-        // イベントクリックで詳細モーダルを表示
-        eventItem.addEventListener('click', function() {
-            showEventDetails(event.id);
-        });
-        
-        listContainer.appendChild(eventItem);
+    // 日付ごとのイベントを準備
+    const eventsByDate = {};
+    allDatesInMonth.forEach(date => {
+        eventsByDate[date] = events.filter(event => event.date === date);
     });
+    
+    // すべての日付を表示
+    allDatesInMonth.forEach(dateString => {
+        const dateObj = new Date(dateString);
+        
+        // 日付の見出しを追加
+        const dateHeading = document.createElement('div');
+        dateHeading.className = 'date-heading';
+        dateHeading.textContent = formatDateForDisplay(dateString);
+        dateHeading.dataset.date = dateString;
+        listContainer.appendChild(dateHeading);
+        
+        // その日付のイベントを表示
+        const dateEvents = eventsByDate[dateString];
+        
+        if (dateEvents && dateEvents.length > 0) {
+            // イベントがある場合は表示
+            dateEvents.forEach(event => {
+                const eventItem = createEventListItem(event);
+                listContainer.appendChild(eventItem);
+            });
+        } else {
+            // イベントがない場合は「予定なし」と表示し、クリックで予定追加できるようにする
+            const noEventItem = document.createElement('div');
+            noEventItem.className = 'event-item empty';
+            noEventItem.innerHTML = '<div class="event-title">予定なし</div>';
+            
+            // 予定なし項目をクリックすると、その日付で予定追加ダイアログを開く
+            noEventItem.addEventListener('click', function() {
+                document.getElementById('event-date').value = dateString;
+                document.getElementById('event-modal').style.display = 'block';
+            });
+            
+            listContainer.appendChild(noEventItem);
+        }
+    });
+}
+
+// イベントリスト項目を作成
+function createEventListItem(event) {
+    const eventItem = document.createElement('div');
+    eventItem.className = `event-item ${event.type}`;
+    eventItem.dataset.eventId = event.id;
+    
+    const title = document.createElement('div');
+    title.className = 'event-title';
+    title.textContent = event.title;
+    
+    const details = document.createElement('div');
+    details.className = 'event-details';
+    details.textContent = `${event.time} @ ${event.location}`;
+    
+    eventItem.appendChild(title);
+    eventItem.appendChild(details);
+    
+    // イベントクリックで詳細モーダルを表示
+    eventItem.addEventListener('click', function() {
+        showEventDetails(event.id);
+    });
+    
+    return eventItem;
 }
 
 // イベント詳細表示
@@ -405,9 +430,9 @@ function saveEvent() {
     const location = document.getElementById('event-location').value;
     const notes = document.getElementById('event-notes').value;
     
-    // バリデーション
-    if (!date || !type || !title) {
-        alert('日付、種類、タイトルは必須です');
+    // バリデーション（タイトルのみ必須）
+    if (!date || !title) {
+        alert('日付とタイトルは必須です');
         return;
     }
     
@@ -509,9 +534,7 @@ function navigateToCarpool(eventId) {
     const event = events.find(e => e.id === parseInt(eventId));
     if (event) {
         sessionStorage.setItem('selectedEvent', JSON.stringify(event));
-        // D2のページに移動（同じディレクトリにある場合）
-        window.location.href = 'indexD2.html';
-        // もしD2が別のディレクトリにある場合は適切なパスを指定
-        // window.location.href = '../directory2/index.html';
+        // D2のページに移動
+        window.location.href = 'indexd2.html';
     }
 }
