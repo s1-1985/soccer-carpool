@@ -1,4 +1,4 @@
-/* stylesD1.css - FC尾島ジュニア カレンダーページ用スタイルシート */
+/* stylesd1.css - FC尾島ジュニア カレンダーページ用スタイルシート */
 
 /* 全体のリセットとベーススタイル */
 * {
@@ -198,10 +198,6 @@ header {
     background-color: #f8f9fa;
 }
 
-.event-item .event-date {
-    font-weight: bold;
-}
-
 .event-item .event-title {
     font-size: 16px;
     margin: 5px 0;
@@ -222,6 +218,12 @@ header {
 
 .event-item.other {
     border-left: 4px solid #198754;
+}
+
+.event-item.empty {
+    background-color: #f8f9fa;
+    color: #adb5bd;
+    border-left: 4px solid #ced4da;
 }
 
 .date-heading {
