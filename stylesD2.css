@@ -1,216 +1,380 @@
-// script.js - サッカーチーム送迎管理アプリのメイン JavaScript ファイル
+/* stylesd2.css - FC尾島ジュニア 配車管理ページ用スタイルシート */
 
-// ページロード時の初期化
-document.addEventListener('DOMContentLoaded', function() {
-    // スケジュールデータの読み込み
-    loadSchedule();
-    
-    // カープールデータの読み込み
-    loadCarpools();
-    
-    // フォームイベントリスナーの設定
-    setupFormListeners();
-    
-    // ナビゲーションのアクティブ状態設定
-    setActiveNavItem();
-    
-    // モーダル関連の設定
-    setupModals();
-});
-
-// ナビゲーションのアクティブ状態を設定
-function setActiveNavItem() {
-    const currentUrl = window.location.pathname;
-    const navLinks = document.querySelectorAll('nav a');
-    
-    navLinks.forEach(link => {
-        // 現在のURLにリンクのパスが含まれている場合、activeクラスを追加
-        if (currentUrl.includes(link.getAttribute('href'))) {
-            link.classList.add('active');
-        }
-    });
+/* 全体のリセットとベーススタイル */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
 }
 
-// スケジュールデータの読み込み（モックデータ）
-function loadSchedule() {
-    // 実際の実装ではAPIからデータを取得
-    const schedules = [
-        {
-            id: 1,
-            type: 'game',
-            opponent: 'FCレッドスター',
-            date: '2025-04-05',
-            time: '14:00',
-            location: '中央公園サッカー場',
-            address: '東京都中央区日本橋1-1-1',
-            notes: 'ユニフォームは緑色。13:00に集合してください。'
-        },
-        {
-            id: 2,
-            type: 'practice',
-            date: '2025-04-10',
-            time: '19:00',
-            location: '市民グラウンド',
-            address: '東京都新宿区西新宿2-8-1',
-            notes: 'ボールとシューズを忘れずに。'
-        },
-        {
-            id: 3,
-            type: 'game',
-            opponent: 'ブルーイーグルス',
-            date: '2025-04-18',
-            time: '15:30',
-            location: '多摩川河川敷グラウンド',
-            address: '東京都大田区田園調布1-1',
-            notes: 'アウェイゲーム。白いユニフォームを着用。'
-        }
-    ];
-    
-    displaySchedule(schedules);
+body {
+    line-height: 1.6;
+    color: #333;
+    background-color: #FFFF00;
 }
 
-// スケジュールの表示
-function displaySchedule(schedules) {
-    const scheduleTable = document.getElementById('schedule-table');
-    if (!scheduleTable) return;
-    
-    const tableBody = scheduleTable.querySelector('tbody') || scheduleTable;
-    tableBody.innerHTML = '';
-    
-    schedules.forEach(event => {
-        const row = document.createElement('tr');
-        row.dataset.eventId = event.id;
-        
-        // 日付フォーマット
-        const eventDate = new Date(event.date + 'T' + event.time);
-        const formattedDate = eventDate.toLocaleDateString('ja-JP', { 
-            year: 'numeric', 
-            month: '2-digit', 
-            day: '2-digit',
-            weekday: 'short'
-        });
-        
-        const formattedTime = eventDate.toLocaleTimeString('ja-JP', { 
-            hour: '2-digit', 
-            minute: '2-digit'
-        });
-        
-        // イベントタイプのバッジ
-        const typeLabel = event.type === 'game' ? '試合' : '練習';
-        const typeClass = event.type === 'game' ? 'game' : 'practice';
-        
-        row.innerHTML = `
-            <td>
-                <span class="match-type ${typeClass}">${typeLabel}</span>
-                ${event.type === 'game' ? `<span>vs ${event.opponent}</span>` : ''}
-            </td>
-            <td>${formattedDate}<br>${formattedTime}</td>
-            <td>${event.location}<br><small>${event.address}</small></td>
-            <td>
-                <button class="btn-text show-carpool" data-event-id="${event.id}">送迎を確認</button>
-                <button class="btn-text offer-ride" data-event-id="${event.id}">送迎を提供</button>
-            </td>
-        `;
-        
-        tableBody.appendChild(row);
-    });
-    
-    // イベントリスナーの設定
-    const showCarpoolButtons = document.querySelectorAll('.show-carpool');
-    showCarpoolButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const eventId = this.getAttribute('data-event-id');
-            showCarpoolsForEvent(eventId);
-        });
-    });
-    
-    const offerRideButtons = document.querySelectorAll('.offer-ride');
-    offerRideButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const eventId = this.getAttribute('data-event-id');
-            openOfferRideModal(eventId);
-        });
-    });
+/* ヘッダー */
+header {
+    background-color: #3498db;
+    color: white;
+    padding: 15px;
+    text-align: center;
+    margin-bottom: 20px;
 }
 
-// イベントIDからイベント情報を取得
-function getEventById(eventId) {
-    // 実際の実装ではAPIから取得するか、ローカルストレージから取得
-    const schedules = [
-        {
-            id: 1,
-            type: 'game',
-            opponent: 'FCレッドスター',
-            date: '2025-04-05',
-            time: '14:00',
-            location: '中央公園サッカー場',
-            address: '東京都中央区日本橋1-1-1',
-            notes: 'ユニフォームは緑色。13:00に集合してください。'
-        },
-        {
-            id: 2,
-            type: 'practice',
-            date: '2025-04-10',
-            time: '19:00',
-            location: '市民グラウンド',
-            address: '東京都新宿区西新宿2-8-1',
-            notes: 'ボールとシューズを忘れずに。'
-        },
-        {
-            id: 3,
-            type: 'game',
-            opponent: 'ブルーイーグルス',
-            date: '2025-04-18',
-            time: '15:30',
-            location: '多摩川河川敷グラウンド',
-            address: '東京都大田区田園調布1-1',
-            notes: 'アウェイゲーム。白いユニフォームを着用。'
-        }
-    ];
-    
-    return schedules.find(event => event.id === parseInt(eventId));
+/* コンテナ */
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 15px 20px;
+    background-color: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
-// 特定イベントのカープール情報を表示
-function showCarpoolsForEvent(eventId) {
-    // イベント情報の取得
-    const event = getEventById(eventId);
-    if (!event) return;
-    
-    // カープールセクションを表示
-    const carpoolSection = document.getElementById('carpool-section');
-    if (!carpoolSection) return;
-    
-    // セクションタイトルの更新
-    const carpoolTitle = document.querySelector('.carpool-section h2');
-    if (carpoolTitle) {
-        const eventDate = new Date(event.date + 'T' + event.time);
-        const formattedDate = eventDate.toLocaleDateString('ja-JP', { 
-            month: '2-digit', 
-            day: '2-digit',
-            weekday: 'short'
-        });
-        
-        carpoolTitle.textContent = `${formattedDate} ${event.type === 'game' ? `vs ${event.opponent}` : '練習'} の送迎情報`;
+/* ボタン共通スタイル */
+button {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 16px;
+    margin: 5px 2px;
+}
+
+button:hover {
+    background-color: #2980b9;
+}
+
+/* フォーム要素共通スタイル */
+input, select, textarea {
+    padding: 10px;
+    margin: 5px 0;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 16px;
+}
+
+/* テーブル共通スタイル */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    overflow-x: auto;
+    display: block;
+}
+
+th, td {
+    padding: 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+th {
+    background-color: #f2f2f2;
+}
+
+/* タブコンテンツ */
+.tab {
+    overflow: hidden;
+    border: 1px solid #ccc;
+    background-color: #f1f1f1;
+    border-radius: 5px 5px 0 0;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.tab button {
+    background-color: inherit;
+    float: left;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 12px;
+    transition: 0.3s;
+    color: #333;
+    flex-grow: 1;
+    margin: 0;
+}
+
+.tab button:hover {
+    background-color: #ddd;
+}
+
+.tab button.active {
+    background-color: #3498db;
+    color: white;
+}
+
+.tabcontent {
+    display: none;
+    padding: 15px;
+    border: 1px solid #ccc;
+    border-top: none;
+    border-radius: 0 0 5px 5px;
+    background-color: white;
+}
+
+/* カード表示 */
+.player-card, .event-detail-card {
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.event-detail-card h3 {
+    margin-bottom: 15px;
+    color: #3498db;
+}
+
+.detail-row {
+    margin-bottom: 8px;
+    display: flex;
+}
+
+.detail-label {
+    font-weight: bold;
+    width: 80px;
+}
+
+.detail-value {
+    flex: 1;
+}
+
+/* イベントサマリー */
+.event-summary {
+    padding: 10px;
+    background-color: #e8f4fd;
+    border-radius: 4px;
+    margin-bottom: 15px;
+}
+
+/* アラートメッセージ */
+.alert {
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+}
+
+.alert.success {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.alert.info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.alert.warning {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.alert.danger {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+/* バッジスタイル */
+.badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.badge-success {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.badge-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+/* 座席表示 */
+.seats {
+    display: flex;
+    gap: 5px;
+    margin: 10px 0;
+}
+
+.seat {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1px solid #ddd;
+}
+
+.seat.filled {
+    background-color: #3498db;
+    border-color: #2980b9;
+}
+
+.seat.available {
+    background-color: #f1f1f1;
+}
+
+/* 乗車情報カード */
+.carpool-card {
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+    background-color: white;
+    display: flex;
+    flex-direction: column;
+}
+
+.carpool-info {
+    flex: 1;
+}
+
+.driver-name {
+    font-weight: bold;
+    font-size: 18px;
+    margin-bottom: 10px;
+}
+
+.carpool-details {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.carpool-notes {
+    color: #6c757d;
+    margin-top: 10px;
+}
+
+.carpool-actions {
+    margin-top: 10px;
+    text-align: right;
+}
+
+/* 出欠確認テーブル */
+.attendance-select {
+    width: 100%;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+/* モーダルオーバーレイ */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-container {
+    background-color: white;
+    padding: 20px;
+    border-radius: 5px;
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+}
+
+.modal-close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.modal-title {
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+/* ボタンテキストスタイル */
+.btn-text {
+    background: none;
+    border: none;
+    color: #3498db;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 0;
+    font-size: inherit;
+    margin: 0 5px;
+}
+
+.btn-text:hover {
+    color: #2980b9;
+    text-decoration: none;
+}
+
+/* フォームレイアウト */
+form > div {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+/* テーブルコンテナ */
+.table-container {
+    overflow-x: auto;
+    width: 100%;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+    .tab button {
+        padding: 8px 5px;
+        font-size: 14px;
     }
     
-    // カープール情報の取得・表示
-    const carpools = getCarpoolsByEventId(eventId);
-    displayCarpools(carpools, eventId);
-    
-    // カープールがない場合のメッセージ
-    const carpoolList = document.getElementById('carpool-list');
-    if (carpools.length === 0 && carpoolList) {
-        carpoolList.innerHTML = `
-            <div class="alert alert-info">
-                この予定の送迎情報はまだ登録されていません。「送迎を提供」ボタンから登録してください。
-            </div>
-        `;
+    h1 {
+        font-size: 24px;
     }
     
-    // セクションを表示
-    carpoolSection.style.display = 'block';
+    h2 {
+        font-size: 20px;
+    }
     
-    // セクションまでスクロール
-    carpoolSection.scrollIntoView({ behavior: 'smooth' });
+    h3 {
+        font-size: 18px;
+    }
+    
+    .container {
+        padding: 10px;
+    }
+    
+    button {
+        width: 100%;
+        margin: 5px 0;
+    }
+    
+    .action-buttons {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .carpool-details {
+        flex-direction: column;
+    }
 }
