@@ -1,0 +1,215 @@
+/* FC尾島ジュニア - 会場管理機能スタイル */
+
+/* 会場リスト */
+.venues-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.venue-card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+}
+
+.venue-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.venue-card h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+    color: #3498db;
+}
+
+.venue-actions {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+/* 会場情報表示 */
+.venue-info {
+    margin-bottom: 10px;
+}
+
+.venue-info-item {
+    display: flex;
+    margin-bottom: 5px;
+}
+
+.venue-info-label {
+    width: 80px;
+    font-weight: 500;
+    color: #555;
+}
+
+.venue-info-value {
+    flex: 1;
+}
+
+.venue-address {
+    display: flex;
+    align-items: center;
+}
+
+.venue-map-button {
+    margin-left: 10px;
+    white-space: nowrap;
+}
+
+/* 会場アイコン */
+.venue-icon {
+    width: 40px;
+    height: 40px;
+    background-color: #e9ecef;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: #495057;
+    margin-right: 15px;
+}
+
+/* 会場追加ボタン */
+.add-venue-button {
+    position: fixed;
+    bottom: 70px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: #28a745;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.2s;
+    z-index: 90;
+}
+
+.add-venue-button:hover {
+    background-color: #218838;
+}
+
+/* 会場タイプによって色分け */
+.venue-card.ground {
+    border-left: 4px solid #28a745; /* 緑 - グラウンド */
+}
+
+.venue-card.gym {
+    border-left: 4px solid #007bff; /* 青 - 体育館 */
+}
+
+.venue-card.park {
+    border-left: 4px solid #17a2b8; /* 青緑 - 公園 */
+}
+
+.venue-card.other {
+    border-left: 4px solid #6c757d; /* グレー - その他 */
+}
+
+/* 会場詳細モーダル */
+.venue-details-content {
+    margin-top: 15px;
+}
+
+.venue-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.venue-name-type {
+    flex: 1;
+}
+
+.venue-name-type h3 {
+    margin: 0 0 5px 0;
+}
+
+.venue-type-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    font-size: 12px;
+    border-radius: 4px;
+    background-color: #6c757d;
+    color: white;
+}
+
+.venue-type-badge.ground {
+    background-color: #28a745;
+}
+
+.venue-type-badge.gym {
+    background-color: #007bff;
+}
+
+.venue-type-badge.park {
+    background-color: #17a2b8;
+}
+
+/* 地図表示エリア */
+.venue-map-container {
+    margin-top: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    margin-bottom: 15px;
+}
+
+/* 検索フィルタ */
+.venue-search-filter {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.venue-search {
+    flex: 1;
+}
+
+.venue-filter {
+    width: 150px;
+}
+
+/* レスポンシブ対応 */
+@media screen and (max-width: 768px) {
+    .venues-list {
+        grid-template-columns: 1fr;
+    }
+    
+    .venue-actions {
+        flex-wrap: wrap;
+    }
+    
+    .venue-actions button {
+        flex: 1;
+        padding: 6px 10px;
+        font-size: 14px;
+    }
+    
+    .venue-search-filter {
+        flex-direction: column;
+    }
+    
+    .venue-search,
+    .venue-filter {
+        width: 100%;
+    }
+}

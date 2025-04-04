@@ -1,0 +1,252 @@
+/* FC尾島ジュニア - 概要タブスタイル */
+
+/* イベント詳細カード */
+.event-detail-card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+/* イベントタイトル */
+.event-title {
+    font-size: 22px;
+    color: #333;
+    margin-top: 0;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.event-title .event-type-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    font-size: 14px;
+    border-radius: 20px;
+    margin-left: 10px;
+    background-color: #e9ecef;
+    color: #495057;
+    vertical-align: middle;
+}
+
+.event-title .event-type-badge.game {
+    background-color: #fef5e7;
+    color: #e67e22;
+}
+
+.event-title .event-type-badge.practice {
+    background-color: #e8f8f5;
+    color: #16a085;
+}
+
+.event-title .event-type-badge.other {
+    background-color: #f4ecf7;
+    color: #8e44ad;
+}
+
+/* 詳細行 */
+.detail-row {
+    margin-bottom: 15px;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.detail-label {
+    font-weight: 500;
+    width: 120px;
+    color: #555;
+    flex-shrink: 0;
+}
+
+.detail-value {
+    flex: 1;
+}
+
+/* ターゲット学年表示 */
+.target-grades {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 10px;
+}
+
+.grade-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 14px;
+    background-color: #e9ecef;
+    color: #495057;
+}
+
+/* 日時情報 */
+.date-time-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 15px;
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.date-time-item {
+    flex: 1;
+    min-width: 200px;
+}
+
+.date-time-label {
+    font-weight: 500;
+    color: #555;
+    margin-bottom: 5px;
+}
+
+.date-time-value {
+    font-size: 18px;
+    color: #333;
+}
+
+/* 場所情報 */
+.location-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.location-item {
+    flex: 1;
+    min-width: 200px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.location-label {
+    font-weight: 500;
+    color: #555;
+    margin-bottom: 5px;
+}
+
+.location-value {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.map-button {
+    white-space: nowrap;
+    display: inline-block;
+    padding: 5px 10px;
+    font-size: 14px;
+    border-radius: 20px;
+    background-color: #e9ecef;
+    color: #495057;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.map-button:hover {
+    background-color: #dee2e6;
+}
+
+/* 備考セクション */
+.notes-section {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.notes-section h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 16px;
+    color: #555;
+}
+
+.notes-content {
+    white-space: pre-line;
+    line-height: 1.6;
+}
+
+/* 出欠締切表示 */
+.deadline-box {
+    padding: 10px 15px;
+    background-color: #f8d7da;
+    color: #721c24;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.deadline-icon {
+    margin-right: 10px;
+    width: 20px;
+    height: 20px;
+    text-align: center;
+    line-height: 20px;
+}
+
+.deadline-action {
+    white-space: nowrap;
+}
+
+/* 共有ボタン */
+.share-button {
+    background-color: #28a745;
+}
+
+.share-button:hover {
+    background-color: #218838;
+}
+
+/* レスポンシブ対応 */
+@media screen and (max-width: 768px) {
+    .event-title {
+        font-size: 18px;
+    }
+    
+    .event-title .event-type-badge {
+        display: block;
+        margin: 8px 0 0 0;
+        text-align: center;
+    }
+    
+    .detail-row {
+        flex-direction: column;
+    }
+    
+    .detail-label {
+        width: 100%;
+        margin-bottom: 5px;
+    }
+    
+    .date-time-info,
+    .location-info {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .date-time-item,
+    .location-item {
+        width: 100%;
+    }
+    
+    .location-value {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .map-button {
+        width: 100%;
+        text-align: center;
+    }
+}

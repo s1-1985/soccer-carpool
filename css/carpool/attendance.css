@@ -1,0 +1,173 @@
+/* FC尾島ジュニア - 出欠確認タブスタイル */
+
+/* 出欠確認テーブル */
+.attendance-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.attendance-table th,
+.attendance-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.attendance-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+.attendance-table tr:hover {
+    background-color: #f5f5f5;
+}
+
+/* 出欠ステータス */
+.attendance-status {
+    width: 150px;
+}
+
+.attendance-status select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.attendance-status select.present {
+    border-left: 3px solid #28a745;
+}
+
+.attendance-status select.absent {
+    border-left: 3px solid #dc3545;
+}
+
+.attendance-status select.unknown {
+    border-left: 3px solid #6c757d;
+}
+
+/* 備考入力 */
+.attendance-notes input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+/* 出欠期限表示 */
+.attendance-deadline {
+    background-color: #f8f9fa;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    border-left: 4px solid #17a2b8;
+}
+
+.attendance-deadline.expired {
+    border-left-color: #dc3545;
+}
+
+.attendance-deadline p {
+    margin: 0;
+}
+
+/* 出欠統計表示 */
+.attendance-stats {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.stats-item {
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+    padding: 10px;
+    background-color: white;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.stats-value {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.stats-label {
+    font-size: 14px;
+    color: #6c757d;
+}
+
+/* リマインドボタン */
+.reminder-button {
+    background-color: #6c757d;
+}
+
+.reminder-button:hover {
+    background-color: #5a6268;
+}
+
+/* 空行表示 */
+.empty-row td {
+    text-align: center;
+    padding: 20px;
+    color: #6c757d;
+}
+
+/* 追加機能 */
+.add-member-section {
+    margin-top: 30px;
+}
+
+/* 学年グループ分け */
+.grade-group {
+    margin-bottom: 30px;
+}
+
+.grade-group-header {
+    background-color: #e9ecef;
+    padding: 10px 15px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+/* レスポンシブ対応 */
+@media screen and (max-width: 768px) {
+    .attendance-table {
+        font-size: 14px;
+    }
+    
+    .attendance-table th,
+    .attendance-table td {
+        padding: 8px;
+    }
+    
+    .attendance-status {
+        width: auto;
+    }
+    
+    .attendance-stats {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .stats-item {
+        width: 100%;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .action-buttons button {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+}

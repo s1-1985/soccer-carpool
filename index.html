@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FC尾島ジュニア</title>
+    <link rel="stylesheet" href="css/common.css">
+    <style>
+        .welcome-container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            text-align: center;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .welcome-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #3498db;
+        }
+        
+        .welcome-content {
+            margin-bottom: 30px;
+        }
+        
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+        
+        .menu-button {
+            padding: 15px;
+            font-size: 18px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .menu-button:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>FC尾島ジュニア</h1>
+    </header>
+
+    <div class="welcome-container">
+        <div class="welcome-title">ようこそ！FC尾島ジュニア管理システムへ</div>
+        
+        <div class="welcome-content">
+            このシステムではチームの予定管理や出欠確認、配車管理などができます。
+            下のメニューからお進みください。
+        </div>
+        
+        <div class="menu-buttons">
+            <a href="hub/index.html" class="menu-button">HUBページ</a>
+            <a href="carpool/index.html" class="menu-button">配車管理ページ</a>
+        </div>
+    </div>
+    
+    <script>
+        // リダイレクト（オプション）
+        // window.location.href = 'hub/index.html';
+    </script>
+</body>
+</html>

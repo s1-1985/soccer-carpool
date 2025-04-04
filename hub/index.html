@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FC尾島ジュニア HUB</title>
+    <link rel="stylesheet" href="../css/common.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <h1>FC尾島ジュニア HUB</h1>
+    </header>
+
+    <nav class="main-nav">
+        <ul>
+            <li><a href="index.html" class="active">HUB</a></li>
+            <li><a href="calendar.html">カレンダー</a></li>
+            <li><a href="members.html">メンバー</a></li>
+            <li><a href="notifications.html">連絡事項</a></li>
+            <li><a href="venues.html">会場登録</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <!-- タブナビゲーション -->
+        <div class="tab">
+            <button class="tablinks active" onclick="FCOjima.UI.openTab(event, 'calendar')" id="defaultTab">カレンダー</button>
+            <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'members')">メンバー</button>
+            <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'notifications')">連絡事項</button>
+            <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'venues')">会場登録</button>
+        </div>
+
+        <!-- カレンダータブ -->
+        <div id="calendar" class="tabcontent" style="display: block;">
+            <div class="controls">
+                <div class="month-control">
+                    <button id="prev-month">&lt;</button>
+                    <h2 id="current-month">2025年4月</h2>
+                    <button id="next-month">&gt;</button>
+                </div>
+                <div class="view-toggle">
+                    <button id="calendar-view" class="active">カレンダー</button>
+                    <button id="list-view">リスト</button>
+                </div>
+            </div>
+
+            <!-- カレンダー表示 -->
+            <div id="calendar-container" class="view-container">
+                <div class="weekdays">
+                    <div>日</div>
+                    <div>月</div>
+                    <div>火</div>
+                    <div>水</div>
+                    <div>木</div>
+                    <div>金</div>
+                    <div>土</div>
+                </div>
+                <div id="calendar-grid" class="calendar-grid">
+                    <!-- カレンダーの日付がJSで動的に生成される -->
+                </div>
+            </div>
+
+            <!-- リスト表示 -->
+            <div id="list-container" class="view-container hidden">
+                <div id="events-list" class="events-list">
+                    <!-- イベントリストがJSで動的に生成される -->
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button id="add-event">予定を追加</button>
+                <button id="view-logs" class="secondary-button">ログを表示</button>
+            </div>
+        </div>
+
+        <!-- メンバータブ -->
+        <div id="members" class="tabcontent">
+            <div class="filter-controls">
+                <div class="search-box">
+                    <input type="text" id="member-search" placeholder="名前で検索..." class="form-control">
+                </div>
+                <div class="filter-role">
+                    <select id="role-filter" class="form-control">
+                        <option value="all">全ての役割</option>
+                        <option value="player">選手</option>
+                        <option value="coach">監督・コーチ</option>
+                        <option value="parent">保護者</option>
+                        <option value="other">その他</option>
+                    </select>
+                </div>
+                <div class="filter-grade">
+                    <select id="grade-filter" class="form-control">
+                        <option value="all">全ての学年</option>
+                        <!-- 学年オプションはJSで動的に生成 -->
+                    </select>
+                </div>
+            </div>
+            
+            <h2>メンバー一覧</h2>
+            <div id="members-list" class="members-list">
+                <!-- メンバーリストがJSで動的に生成される -->
+            </div>
+            <div class="action-buttons">
+                <button id="add-member">メンバーを追加</button>
+                <button id="edit-member">メンバーを編集</button>
+                <button id="delete-member">メンバーを削除</button>
+                <button id="member-logs" class="secondary-button">ログを表示</button>
+            </div>
+        </div>
+
+        <!-- 連絡事項タブ -->
+        <div id="notifications" class="tabcontent">
+            <div class="notification-filters">
+                <div class="notification-filter-item active" data-filter="all">すべて</div>
+                <div class="notification-filter-item" data-filter="important">重要</div>
+                <div class="notification-filter-item" data-filter="event">イベント</div>
+                <div class="notification-filter-item" data-filter="schedule">日程</div>
+            </div>
+            
+            <h2>連絡事項</h2>
+            <div id="notificationsList" class="notifications-list">
+                <!-- 連絡事項がJSで動的に生成される -->
+            </div>
+            
+            <h3>新規連絡事項</h3>
+            <form id="notificationForm">
+                <div class="form-group">
+                    <label for="notification-category">カテゴリ</label>
+                    <select id="notification-category">
+                        <option value="info">一般情報</option>
+                        <option value="important">重要</option>
+                        <option value="event">イベント</option>
+                        <option value="schedule">日程</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="notificationText">内容:</label>
+                    <textarea id="notificationText" rows="4" placeholder="連絡内容を入力してください..."></textarea>
+                </div>
+                <div class="action-buttons">
+                    <button type="button" id="send-notification">送信</button>
+                </div>
+            </form>
+            <div class="notification-info">
+                ※投稿された内容は３ヶ月後に自動的に削除されます。
+            </div>
+        </div>
+
+        <!-- 会場登録タブ -->
+        <div id="venues" class="tabcontent">
+            <div class="venue-search-filter">
+                <div class="venue-search">
+                    <input type="text" id="venue-search" placeholder="会場名で検索..." class="form-control">
+                </div>
+                <div class="venue-filter">
+                    <select id="venue-type-filter" class="form-control">
+                        <option value="all">全てのタイプ</option>
+                        <option value="ground">グラウンド</option>
+                        <option value="gym">体育館</option>
+                        <option value="park">公園</option>
+                        <option value="other">その他</option>
+                    </select>
+                </div>
+            </div>
+            
+            <h2>会場一覧</h2>
+            <div id="venues-list" class="venues-list">
+                <!-- 会場リストがJSで動的に生成される -->
+            </div>
+            <div class="action-buttons">
+                <button id="add-venue">会場を追加</button>
+                <button id="venues-logs" class="secondary-button">ログを表示</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 予定追加・編集モーダル -->
+    <div id="event-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>予定を追加</h2>
+            <form id="event-form">
+                <div class="form-group">
+                    <label for="event-date">日付</label>
+                    <input type="date" id="event-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="event-type">種類</label>
+                    <select id="event-type" required>
+                        <option value="game">試合</option>
+                        <option value="practice">練習</option>
+                        <option value="other">その他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="event-title">タイトル</label>
+                    <input type="text" id="event-title" placeholder="例: vs青葉FC" required>
+                </div>
+                <div class="form-group">
+                    <label for="event-target">対象学年</label>
+                    <div id="event-target-grades" class="checkbox-group">
+                        <!-- 学年チェックボックスがJSで動的に生成される -->
+                    </div>
+                    <input type="text" id="event-target-notes" placeholder="備考（例: 〇〇君のみ参加）">
+                </div>
+                <div class="form-group">
+                    <label for="event-attendance-deadline">出欠回答期限</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="date" id="event-attendance-deadline-date">
+                        <input type="time" id="event-attendance-deadline-time">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="event-departure-time">出発時間</label>
+                    <input type="time" id="event-departure-time">
+                </div>
+                <div class="form-group">
+                    <label for="event-meeting-place">集合場所</label>
+                    <input type="text" id="event-meeting-place" placeholder="集合場所を入力">
+                    <button type="button" id="select-meeting-venue" class="secondary-button">登録会場から選択</button>
+                </div>
+                <div class="form-group">
+                    <label for="event-venue">会場</label>
+                    <input type="text" id="event-venue" placeholder="会場を入力">
+                    <button type="button" id="select-venue" class="secondary-button">登録会場から選択</button>
+                </div>
+                <div class="form-group">
+                    <label for="event-start-time">開始時間</label>
+                    <input type="time" id="event-start-time">
+                </div>
+                <div class="form-group">
+                    <label for="event-end-time">終了時間</label>
+                    <input type="time" id="event-end-time">
+                </div>
+                <div class="form-group">
+                    <label for="event-notes">備考</label>
+                    <textarea id="event-notes" placeholder="その他の備考事項"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit">保存</button>
+                    <button type="button" id="cancel-event">キャンセル</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- イベント詳細モーダル -->
+    <div id="event-details-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="event-details-content">
+                <!-- イベント詳細がJSで動的に生成される -->
+            </div>
+            <div class="modal-actions">
+                <button id="manage-event">配車管理画面へ</button>
+                <button id="edit-event">編集</button>
+                <button id="delete-event">削除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 会場選択モーダル -->
+    <div id="venue-select-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>会場を選択</h2>
+            <div id="venue-select-list" class="select-list">
+                <!-- 会場リストがJSで動的に生成される -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 会場追加モーダル -->
+    <div id="venue-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>会場を追加</h2>
+            <form id="venue-form">
+                <div class="form-group">
+                    <label for="venue-name">会場名</label>
+                    <input type="text" id="venue-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="venue-type">会場タイプ</label>
+                    <select id="venue-type">
+                        <option value="ground">グラウンド</option>
+                        <option value="gym">体育館</option>
+                        <option value="park">公園</option>
+                        <option value="other">その他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="venue-address">住所</label>
+                    <input type="text" id="venue-address" required>
+                </div>
+                <div class="form-group">
+                    <label for="venue-notes">備考</label>
+                    <textarea id="venue-notes"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit">保存</button>
+                    <button type="button" id="cancel-venue">キャンセル</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- メンバー追加モーダル -->
+    <div id="member-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>メンバーを追加</h2>
+            <form id="member-form">
+                <div class="form-group">
+                    <label for="member-name">氏名</label>
+                    <input type="text" id="member-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="member-birth">生年月日</label>
+                    <input type="date" id="member-birth">
+                </div>
+                <div class="form-group">
+                    <label for="member-gender">性別</label>
+                    <select id="member-gender">
+                        <option value="male">男性</option>
+                        <option value="female">女性</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="member-role">所属</label>
+                    <select id="member-role" required>
+                        <option value="coach">監督</option>
+                        <option value="assist">コーチ</option>
+                        <option value="player">選手</option>
+                        <option value="father">父</option>
+                        <option value="mother">母</option>
+                        <option value="other">部員外</option>
+                    </select>
+                </div>
+                <div class="form-group" id="number-group">
+                    <label for="member-number">背番号</label>
+                    <input type="number" id="member-number" min="1" max="99">
+                </div>
+                <div class="form-group">
+                    <label for="member-notes">備考</label>
+                    <textarea id="member-notes"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit">保存</button>
+                    <button type="button" id="cancel-member">キャンセル</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ログ表示モーダル -->
+    <div id="logs-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>操作ログ</h2>
+            <div id="logs-content">
+                <!-- ログ内容がJSで動的に生成される -->
+            </div>
+        </div>
+    </div>
+
+    <!-- メンバー追加ボタン（固定） -->
+    <a href="#" id="floating-add-button" class="add-member-button" title="メンバーを追加" style="display: none;">+</a>
+
+    <!-- 共通モジュール -->
+    <script src="../js/common/global.js"></script>
+    <script src="../js/common/utils.js"></script>
+    <script src="../js/common/storage.js"></script>
+    <script src="../js/common/ui.js"></script>
+    
+    <!-- HUBページ用モジュール -->
+    <script src="../js/hub/main.js"></script>
+    <script src="../js/hub/calendar.js"></script>
+    <script src="../js/hub/members.js"></script>
+    <script src="../js/hub/notifications.js"></script>
+    <script src="../js/hub/venues.js"></script>
+
+    <script>
+        // タブの切り替えに応じてフローティングボタンの表示を制御
+        document.querySelectorAll('.tablinks').forEach(function(tab) {
+            tab.addEventListener('click', function() {
+                const floatingButton = document.getElementById('floating-add-button');
+                if (this.textContent === 'メンバー') {
+                    floatingButton.style.display = 'flex';
+                    floatingButton.className = 'add-member-button';
+                    floatingButton.title = 'メンバーを追加';
+                    floatingButton.onclick = function(e) {
+                        e.preventDefault();
+                        FCOjima.Hub.Members.openAddMemberModal();
+                    };
+                } else if (this.textContent === '会場登録') {
+                    floatingButton.style.display = 'flex';
+                    floatingButton.className = 'add-venue-button';
+                    floatingButton.title = '会場を追加';
+                    floatingButton.onclick = function(e) {
+                        e.preventDefault();
+                        FCOjima.Hub.Venues.openAddVenueModal();
+                    };
+                } else {
+                    floatingButton.style.display = 'none';
+                }
+            });
+        });
+
+        // DOMContentLoaded イベントで初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            FCOjima.Hub.init();
+            
+            // モーダルの初期化
+            FCOjima.UI.initModals();
+
+            // 浮動追加ボタンの初期設定
+            const floatingAddButton = document.getElementById('floating-add-button');
+            floatingAddButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                const activeTab = document.querySelector('.tablinks.active');
+                if (activeTab.textContent === 'メンバー') {
+                    FCOjima.Hub.Members.openAddMemberModal();
+                } else if (activeTab.textContent === '会場登録') {
+                    FCOjima.Hub.Venues.openAddVenueModal();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
