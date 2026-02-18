@@ -13,6 +13,73 @@ FCOjima.UI = FCOjima.UI || {};
     const UI = FCOjima.UI;
     
     /**
+     * HTML特殊文字をエスケープ
+     * @param {string} str - エスケープする文字列
+     * @returns {string} エスケープされた文字列
+     */
+    UI.escapeHTML = function(str) {
+        if (str == null) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    };
+
+    /**
+     * モーダルを開く
+     * @param {string} modalId - モーダルのID
+     */
+    UI.openModal = function(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) modal.style.display = 'block';
+    };
+
+    /**
+     * モーダルを閉じる
+     * @param {string} modalId - モーダルのID
+     */
+    UI.closeModal = function(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) modal.style.display = 'none';
+    };
+
+    /**
+     * モーダルの閉じるボタンを初期化
+     */
+    UI.initModals = function() {
+        document.querySelectorAll('.modal .close').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const modal = this.closest('.modal');
+                if (modal) modal.style.display = 'none';
+            });
+        });
+        window.addEventListener('click', function(e) {
+            document.querySelectorAll('.modal').forEach(function(modal) {
+                if (e.target === modal) modal.style.display = 'none';
+            });
+        });
+    };
+
+    /**
+     * アラートを表示
+     * @param {string} message - メッセージ
+     */
+    UI.showAlert = function(message) {
+        alert(message);
+    };
+
+    /**
+     * 確認ダイアログを表示
+     * @param {string} message - メッセージ
+     * @returns {boolean}
+     */
+    UI.showConfirm = function(message) {
+        return confirm(message);
+    };
+
+    /**
      * タブを切り替え
      * @param {Event} evt - クリックイベント
      * @param {string} tabName - 表示するタブのID
