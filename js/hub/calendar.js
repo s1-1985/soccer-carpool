@@ -369,7 +369,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
      */
     Calendar.showEventDetails = function(eventId) {
         const events = app.Hub.events;
-        const event = events.find(e => e.id === parseInt(eventId));
+        const event = events.find(e => String(e.id) === String(eventId));
         if (!event) return;
         
         const content = document.getElementById('event-details-content');
@@ -609,7 +609,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         
         if (eventFormId) {
             // 既存イベントの更新
-            const index = events.findIndex(e => e.id === parseInt(eventFormId));
+            const index = events.findIndex(e => String(e.id) === String(eventFormId));
             if (index !== -1) {
                 events[index] = {
                     id: parseInt(eventFormId),
@@ -669,7 +669,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
      */
     Calendar.editEvent = function(eventId) {
         const events = app.Hub.events;
-        const event = events.find(e => e.id === parseInt(eventId));
+        const event = events.find(e => String(e.id) === String(eventId));
         if (!event) return;
         
         // モーダルのタイトル設定
@@ -729,13 +729,13 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
     Calendar.deleteEvent = function(eventId) {
         const events = app.Hub.events;
         const logs = app.Hub.logs;
-        
-        const event = events.find(e => e.id === parseInt(eventId));
+
+        const event = events.find(e => String(e.id) === String(eventId));
         if (!event) return;
         
         if (UI.showConfirm(`イベント「${event.title}」を削除してもよろしいですか？`)) {
             // イベントを削除
-            app.Hub.events = events.filter(e => e.id !== parseInt(eventId));
+            app.Hub.events = events.filter(e => String(e.id) !== String(eventId));
             
             // ログに記録
             app.Hub.logs = Storage.addLog('calendar', 'イベント削除', `「${event.title}」（${event.date}）`, logs);
@@ -756,9 +756,9 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
      */
     Calendar.navigateToCarpool = function(eventId) {
         const events = app.Hub.events;
-        
+
         // イベント情報をセッションストレージに保存
-        const event = events.find(e => e.id === parseInt(eventId));
+        const event = events.find(e => String(e.id) === String(eventId));
         if (event) {
             Storage.setSelectedEvent(event);
             // 配車管理ページに移動

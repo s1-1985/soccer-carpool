@@ -13,7 +13,7 @@ FCOjima.DB = FCOjima.DB || {};
 
     DB.loadMembers = async function() {
         const snapshot = await Collections.members().orderBy('role').get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return snapshot.docs.map(doc => ({ id: Number(doc.id) || doc.id, ...doc.data() }));
     };
 
     DB.saveMember = async function(member) {
@@ -50,7 +50,7 @@ FCOjima.DB = FCOjima.DB || {};
 
     DB.loadVenues = async function() {
         const snapshot = await Collections.venues().get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return snapshot.docs.map(doc => ({ id: Number(doc.id) || doc.id, ...doc.data() }));
     };
 
     DB.saveVenues = async function(venues) {
@@ -70,7 +70,7 @@ FCOjima.DB = FCOjima.DB || {};
 
     DB.loadEvents = async function() {
         const snapshot = await Collections.events().orderBy('date').get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return snapshot.docs.map(doc => ({ id: Number(doc.id) || doc.id, ...doc.data() }));
     };
 
     DB.saveEvents = async function(events) {
