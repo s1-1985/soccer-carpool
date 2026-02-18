@@ -63,6 +63,17 @@ FCOjima.UI = FCOjima.UI || {};
     };
 
     /**
+     * アラートHTML文字列を生成
+     * @param {string} type - アラートの種類（info/success/warning/danger/error）
+     * @param {string} message - メッセージ
+     * @returns {string} アラートのHTML文字列
+     */
+    UI.createAlert = function(type, message) {
+        const alertType = type === 'error' ? 'danger' : type;
+        return `<div class="alert ${UI.escapeHTML(alertType)}">${UI.escapeHTML(message)}</div>`;
+    };
+
+    /**
      * アラートを表示
      * @param {string} message - メッセージ
      */

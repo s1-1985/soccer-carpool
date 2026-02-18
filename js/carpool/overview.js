@@ -14,6 +14,36 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
     var Storage = app.Storage;
     
     /**
+     * イベント固有データをappDataに読み込む
+     */
+    app.Carpool.loadData = function() {
+        var eventId = app.Carpool.appData.eventId;
+        if (!eventId) return;
+        var data = Storage.loadEventData(eventId);
+        app.Carpool.appData.carRegistrations = data.carRegistrations || [];
+        app.Carpool.appData.assignments      = data.assignments      || [];
+        app.Carpool.appData.attendance       = data.attendance       || [];
+        app.Carpool.appData.notifications    = data.notifications    || [];
+        console.log('配車データを読み込みました: eventId=' + eventId);
+    };
+
+    /**
+     * appDataをイベント固有データとして保存する
+     */
+    app.Carpool.saveData = function() {
+        var eventId = app.Carpool.appData.eventId;
+        if (!eventId) return;
+        var data = {
+            carRegistrations: app.Carpool.appData.carRegistrations || [],
+            assignments:      app.Carpool.appData.assignments      || [],
+            attendance:       app.Carpool.appData.attendance       || [],
+            notifications:    app.Carpool.appData.notifications    || []
+        };
+        Storage.saveEventData(eventId, data);
+        console.log('配車データを保存しました: eventId=' + eventId);
+    };
+
+    /**
      * 概要機能の初期化
      */
     Overview.init = function() {
@@ -353,10 +383,10 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                         </div>
                     </div>
                     <div class="status-actions">
-                        <a href="cars.html" class="button">車提供へ</a>
+                        <a href="carprovision.html" class="button">車提供へ</a>
                     </div>
                 </div>
-                
+
                 <div class="status-card">
                     <h3>割り当て状況</h3>
                     <div class="status-stats">
@@ -366,7 +396,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                         </div>
                     </div>
                     <div class="status-actions">
-                        <a href="assignments.html" class="button">割り当てへ</a>
+                        <a href="assignment.html" class="button">割り当てへ</a>
                     </div>
                 </div>
             </div>
@@ -447,6 +477,34 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         }
     };
     
+    /**
+     * 各ページ用のイベント概要を指定要素に表示する
+     * @param {string} elementId - 表示先要素のID
+     */
+    Overview.displayEventSummary = function(elementId) {
+        var el = document.getElementById(elementId);
+        if (!el) return;
+
+        var event = Storage.getSelectedEvent();
+        if (!event) {
+            el.innerHTML = UI.createAlert('info', 'イベントが選択されていません。');
+            return;
+        }
+
+        var date = Utils.formatDateForDisplay ? Utils.formatDateForDisplay(event.date) : event.date;
+        el.innerHTML =
+            '<div class="event-summary-bar">' +
+            '<strong>' + UI.escapeHTML(event.title) + '</strong>' +
+            ' (' + date + (event.startTime ? ' ' + event.startTime : '') + ')' +
+            '</div>';
+
+        // ヘッダーにも反映
+        var header = document.getElementById('event-header');
+        if (header) {
+            header.textContent = date + ' ' + event.title;
+        }
+    };
+
     /**
      * メインページに戻る
      */
