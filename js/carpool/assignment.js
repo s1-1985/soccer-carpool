@@ -1,4 +1,18 @@
 /**
+ * FC尾島ジュニア - 割り当てタブの機能（続き）
+ * 乗車割り当てに関する機能を提供
+ */
+window.FCOjima = window.FCOjima || {};
+FCOjima.Carpool = FCOjima.Carpool || {};
+FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
+
+(function(app) {
+    var Assignment = app.Carpool.Assignment;
+    var UI = app.UI;
+    var Utils = app.Utils;
+    var Storage = app.Storage;
+
+    /**
      * 座席をクリア
      * @param {HTMLElement} seat - 座席要素
      */
@@ -522,7 +536,15 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                 Assignment.clearSelectedSeat();
             });
         }
-        
+
+        // キャンセルボタン（BUG-007修正）
+        var cancelSeatEditButton = document.getElementById('cancel-seat-edit');
+        if (cancelSeatEditButton) {
+            cancelSeatEditButton.addEventListener('click', function() {
+                UI.closeModal('seat-edit-modal');
+            });
+        }
+
         console.log('割り当てのイベントリスナー設定が完了しました');
     };
     
@@ -532,7 +554,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     Assignment.updateEventInfo = function() {
         console.log('イベント情報を表示します...');
         
-        const eventInfo = document.getElementById('assignmentEventInfo');
+        const eventInfo = document.getElementById('assignment-event-info');
         if (!eventInfo) {
             console.log('イベント情報表示領域が見つかりません');
             return;

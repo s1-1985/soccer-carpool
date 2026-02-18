@@ -106,20 +106,7 @@
                     window.location.href = '../hub/index.html';
                 }
             });
-            
-            // 送信ボタンの設定
-            document.getElementById('send-notification').addEventListener('click', function() {
-                if (FCOjima.Carpool.Notifications && FCOjima.Carpool.Notifications.sendNotification) {
-                    FCOjima.Carpool.Notifications.sendNotification();
-                }
-            });
-            
-            // 共有ボタンの設定
-            document.getElementById('share-latest-notification').addEventListener('click', function() {
-                if (FCOjima.Carpool.Notifications && FCOjima.Carpool.Notifications.shareLatestNotification) {
-                    FCOjima.Carpool.Notifications.shareLatestNotification();
-                }
-            });
+            // 送信・共有ボタンは Notifications.init() → setupEventListeners() で設定済み
         });
     </script>
 </body>

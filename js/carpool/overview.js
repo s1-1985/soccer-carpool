@@ -89,7 +89,10 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
             
             // イベントIDを保存
             app.Carpool.appData.eventId = event.id;
-            
+
+            // メンバーデータをロード（BUG-004修正）
+            app.Carpool.members = Storage.loadMembers();
+
             // イベント固有のデータをロード
             app.Carpool.loadData();
             

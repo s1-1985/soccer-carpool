@@ -168,26 +168,8 @@
                 FCOjima.Carpool.Overview.displayEventSummary('carEventInfo');
             }
             
-            // 車両提供条件変更イベント
-            document.getElementById('canDrive').addEventListener('change', function() {
-                var carDetails = document.getElementById('carDetails');
-                carDetails.style.display = (this.value === 'no') ? 'none' : 'block';
-            });
-            
-            // 運転者選択ボタン
-            document.getElementById('select-driver').addEventListener('click', function() {
-                if (FCOjima.Carpool.CarProvision && FCOjima.Carpool.CarProvision.openDriverSelectModal) {
-                    FCOjima.Carpool.CarProvision.openDriverSelectModal();
-                }
-            });
-            
-            // 車両登録ボタン
-            document.getElementById('register-car').addEventListener('click', function() {
-                if (FCOjima.Carpool.CarProvision && FCOjima.Carpool.CarProvision.registerCar) {
-                    FCOjima.Carpool.CarProvision.registerCar();
-                }
-            });
-            
+            // canDrive・select-driver・register-carは CarProvision.init() → setupEventListeners() で設定済み
+
             // HUBに戻るボタンの設定
             document.getElementById('back-to-hub').addEventListener('click', function() {
                 if (FCOjima.Carpool.Overview && FCOjima.Carpool.Overview.goToMainPage) {

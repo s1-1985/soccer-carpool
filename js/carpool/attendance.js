@@ -13,7 +13,167 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
     // 名前空間のショートカット
     const Attendance = FCOjima.Carpool.Attendance;
     const UI = FCOjima.UI;
-    
+
+    /**
+     * 出欠確認機能の初期化
+     */
+    Attendance.init = function() {
+        console.log('出欠確認機能を初期化しています...');
+        FCOjima.Carpool.members = FCOjima.Storage.loadMembers();
+        this.setupEventListeners();
+        this.updateAttendance();
+        this.updateStats();
+        console.log('出欠確認機能の初期化が完了しました');
+    };
+
+    /**
+     * イベントリスナーの設定
+     */
+    Attendance.setupEventListeners = function() {
+        // 出欠保存ボタン
+        var saveBtn = document.getElementById('save-attendance');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', function() { Attendance.saveAttendance(); });
+        }
+        // リマインドボタン
+        var reminderBtn = document.getElementById('reminder-attendance');
+        if (reminderBtn) {
+            reminderBtn.addEventListener('click', function() { Attendance.reminderAttendance(); });
+        }
+        // メンバー追加ボタン
+        var addBtn = document.getElementById('add-attendee');
+        if (addBtn) {
+            addBtn.addEventListener('click', function() { Attendance.openMemberSelectModal(); });
+        }
+    };
+
+    /**
+     * 出欠テーブルを描画
+     */
+    Attendance.updateAttendance = function() {
+        console.log('出欠テーブルを更新します...');
+        var tbody = document.querySelector('#attendance-table tbody');
+        if (!tbody) return;
+
+        var attendance = FCOjima.Carpool.appData.attendance || [];
+
+        // 初回は全メンバー（選手）を出欠リストに追加
+        if (attendance.length === 0) {
+            var members = FCOjima.Carpool.members || [];
+            var event = FCOjima.Storage.getSelectedEvent();
+            var targetGrades = event && event.target && event.target.length > 0 ? event.target : null;
+
+            members.forEach(function(m) {
+                if (m.role !== 'player') return;
+                if (targetGrades && !targetGrades.includes(m.grade)) return;
+                attendance.push({ name: m.name, status: 'unknown', notes: '' });
+            });
+            FCOjima.Carpool.appData.attendance = attendance;
+        }
+
+        if (attendance.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="empty-row">メンバーがいません</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = attendance.map(function(item, idx) {
+            var memberInfo = (FCOjima.Carpool.members || []).find(function(m) { return m.name === item.name; });
+            var grade = memberInfo ? (FCOjima.Utils ? FCOjima.Utils.getGradeLabel(memberInfo.grade) : memberInfo.grade) : '';
+            var statusClass = item.status === 'present' ? 'present' : item.status === 'absent' ? 'absent' : 'unknown';
+            return '<tr>' +
+                '<td>' + UI.escapeHTML(item.name) + '</td>' +
+                '<td>' + UI.escapeHTML(grade || '') + '</td>' +
+                '<td><select class="attendance-select ' + statusClass + '" data-index="' + idx + '">' +
+                    '<option value="unknown"' + (item.status === 'unknown' ? ' selected' : '') + '>未回答</option>' +
+                    '<option value="present"' + (item.status === 'present' ? ' selected' : '') + '>参加</option>' +
+                    '<option value="absent"' + (item.status === 'absent' ? ' selected' : '') + '>不参加</option>' +
+                '</select></td>' +
+                '<td><input type="text" class="attendance-notes" data-index="' + idx + '" value="' + UI.escapeHTML(item.notes || '') + '" placeholder="備考"></td>' +
+            '</tr>';
+        }).join('');
+
+        // selectのカラー動的更新
+        tbody.querySelectorAll('.attendance-select').forEach(function(sel) {
+            sel.addEventListener('change', function() {
+                sel.className = 'attendance-select ' + sel.value;
+            });
+        });
+
+        console.log('出欠テーブルの更新が完了しました');
+    };
+
+    /**
+     * 出欠統計を描画
+     */
+    Attendance.updateStats = function() {
+        var statsEl = document.getElementById('attendance-stats');
+        if (!statsEl) return;
+        var attendance = FCOjima.Carpool.appData.attendance || [];
+        var present = attendance.filter(function(a) { return a.status === 'present'; }).length;
+        var absent = attendance.filter(function(a) { return a.status === 'absent'; }).length;
+        var unknown = attendance.filter(function(a) { return a.status === 'unknown'; }).length;
+        statsEl.innerHTML =
+            '<div class="stats-row">' +
+            '<span class="stat present">参加: ' + present + '名</span>' +
+            '<span class="stat absent">不参加: ' + absent + '名</span>' +
+            '<span class="stat unknown">未回答: ' + unknown + '名</span>' +
+            '</div>';
+    };
+
+    /**
+     * 出欠を保存
+     */
+    Attendance.saveAttendance = function() {
+        console.log('出欠を保存します...');
+        var attendance = FCOjima.Carpool.appData.attendance || [];
+
+        // UIから最新の値を取得
+        document.querySelectorAll('.attendance-select').forEach(function(sel) {
+            var idx = parseInt(sel.dataset.index);
+            if (attendance[idx]) attendance[idx].status = sel.value;
+        });
+        document.querySelectorAll('.attendance-notes').forEach(function(input) {
+            var idx = parseInt(input.dataset.index);
+            if (attendance[idx]) attendance[idx].notes = input.value;
+        });
+
+        FCOjima.Carpool.appData.attendance = attendance;
+        FCOjima.Carpool.saveData();
+        this.updateStats();
+        UI.showAlert('出欠を保存しました');
+        console.log('出欠を保存しました');
+    };
+
+    /**
+     * 未回答者へのリマインドメッセージを生成してクリップボードへコピー
+     */
+    Attendance.reminderAttendance = function() {
+        console.log('リマインドメッセージを作成します...');
+        var attendance = FCOjima.Carpool.appData.attendance || [];
+        var event = FCOjima.Storage.getSelectedEvent();
+        var unknownMembers = attendance.filter(function(a) { return a.status === 'unknown'; });
+
+        if (unknownMembers.length === 0) {
+            UI.showAlert('未回答者はいません');
+            return;
+        }
+
+        var message = '【出欠回答のお願い】\n';
+        if (event) {
+            message += (FCOjima.Utils ? FCOjima.Utils.formatDateForDisplay(event.date) : event.date) + ' ' + event.title + '\n\n';
+        }
+        message += '以下の方がまだ出欠を回答されていません。\n\n';
+        unknownMembers.forEach(function(a) { message += '・' + a.name + '\n'; });
+        message += '\nご回答をお願いします。';
+
+        if (FCOjima.Utils && FCOjima.Utils.copyToClipboard(message)) {
+            UI.showAlert('リマインドメッセージをクリップボードにコピーしました。LINEに貼り付けて共有できます。');
+            if (FCOjima.Utils.shareViaLINE) FCOjima.Utils.shareViaLINE(message);
+        } else {
+            UI.showAlert('クリップボードへのコピーに失敗しました');
+        }
+    };
+
     /**
      * メンバー選択モーダルを開く（続き）
      */

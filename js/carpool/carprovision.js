@@ -13,7 +13,175 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
     // 名前空間のショートカット
     const CarProvision = FCOjima.Carpool.CarProvision;
     const UI = FCOjima.UI;
-    
+
+    /**
+     * 車提供機能の初期化
+     */
+    CarProvision.init = function() {
+        console.log('車提供機能を初期化しています...');
+        FCOjima.Carpool.members = FCOjima.Carpool.members || FCOjima.Storage.loadMembers();
+        this.setupEventListeners();
+        this.updateCarRegistrations();
+        console.log('車提供機能の初期化が完了しました');
+    };
+
+    /**
+     * イベントリスナーの設定
+     */
+    CarProvision.setupEventListeners = function() {
+        var registerBtn = document.getElementById('register-car');
+        if (registerBtn) {
+            registerBtn.addEventListener('click', function() { CarProvision.registerCar(); });
+        }
+        var selectDriverBtn = document.getElementById('select-driver');
+        if (selectDriverBtn) {
+            selectDriverBtn.addEventListener('click', function() { CarProvision.openDriverSelectModal(); });
+        }
+        // 車提供条件変更
+        var canDriveSelect = document.getElementById('canDrive');
+        if (canDriveSelect) {
+            canDriveSelect.addEventListener('change', function() {
+                var carDetails = document.getElementById('carDetails');
+                if (carDetails) carDetails.style.display = (this.value === 'no') ? 'none' : 'block';
+            });
+        }
+    };
+
+    /**
+     * 車両を登録
+     */
+    CarProvision.registerCar = function() {
+        console.log('車両を登録します...');
+        var parentName = document.getElementById('parentName') ? document.getElementById('parentName').value.trim() : '';
+        var canDrive = document.getElementById('canDrive') ? document.getElementById('canDrive').value : 'both';
+        var frontSeat = document.getElementById('frontSeat') ? parseInt(document.getElementById('frontSeat').value) || 0 : 0;
+        var middleSeat = document.getElementById('middleSeat') ? parseInt(document.getElementById('middleSeat').value) || 0 : 0;
+        var backSeat = document.getElementById('backSeat') ? parseInt(document.getElementById('backSeat').value) || 0 : 0;
+        var notes = document.getElementById('carNotes') ? document.getElementById('carNotes').value.trim() : '';
+
+        if (!parentName) {
+            UI.showAlert('運転者名を入力してください');
+            return;
+        }
+
+        var carRegistrations = FCOjima.Carpool.appData.carRegistrations || [];
+
+        // 同じ運転者の既存登録を上書き
+        var existingIndex = carRegistrations.findIndex(function(c) { return c.parent === parentName; });
+        var newEntry = { parent: parentName, canDrive: canDrive, frontSeat: frontSeat, middleSeat: middleSeat, backSeat: backSeat, notes: notes };
+
+        if (existingIndex !== -1) {
+            carRegistrations[existingIndex] = newEntry;
+        } else {
+            carRegistrations.push(newEntry);
+        }
+
+        FCOjima.Carpool.appData.carRegistrations = carRegistrations;
+        FCOjima.Carpool.saveData();
+        this.updateCarRegistrations();
+
+        // フォームリセット
+        if (document.getElementById('parentName')) document.getElementById('parentName').value = '';
+        if (document.getElementById('canDrive')) document.getElementById('canDrive').value = 'both';
+        if (document.getElementById('frontSeat')) document.getElementById('frontSeat').value = '1';
+        if (document.getElementById('middleSeat')) document.getElementById('middleSeat').value = '3';
+        if (document.getElementById('backSeat')) document.getElementById('backSeat').value = '0';
+        if (document.getElementById('carNotes')) document.getElementById('carNotes').value = '';
+        var carDetails = document.getElementById('carDetails');
+        if (carDetails) carDetails.style.display = 'block';
+
+        UI.showAlert('車両を登録しました');
+        console.log('車両を登録しました: ' + parentName);
+    };
+
+    /**
+     * 登録済み車両リストを描画
+     */
+    CarProvision.updateCarRegistrations = function() {
+        console.log('登録済み車両リストを更新します...');
+        var carRegistrations = FCOjima.Carpool.appData.carRegistrations || [];
+
+        // 統計
+        var statsEl = document.getElementById('car-stats');
+        if (statsEl) {
+            var available = carRegistrations.filter(function(c) { return c.canDrive !== 'no'; });
+            var totalSeats = available.reduce(function(sum, c) {
+                return sum + (parseInt(c.frontSeat) || 0) + (parseInt(c.middleSeat) || 0) + (parseInt(c.backSeat) || 0);
+            }, 0);
+            statsEl.innerHTML = '<div class="stats-row">' +
+                '<span class="stat">登録台数: ' + carRegistrations.length + '台</span>' +
+                '<span class="stat">提供可能: ' + available.length + '台</span>' +
+                '<span class="stat">総座席数: ' + totalSeats + '席</span>' +
+                '</div>';
+        }
+
+        // テーブル
+        var tbody = document.querySelector('#registeredCars tbody');
+        if (!tbody) return;
+
+        if (carRegistrations.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="empty-table-message">登録された車両はありません</td></tr>';
+            return;
+        }
+
+        var provideLabels = { 'both': '行き帰り', 'to': '行きのみ', 'from': '帰りのみ', 'no': '不可' };
+        tbody.innerHTML = carRegistrations.map(function(car, idx) {
+            var total = (parseInt(car.frontSeat) || 0) + (parseInt(car.middleSeat) || 0) + (parseInt(car.backSeat) || 0);
+            return '<tr>' +
+                '<td>' + UI.escapeHTML(car.parent) + '</td>' +
+                '<td>' + (provideLabels[car.canDrive] || car.canDrive) + '</td>' +
+                '<td>' + (car.canDrive !== 'no' ? car.frontSeat : '-') + '</td>' +
+                '<td>' + (car.canDrive !== 'no' ? car.middleSeat : '-') + '</td>' +
+                '<td>' + (car.canDrive !== 'no' ? car.backSeat : '-') + '</td>' +
+                '<td>' + (car.canDrive !== 'no' ? total : '-') + '</td>' +
+                '<td>' + UI.escapeHTML(car.notes || '') + '</td>' +
+                '<td><button type="button" class="delete-button delete-car" data-index="' + idx + '">削除</button></td>' +
+            '</tr>';
+        }).join('');
+
+        tbody.querySelectorAll('.delete-car').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                CarProvision.deleteCarRegistration(parseInt(btn.dataset.index));
+            });
+        });
+
+        console.log('登録済み車両リストの更新が完了しました');
+    };
+
+    /**
+     * 運転者選択モーダルを開く
+     */
+    CarProvision.openDriverSelectModal = function() {
+        console.log('運転者選択モーダルを開きます...');
+        var selectList = document.getElementById('driver-select-list');
+        if (!selectList) return;
+        selectList.innerHTML = '';
+
+        var members = FCOjima.Carpool.members || [];
+        var parents = members.filter(function(m) {
+            return m.role === 'father' || m.role === 'mother' || m.role === 'coach' || m.role === 'assist';
+        });
+
+        if (parents.length === 0) {
+            selectList.innerHTML = UI.createAlert('info', '登録されている保護者・スタッフがいません');
+        } else {
+            parents.forEach(function(member) {
+                var item = document.createElement('div');
+                item.className = 'list-item';
+                item.textContent = member.name;
+                item.addEventListener('click', function() {
+                    var parentNameEl = document.getElementById('parentName');
+                    if (parentNameEl) parentNameEl.value = member.name;
+                    UI.closeModal('driver-select-modal');
+                });
+                selectList.appendChild(item);
+            });
+        }
+
+        UI.openModal('driver-select-modal');
+        console.log('運転者選択モーダルを開きました');
+    };
+
     /**
      * 車両情報を削除（続き）
      * @param {number} index - 車両インデックス

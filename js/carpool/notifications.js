@@ -14,7 +14,158 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
     const Notifications = FCOjima.Carpool.Notifications;
     const UI = FCOjima.UI;
     const Utils = FCOjima.Utils;
-    
+
+    /**
+     * 連絡機能の初期化
+     */
+    Notifications.init = function() {
+        console.log('連絡機能を初期化しています...');
+        this.setupEventListeners();
+        this.updateNotifications();
+        console.log('連絡機能の初期化が完了しました');
+    };
+
+    /**
+     * イベントリスナーの設定
+     */
+    Notifications.setupEventListeners = function() {
+        var sendBtn = document.getElementById('send-notification');
+        if (sendBtn) {
+            sendBtn.addEventListener('click', function() { Notifications.sendNotification(); });
+        }
+        var shareLatestBtn = document.getElementById('share-latest-notification');
+        if (shareLatestBtn) {
+            shareLatestBtn.addEventListener('click', function() { Notifications.shareLatestNotification(); });
+        }
+    };
+
+    /**
+     * 連絡事項リストを描画
+     */
+    Notifications.updateNotifications = function() {
+        console.log('連絡事項を更新します...');
+        var listEl = document.getElementById('notificationsList');
+        if (!listEl) return;
+
+        var notifications = FCOjima.Carpool.appData.notifications || [];
+
+        if (notifications.length === 0) {
+            listEl.innerHTML = UI.createAlert('info', '連絡事項はありません。');
+            return;
+        }
+
+        listEl.innerHTML = '';
+        var sorted = notifications.slice().sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+
+        sorted.forEach(function(notification, index) {
+            var div = document.createElement('div');
+            div.className = 'notification-card ' + (notification.type || 'info');
+
+            var header = document.createElement('div');
+            header.className = 'notification-header';
+            header.innerHTML = '<div class="notification-date">' + notification.date + '</div>' +
+                '<div class="notification-author">' + (notification.user ? UI.escapeHTML(notification.user) : '') + '</div>';
+
+            var content = document.createElement('div');
+            content.className = 'notification-content';
+            content.innerHTML = UI.escapeHTML(notification.text).replace(/\n/g, '<br>');
+
+            var actions = document.createElement('div');
+            actions.className = 'notification-actions';
+            actions.innerHTML = '<button type="button" class="secondary-button share-notification" data-index="' + index + '">共有</button>' +
+                '<button type="button" class="delete-button delete-notification" data-index="' + index + '">削除</button>';
+
+            div.appendChild(header);
+            div.appendChild(content);
+            div.appendChild(actions);
+            listEl.appendChild(div);
+        });
+
+        listEl.querySelectorAll('.share-notification').forEach(function(btn) {
+            btn.addEventListener('click', function() { Notifications.shareNotification(parseInt(btn.dataset.index)); });
+        });
+        listEl.querySelectorAll('.delete-notification').forEach(function(btn) {
+            btn.addEventListener('click', function() { Notifications.deleteNotification(parseInt(btn.dataset.index)); });
+        });
+
+        console.log('連絡事項の更新が完了しました');
+    };
+
+    /**
+     * 連絡事項を送信
+     */
+    Notifications.sendNotification = function() {
+        console.log('連絡事項を送信します...');
+        var textEl = document.getElementById('notificationText');
+        var typeEl = document.getElementById('notification-type');
+        var text = textEl ? textEl.value.trim() : '';
+        var type = typeEl ? typeEl.value : 'info';
+
+        if (!text) {
+            UI.showAlert('連絡内容を入力してください');
+            return;
+        }
+
+        var now = new Date();
+        var date = now.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }) +
+                   ' ' + now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+
+        var notifications = FCOjima.Carpool.appData.notifications || [];
+        notifications.unshift({ date: date, text: text, type: type, user: 'システム' });
+        FCOjima.Carpool.appData.notifications = notifications;
+        FCOjima.Carpool.saveData();
+        this.updateNotifications();
+
+        if (textEl) textEl.value = '';
+        UI.showAlert('連絡事項を送信しました');
+        console.log('連絡事項を送信しました');
+    };
+
+    /**
+     * 最新の連絡事項を共有
+     */
+    Notifications.shareLatestNotification = function() {
+        var notifications = FCOjima.Carpool.appData.notifications || [];
+        if (notifications.length === 0) {
+            UI.showAlert('共有する連絡事項がありません');
+            return;
+        }
+        this.shareNotification(0);
+    };
+
+    /**
+     * 特定の連絡事項を共有
+     * @param {number} index
+     */
+    Notifications.shareNotification = function(index) {
+        var notifications = FCOjima.Carpool.appData.notifications || [];
+        var notification = notifications[index];
+        if (!notification) return;
+
+        var message = '【連絡事項】\n' + notification.date + '\n\n' + notification.text;
+
+        if (Utils && Utils.copyToClipboard && Utils.copyToClipboard(message)) {
+            UI.showAlert('連絡事項をクリップボードにコピーしました。LINEなどに貼り付けて共有できます。');
+            if (Utils.shareViaLINE) Utils.shareViaLINE(message);
+        } else {
+            UI.showAlert('クリップボードへのコピーに失敗しました');
+        }
+    };
+
+    /**
+     * 連絡事項を削除
+     * @param {number} index
+     */
+    Notifications.deleteNotification = function(index) {
+        if (!UI.showConfirm('この連絡事項を削除してもよろしいですか？')) return;
+        var notifications = FCOjima.Carpool.appData.notifications || [];
+        notifications.splice(index, 1);
+        FCOjima.Carpool.appData.notifications = notifications;
+        FCOjima.Carpool.saveData();
+        this.updateNotifications();
+        console.log('連絡事項を削除しました');
+    };
+
     /**
      * すべての連絡事項を共有（続き）
      */

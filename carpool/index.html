@@ -115,21 +115,8 @@
 
             if (FCOjima.Carpool.Overview && FCOjima.Carpool.Overview.init) {
                 FCOjima.Carpool.Overview.init();
+                // setupEventListeners() は Overview.init() 内で呼ばれるため重複登録しない
             }
-
-            document.getElementById('back-to-hub').addEventListener('click', function() {
-                if (FCOjima.Carpool.Overview && FCOjima.Carpool.Overview.goToMainPage) {
-                    FCOjima.Carpool.Overview.goToMainPage();
-                } else {
-                    window.location.href = '../hub/index.html';
-                }
-            });
-
-            document.getElementById('share-event-button').addEventListener('click', function() {
-                if (FCOjima.Carpool.Overview && FCOjima.Carpool.Overview.shareEventViaLINE) {
-                    FCOjima.Carpool.Overview.shareEventViaLINE();
-                }
-            });
         });
     </script>
 </body>

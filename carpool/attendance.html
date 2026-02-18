@@ -117,36 +117,8 @@
                 FCOjima.UI.initModals();
             }
             
-            // 出欠保存ボタン
-            var saveAttendanceButton = document.getElementById('save-attendance');
-            if (saveAttendanceButton) {
-                saveAttendanceButton.addEventListener('click', function() {
-                    if (FCOjima.Carpool.Attendance && FCOjima.Carpool.Attendance.saveAttendance) {
-                        FCOjima.Carpool.Attendance.saveAttendance();
-                    }
-                });
-            }
-            
-            // リマインドボタン
-            var reminderButton = document.getElementById('reminder-attendance');
-            if (reminderButton) {
-                reminderButton.addEventListener('click', function() {
-                    if (FCOjima.Carpool.Attendance && FCOjima.Carpool.Attendance.reminderAttendance) {
-                        FCOjima.Carpool.Attendance.reminderAttendance();
-                    }
-                });
-            }
-            
-            // メンバー追加ボタン
-            var addAttendeeButton = document.getElementById('add-attendee');
-            if (addAttendeeButton) {
-                addAttendeeButton.addEventListener('click', function() {
-                    if (FCOjima.Carpool.Attendance && FCOjima.Carpool.Attendance.openMemberSelectModal) {
-                        FCOjima.Carpool.Attendance.openMemberSelectModal();
-                    }
-                });
-            }
-            
+            // 出欠保存・リマインド・追加ボタンは Attendance.init() → setupEventListeners() で設定済み
+
             // HUBに戻るボタンの設定
             document.getElementById('back-to-hub').addEventListener('click', function() {
                 if (FCOjima.Carpool.Overview && FCOjima.Carpool.Overview.goToMainPage) {
