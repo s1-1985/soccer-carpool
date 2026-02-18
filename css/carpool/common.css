@@ -140,22 +140,45 @@
 
 /* レスポンシブ対応 */
 @media screen and (max-width: 768px) {
-    .carpool-nav {
-        flex-direction: column;
+    /* コンテナ下部に固定ナビ分の余白を確保（コンテンツが隠れないように） */
+    .container {
+        padding-bottom: 130px;
     }
-    
+
+    /* カープールナビを横スクロールに変更（縦積みより使いやすい） */
+    .carpool-nav {
+        flex-direction: row;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        gap: 6px;
+        padding-bottom: 8px;
+        margin-left: -20px;
+        margin-right: -20px;
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+
+    .carpool-nav a {
+        flex-shrink: 0;       /* 折り返さない */
+        white-space: nowrap;
+        padding: 10px 14px;   /* タップ領域を広く */
+    }
+
     .tab-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 10px;
     }
-    
+
     .global-navigation {
         flex-direction: column;
-        gap: 10px;
+        gap: 8px;
+        padding: 10px 15px;
     }
-    
+
     .global-navigation button {
         width: 100%;
+        padding: 12px 16px;   /* タップ領域を広く */
     }
 }

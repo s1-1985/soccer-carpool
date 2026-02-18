@@ -42,6 +42,7 @@
     padding: 5px;
     position: relative;
     background-color: white;
+    cursor: pointer; /* iOS Safariはcursor:pointerがないとclickイベントが発火しない */
 }
 
 .date {
@@ -196,26 +197,34 @@
         align-items: flex-start;
         gap: 10px;
     }
-    
+
     .calendar-grid {
         grid-template-columns: repeat(7, 1fr);
-        font-size: 14px;
+        font-size: 12px;
     }
-    
+
     .calendar-day {
         min-height: 60px;
         padding: 2px;
     }
-    
+
+    /* カレンダー内イベントをタップしやすくする */
     .event {
-        padding: 2px 4px;
-        font-size: 10px;
+        padding: 3px 4px;
+        font-size: 11px;
+        min-height: 20px;
+        line-height: 1.4;
     }
-    
+
+    /* リストビューのイベント項目もタップしやすくする */
+    .event-item {
+        padding: 14px 10px;
+    }
+
     .detail-row {
         flex-direction: column;
     }
-    
+
     .detail-label {
         width: 100%;
         margin-bottom: 5px;
