@@ -132,18 +132,27 @@
         <button id="next-to-assignments" class="share-button">次へ:割り当て</button>
     </div>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="../js/common/firebase-config.js"></script>
+
     <!-- 共通モジュール -->
     <script src="../js/common/global.js"></script>
     <script src="../js/common/utils.js"></script>
     <script src="../js/common/storage.js"></script>
     <script src="../js/common/ui.js"></script>
-    
+    <script src="../js/common/auth.js"></script>
+    <script src="../js/common/db.js"></script>
+
     <!-- 配車管理用モジュール -->
     <script src="../js/carpool/overview.js"></script>
     <script src="../js/carpool/carprovision.js"></script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            await FCOjima.Auth.requireLogin();
             // モーダル初期化
             FCOjima.UI.initModals();
             

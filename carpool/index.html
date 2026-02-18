@@ -92,25 +92,31 @@
         <button id="share-event-button" class="share-button">LINEで共有</button>
     </div>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="../js/common/firebase-config.js"></script>
+
     <!-- 共通モジュール -->
     <script src="../js/common/global.js"></script>
     <script src="../js/common/utils.js"></script>
     <script src="../js/common/storage.js"></script>
     <script src="../js/common/ui.js"></script>
-    
+    <script src="../js/common/auth.js"></script>
+    <script src="../js/common/db.js"></script>
+
     <!-- 配車管理用モジュール -->
     <script src="../js/carpool/overview.js"></script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // 配車管理機能の初期化
+        document.addEventListener('DOMContentLoaded', async function() {
+            await FCOjima.Auth.requireLogin();
+
             if (FCOjima.Carpool.Overview && FCOjima.Carpool.Overview.init) {
                 FCOjima.Carpool.Overview.init();
-            } else {
-                console.error('配車管理機能の初期化に失敗しました');
             }
-            
-            // HUBに戻るボタンの設定
+
             document.getElementById('back-to-hub').addEventListener('click', function() {
                 if (FCOjima.Carpool.Overview && FCOjima.Carpool.Overview.goToMainPage) {
                     FCOjima.Carpool.Overview.goToMainPage();
@@ -118,8 +124,7 @@
                     window.location.href = '../hub/index.html';
                 }
             });
-            
-            // イベント共有ボタンの設定
+
             document.getElementById('share-event-button').addEventListener('click', function() {
                 if (FCOjima.Carpool.Overview && FCOjima.Carpool.Overview.shareEventViaLINE) {
                     FCOjima.Carpool.Overview.shareEventViaLINE();

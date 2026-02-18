@@ -1,6 +1,6 @@
 /**
  * FC尾島ジュニア - ストレージ操作
- * ローカルストレージとセッションストレージの操作機能（続き）
+ * Firestore（優先）＋ローカルストレージ（フォールバック）
  */
 
 // 名前空間の確保
@@ -11,6 +11,53 @@ FCOjima.Storage = FCOjima.Storage || {};
 (function() {
     // 名前空間のショートカット
     const Storage = FCOjima.Storage;
+
+    // ローカルストレージのプレフィックス
+    Storage.PREFIX = 'fcojima_';
+
+    /**
+     * メンバーデータをローカルストレージから読み込む
+     * ※Firestoreデータはページ初期化時に app.Hub.members へ格納済み
+     */
+    Storage.loadMembers = function() {
+        // Firestoreからロード済みのキャッシュを返す
+        if (window.FCOjima && FCOjima.Hub && FCOjima.Hub.members && FCOjima.Hub.members.length > 0) {
+            return FCOjima.Hub.members;
+        }
+        // フォールバック: localStorageから読み込む
+        const saved = localStorage.getItem(this.PREFIX + 'members');
+        let members = saved ? JSON.parse(saved) : [];
+        if (members.length === 0) {
+            members = [
+                { id: 1, name: '田中太郎',   birth: '2016-04-01', gender: 'male',   role: 'player', number: 10, grade: '3', notes: '' },
+                { id: 2, name: '鈴木花子',   birth: '2016-09-15', gender: 'female', role: 'player', number: 7,  grade: '3', notes: '' },
+                { id: 3, name: '佐藤次郎',   birth: '2017-03-20', gender: 'male',   role: 'player', number: 3,  grade: '2', notes: '' },
+                { id: 4, name: '山田美咲',   birth: '2015-11-10', gender: 'female', role: 'mother', number: null, grade: null, notes: '田中太郎の母' }
+            ];
+        }
+        return members;
+    };
+
+    /**
+     * イベント（予定）をローカルストレージから読み込む
+     */
+    Storage.loadEvents = function() {
+        if (window.FCOjima && FCOjima.Hub && FCOjima.Hub.events && FCOjima.Hub.events.length > 0) {
+            return FCOjima.Hub.events;
+        }
+        const saved = localStorage.getItem(this.PREFIX + 'events');
+        return saved ? JSON.parse(saved) : [];
+    };
+
+    /**
+     * イベントデータを保存（Firestore + localStorage）
+     */
+    Storage.saveEvents = function(events) {
+        localStorage.setItem(this.PREFIX + 'events', JSON.stringify(events));
+        if (window.FCOjima && FCOjima.DB) {
+            FCOjima.DB.saveEvents(events).catch(e => console.warn('Firestore saveEvents:', e));
+        }
+    };
     
     /**
      * メンバーデータをローカルストレージから読み込む（続き）
@@ -65,6 +112,9 @@ FCOjima.Storage = FCOjima.Storage || {};
      */
     Storage.saveMembers = function(members) {
         localStorage.setItem(this.PREFIX + 'members', JSON.stringify(members));
+        if (window.FCOjima && FCOjima.DB) {
+            FCOjima.DB.saveMembers(members).catch(e => console.warn('Firestore saveMembers:', e));
+        }
     };
     
     /**
@@ -109,6 +159,9 @@ FCOjima.Storage = FCOjima.Storage || {};
      */
     Storage.saveVenues = function(venues) {
         localStorage.setItem(this.PREFIX + 'venues', JSON.stringify(venues));
+        if (window.FCOjima && FCOjima.DB) {
+            FCOjima.DB.saveVenues(venues).catch(e => console.warn('Firestore saveVenues:', e));
+        }
     };
     
     /**
@@ -257,6 +310,9 @@ FCOjima.Storage = FCOjima.Storage || {};
      */
     Storage.saveNotifications = function(notifications) {
         localStorage.setItem(this.PREFIX + 'notifications', JSON.stringify(notifications));
+        if (window.FCOjima && FCOjima.DB) {
+            FCOjima.DB.saveNotifications(notifications).catch(e => console.warn('Firestore saveNotifications:', e));
+        }
     };
     
     /**
