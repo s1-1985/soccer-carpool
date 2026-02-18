@@ -185,18 +185,21 @@
     .notification-actions {
         flex-wrap: wrap;
     }
-    
+
     .notification-actions button {
         flex: 1;
         font-size: 14px;
-        padding: 6px 10px;
+        padding: 11px 10px;     /* タップ領域を広く */
+        min-height: 44px;
     }
-    
+
     .reply-form {
         flex-direction: column;
     }
-    
+
     .reply-form button {
         width: 100%;
+        padding: 12px 16px;     /* タップ領域を広く */
+        min-height: 44px;
     }
 }

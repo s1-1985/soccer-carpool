@@ -140,34 +140,51 @@
 
 /* レスポンシブ対応 */
 @media screen and (max-width: 768px) {
+    /* テーブルに最小幅を指定して横スクロールを確実に発動させる */
     .attendance-table {
-        font-size: 14px;
+        font-size: 13px;
+        min-width: 480px;       /* これにより.table-containerの横スクロールが機能する */
     }
-    
+
     .attendance-table th,
     .attendance-table td {
-        padding: 8px;
+        padding: 8px 6px;
     }
-    
+
     .attendance-status {
         width: auto;
     }
-    
+
+    /* 出欠ステータス選択をタップしやすく */
+    .attendance-status select {
+        padding: 10px 4px;
+        min-height: 44px;
+    }
+
     .attendance-stats {
-        flex-direction: column;
-        gap: 10px;
+        flex-direction: row;    /* 横並びを維持してコンパクトに */
+        flex-wrap: wrap;
+        gap: 8px;
     }
-    
+
     .stats-item {
-        width: 100%;
+        flex: 1;
+        min-width: 80px;
+        padding: 8px;
     }
-    
+
+    .stats-value {
+        font-size: 20px;
+    }
+
     .action-buttons {
         flex-direction: column;
     }
-    
+
     .action-buttons button {
         width: 100%;
         margin-bottom: 10px;
+        padding: 12px 16px;
+        min-height: 44px;
     }
 }

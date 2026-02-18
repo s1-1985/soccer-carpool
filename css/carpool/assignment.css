@@ -291,26 +291,34 @@
     .assignment-container {
         grid-template-columns: 1fr;
     }
-    
+
+    /* スクロールエリアをスマホ画面高さの50%以内に収める */
+    .cars-scroll-area,
+    .members-scroll-area {
+        max-height: 50vh;
+    }
+
     .car-top-view {
         width: 95%;
     }
-    
+
     .seat {
-        width: 50px;
-        height: 50px;
+        width: 52px;
+        height: 52px;
     }
-    
+
     .member-item {
         width: 100%;
     }
-    
+
     .action-buttons {
         flex-direction: column;
     }
-    
+
     .action-buttons button {
         width: 100%;
         margin-bottom: 10px;
+        padding: 12px 16px;     /* タップ領域を広く */
+        min-height: 44px;
     }
 }

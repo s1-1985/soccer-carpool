@@ -410,6 +410,26 @@ tr:hover {
 
 /* レスポンシブ対応 */
 @media screen and (max-width: 768px) {
+    /* ヘッダーのH1を小さくして長いタイトルが折り返さないように */
+    header h1 {
+        font-size: 17px;
+    }
+
+    /* タブバーを横スクロール対応に（4タブが375px幅に収まらないため） */
+    .tab {
+        overflow-x: auto;
+        overflow-y: hidden;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .tablinks {
+        flex-shrink: 0;
+        padding: 12px 16px;
+        font-size: 14px;
+        white-space: nowrap;
+    }
+
     .modal-content {
         width: 95%;
         margin: 5px auto;       /* 上下余白を最小化してコンテンツを最大化 */
@@ -435,6 +455,7 @@ tr:hover {
 
     .action-buttons button {
         width: 100%;
+        padding: 12px 16px;     /* タップ領域を広く */
     }
 
     .main-nav ul {

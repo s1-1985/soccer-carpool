@@ -212,11 +212,17 @@
     .car-actions {
         flex-direction: column;
     }
-    
+
     .car-actions button {
         width: 100%;
         margin-bottom: 5px;
-        padding: 6px 10px;
+        padding: 11px 10px;     /* タップ領域を広く */
         font-size: 14px;
+        min-height: 44px;
+    }
+
+    /* 車両テーブルを横スクロール対応に（列が多くて潰れるため） */
+    .car-table {
+        min-width: 480px;
     }
 }

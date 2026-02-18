@@ -197,11 +197,12 @@
     .venue-actions {
         flex-wrap: wrap;
     }
-    
+
     .venue-actions button {
         flex: 1;
-        padding: 6px 10px;
+        padding: 11px 10px;     /* タップ領域を広く */
         font-size: 14px;
+        min-height: 44px;
     }
     
     .venue-search-filter {

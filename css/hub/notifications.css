@@ -196,15 +196,25 @@
     .notification-actions {
         flex-wrap: wrap;
     }
-    
+
     .notification-actions button {
         flex: 1;
         font-size: 14px;
-        padding: 6px 10px;
+        padding: 11px 10px;     /* タップ領域を広く */
+        min-height: 44px;
     }
-    
+
+    /* フィルターを横スクロール式に（縦積みより使いやすい） */
     .notification-filters {
-        flex-direction: column;
-        align-items: flex-start;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 4px;
+    }
+
+    .notification-filter-item {
+        flex-shrink: 0;
+        padding: 8px 14px;      /* タップ領域を広く */
+        white-space: nowrap;
     }
 }
