@@ -155,7 +155,12 @@
             await FCOjima.Auth.requireLogin();
             // モーダル初期化
             FCOjima.UI.initModals();
-            
+
+            // カープールデータ初期化
+            if (FCOjima.Carpool.initDataOnly) {
+                FCOjima.Carpool.initDataOnly();
+            }
+
             // 車提供機能の初期化
             if (FCOjima.Carpool.CarProvision && FCOjima.Carpool.CarProvision.init) {
                 FCOjima.Carpool.CarProvision.init();

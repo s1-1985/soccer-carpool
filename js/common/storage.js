@@ -211,7 +211,7 @@ FCOjima.Storage = FCOjima.Storage || {};
         
         const now = new Date();
         const datetime = now.toISOString();
-        const user = 'システム'; // ログイン機能実装までのダミーユーザー
+        const user = (window.FCOjima && FCOjima.Auth) ? FCOjima.Auth.getDisplayName() : 'システム';
         
         // 各ログにユニークIDを付与
         const logId = Date.now().toString() + Math.floor(Math.random() * 1000);
@@ -275,6 +275,14 @@ FCOjima.Storage = FCOjima.Storage || {};
         
         const updatedLogs = logs.concat([newLog]);
         this.saveLogs(updatedLogs);
+        // Firestoreにも非同期で保存
+        if (window.FCOjima && FCOjima.DB && FCOjima.DB.addLog) {
+            FCOjima.DB.addLog(type, action, details).catch(e => console.warn('Firestore addLog:', e));
+        }
+        // インメモリのHub.logsも更新
+        if (window.FCOjima && FCOjima.Hub) {
+            FCOjima.Hub.logs = updatedLogs;
+        }
         return updatedLogs;
     };
     

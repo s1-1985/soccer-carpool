@@ -14,6 +14,19 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
     var Storage = app.Storage;
     
     /**
+     * DOMを更新せずにカープールデータだけ初期化（各サブページ共通）
+     */
+    app.Carpool.initDataOnly = function() {
+        var event = Storage.getSelectedEvent();
+        if (event) {
+            app.Carpool.appData.eventId = event.id;
+            app.Carpool.members = Storage.loadMembers();
+            app.Carpool.loadData();
+        }
+        return event;
+    };
+
+    /**
      * イベント固有データをappDataに読み込む
      */
     app.Carpool.loadData = function() {

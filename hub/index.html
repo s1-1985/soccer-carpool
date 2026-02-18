@@ -196,7 +196,9 @@
                     <div id="event-target-grades" class="checkbox-group">
                         <!-- 学年チェックボックスがJSで動的に生成される -->
                     </div>
-                    <input type="text" id="event-target-notes" placeholder="備考（例: 〇〇君のみ参加）">
+                    <button type="button" id="add-individual-player" class="secondary-button" style="margin-top:6px;">個人単位で追加登録</button>
+                    <div id="individual-players-list" style="margin-top:6px;font-size:0.9em;"></div>
+                    <input type="text" id="event-target-notes" placeholder="備考（例: 〇〇君のみ参加）" style="margin-top:6px;">
                 </div>
                 <div class="form-group">
                     <label for="event-attendance-deadline">出欠回答期限</label>
@@ -224,7 +226,7 @@
                     <input type="time" id="event-start-time">
                 </div>
                 <div class="form-group">
-                    <label for="event-end-time">終了時間</label>
+                    <label for="event-end-time">終了予定時間</label>
                     <input type="time" id="event-end-time">
                 </div>
                 <div class="form-group">
@@ -345,6 +347,18 @@
                     <button type="button" id="cancel-member">キャンセル</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- 個人選手選択モーダル -->
+    <div id="individual-player-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>個人単位で選手を追加</h2>
+            <p style="font-size:0.85em;color:#666;">学年指定と関係なく個別に参加対象へ追加できます</p>
+            <div id="individual-player-list" class="select-list">
+                <!-- 選手リストがJSで動的に生成される -->
+            </div>
         </div>
     </div>
 

@@ -12,6 +12,9 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
     var UI = app.UI;
     var Utils = app.Utils;
     var Storage = app.Storage;
+
+    // 個人単位追加選手リスト
+    Calendar.individualPlayers = [];
     
     /**
      * カレンダー機能の初期化
@@ -94,6 +97,11 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             Calendar.saveEvent();
         });
         
+        // 個人単位追加ボタン
+        document.getElementById('add-individual-player').addEventListener('click', function() {
+            Calendar.openIndividualPlayerModal();
+        });
+
         // 会場選択ボタン
         document.getElementById('select-venue').addEventListener('click', function() {
             app.Hub.Venues.openVenueSelect('venue');
@@ -497,7 +505,11 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         
         // 対象学年のチェックボックスを生成
         this.generateGradeCheckboxes();
-        
+
+        // 個人追加選手をリセット
+        Calendar.individualPlayers = [];
+        Calendar.updateIndividualPlayersList();
+
         // モーダルを表示
         UI.openModal('event-modal');
     };
@@ -542,24 +554,116 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         sortedGrades.forEach(grade => {
             const item = document.createElement('div');
             item.className = 'checkbox-item';
-            
+
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.id = `grade-${grade}`;
             checkbox.value = grade;
             checkbox.name = 'event-target';
-            
+
             const label = document.createElement('label');
             label.htmlFor = `grade-${grade}`;
             label.textContent = Utils.getGradeLabel(grade);
             label.style.display = 'inline';
-            
+
             item.appendChild(checkbox);
             item.appendChild(label);
             container.appendChild(item);
         });
     };
-    
+
+    /**
+     * 個人選手追加モーダルを開く
+     */
+    Calendar.openIndividualPlayerModal = function() {
+        const listEl = document.getElementById('individual-player-list');
+        if (!listEl) return;
+        listEl.innerHTML = '';
+
+        const members = app.Hub.members;
+        const players = members.filter(m => m.role === 'player');
+
+        if (players.length === 0) {
+            listEl.innerHTML = '<p style="color:#666;">選手がいません</p>';
+            UI.openModal('individual-player-modal');
+            return;
+        }
+
+        // 学年でグループ化
+        const gradeOrder = { '年少': -3, '年中': -2, '年長': -1 };
+        const byGrade = {};
+        players.forEach(p => {
+            const g = p.grade || '未設定';
+            if (!byGrade[g]) byGrade[g] = [];
+            byGrade[g].push(p);
+        });
+        const sortedGrades = Object.keys(byGrade).sort((a, b) => {
+            const va = gradeOrder[a] !== undefined ? gradeOrder[a] : (parseInt(a) || 99);
+            const vb = gradeOrder[b] !== undefined ? gradeOrder[b] : (parseInt(b) || 99);
+            return va - vb;
+        });
+
+        sortedGrades.forEach(grade => {
+            const header = document.createElement('div');
+            header.className = 'grade-header';
+            header.textContent = Utils.getGradeLabel(grade);
+            listEl.appendChild(header);
+
+            byGrade[grade].forEach(player => {
+                const item = document.createElement('div');
+                const isSelected = Calendar.individualPlayers.some(p => p.id === player.id);
+                item.className = 'list-item' + (isSelected ? ' selected' : '');
+                item.textContent = player.name + (isSelected ? ' ✓' : '');
+                item.style.cursor = 'pointer';
+
+                item.addEventListener('click', function() {
+                    const idx = Calendar.individualPlayers.findIndex(p => p.id === player.id);
+                    if (idx === -1) {
+                        Calendar.individualPlayers.push({ id: player.id, name: player.name });
+                        item.className = 'list-item selected';
+                        item.textContent = player.name + ' ✓';
+                    } else {
+                        Calendar.individualPlayers.splice(idx, 1);
+                        item.className = 'list-item';
+                        item.textContent = player.name;
+                    }
+                    Calendar.updateIndividualPlayersList();
+                });
+
+                listEl.appendChild(item);
+            });
+        });
+
+        UI.openModal('individual-player-modal');
+    };
+
+    /**
+     * 個人追加選手リスト表示を更新
+     */
+    Calendar.updateIndividualPlayersList = function() {
+        const listEl = document.getElementById('individual-players-list');
+        if (!listEl) return;
+        if (Calendar.individualPlayers.length === 0) {
+            listEl.innerHTML = '';
+            return;
+        }
+        listEl.innerHTML = '<span style="color:#555;">個人追加: </span>' +
+            Calendar.individualPlayers.map(p =>
+                '<span style="display:inline-block;background:#e8f4fd;border:1px solid #acd;border-radius:12px;padding:2px 8px;margin:2px;font-size:0.85em;">' +
+                UI.escapeHTML(p.name) +
+                '<span style="margin-left:4px;cursor:pointer;color:#999;" onclick="FCOjima.Hub.Calendar.removeIndividualPlayer(' + p.id + ')">×</span>' +
+                '</span>'
+            ).join('');
+    };
+
+    /**
+     * 個人追加選手を削除
+     */
+    Calendar.removeIndividualPlayer = function(id) {
+        Calendar.individualPlayers = Calendar.individualPlayers.filter(p => p.id !== id);
+        Calendar.updateIndividualPlayersList();
+    };
+
     /**
      * 新規イベント保存
      */
@@ -574,6 +678,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         // 対象学年を取得
         const targetCheckboxes = document.querySelectorAll('input[name="event-target"]:checked');
         const target = Array.from(targetCheckboxes).map(cb => cb.value);
+        const targetIndividuals = (Calendar.individualPlayers || []).map(p => p.id);
         const targetNotes = document.getElementById('event-target-notes').value;
         
         // 出欠回答期限を取得
@@ -617,6 +722,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                     type,
                     title,
                     target,
+                    targetIndividuals,
                     targetNotes,
                     attendanceDeadline,
                     departureTime,
@@ -626,7 +732,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                     endTime,
                     notes
                 };
-                
+
                 // ログに記録
                 app.Hub.logs = Storage.addLog('calendar', 'イベント更新', `「${title}」（${date}）`, logs);
             }
@@ -638,6 +744,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 type,
                 title,
                 target,
+                targetIndividuals,
                 targetNotes,
                 attendanceDeadline,
                 departureTime,
@@ -647,7 +754,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 endTime,
                 notes
             });
-            
+
             // ログに記録
             app.Hub.logs = Storage.addLog('calendar', 'イベント追加', `「${title}」（${date}）`, logs);
         }
@@ -661,6 +768,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         UI.closeModal('event-modal');
         document.getElementById('event-form').reset();
         document.getElementById('event-form').removeAttribute('data-event-id');
+        Calendar.individualPlayers = [];
+        Calendar.updateIndividualPlayersList();
     };
     
     /**
@@ -708,7 +817,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         
         // 対象学年のチェックボックスを生成
         this.generateGradeCheckboxes();
-        
+
         // 対象学年のチェックボックスを設定
         if (event.target && event.target.length > 0) {
             event.target.forEach(grade => {
@@ -716,7 +825,18 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 if (checkbox) checkbox.checked = true;
             });
         }
-        
+
+        // 個人追加選手を復元
+        Calendar.individualPlayers = [];
+        if (event.targetIndividuals && event.targetIndividuals.length > 0) {
+            const members = app.Hub.members;
+            event.targetIndividuals.forEach(id => {
+                const member = members.find(m => m.id === id);
+                if (member) Calendar.individualPlayers.push({ id: member.id, name: member.name });
+            });
+        }
+        Calendar.updateIndividualPlayersList();
+
         // 詳細モーダルを閉じて編集モーダルを開く
         UI.closeModal('event-details-modal');
         UI.openModal('event-modal');

@@ -39,6 +39,16 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
             });
         }
 
+        const sendBtn = document.getElementById('send-notification');
+        if (sendBtn) {
+            sendBtn.addEventListener('click', () => this.sendNotification());
+        }
+
+        const notifLogsBtn = document.getElementById('notifications-logs');
+        if (notifLogsBtn) {
+            notifLogsBtn.addEventListener('click', () => app.Hub.openLogsModal('notifications'));
+        }
+
         console.log('連絡事項のイベントリスナー設定が完了しました');
     };
 
@@ -160,15 +170,17 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
             hour: '2-digit', minute: '2-digit'
         });
 
+        const userName = (app.Auth) ? app.Auth.getDisplayName() : 'システム';
         app.Hub.notifications = app.Hub.notifications || [];
         app.Hub.notifications.unshift({
             date: `${formattedDate} ${formattedTime}`,
             text: text,
             type: category,
-            user: 'システム'
+            user: userName
         });
 
         if (Storage && Storage.saveNotifications) Storage.saveNotifications(app.Hub.notifications);
+        app.Hub.logs = app.Storage.addLog('notifications', '連絡事項追加', text.substring(0, 30) + (text.length > 30 ? '...' : ''), app.Hub.logs);
         this.renderNotifications();
 
         if (textEl) textEl.value = '';
@@ -225,8 +237,10 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
         }
 
         if (!UI || UI.showConfirm('この連絡事項を削除してもよろしいですか？')) {
+            const deletedText = notification.text ? notification.text.substring(0, 30) : '';
             app.Hub.notifications.splice(index, 1);
             if (Storage && Storage.saveNotifications) Storage.saveNotifications(app.Hub.notifications);
+            app.Hub.logs = app.Storage.addLog('notifications', '連絡事項削除', deletedText, app.Hub.logs);
             this.renderNotifications();
             console.log('連絡事項を削除しました');
         } else {

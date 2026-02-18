@@ -237,31 +237,22 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
             return;
         }
         
-        // メンバーを役割と背番号でソート
+        // メンバーをソート: 監督(登録順) → コーチ(登録順) → 選手(学年→登録順) → 保護者/その他(登録順)
+        const gradeOrder = { '年少': -3, '年中': -2, '年長': -1 };
+        const rolePriority = { 'coach': 1, 'assist': 2, 'player': 3, 'mother': 4, 'father': 5, 'other': 6 };
         const sortedMembers = [...members].sort((a, b) => {
-            // 役割の優先順位: 監督, コーチ, 選手, 母, 父, 部員外
-            const rolePriority = {
-                'coach': 1,
-                'assist': 2,
-                'player': 3,
-                'mother': 4,
-                'father': 5,
-                'other': 6
-            };
-            
-            if (rolePriority[a.role] !== rolePriority[b.role]) {
-                return rolePriority[a.role] - rolePriority[b.role];
+            const ra = rolePriority[a.role] || 99;
+            const rb = rolePriority[b.role] || 99;
+            if (ra !== rb) return ra - rb;
+            // 同じ役割の場合
+            if (a.role === 'player') {
+                // 選手: 学年順 → 同学年内は登録順(ID順)
+                const ga = gradeOrder[a.grade] !== undefined ? gradeOrder[a.grade] : (parseInt(a.grade) || 99);
+                const gb = gradeOrder[b.grade] !== undefined ? gradeOrder[b.grade] : (parseInt(b.grade) || 99);
+                if (ga !== gb) return ga - gb;
             }
-            
-            // 選手の場合は背番号でソート
-            if (a.role === 'player' && b.role === 'player') {
-                const numA = a.number || 999;
-                const numB = b.number || 999;
-                return numA - numB;
-            }
-            
-            // それ以外は名前でソート
-            return a.name.localeCompare(b.name, 'ja');
+            // 登録順(ID順)
+            return (a.id || 0) - (b.id || 0);
         });
         
         sortedMembers.forEach(member => {

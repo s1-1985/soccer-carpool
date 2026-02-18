@@ -103,14 +103,19 @@
             await FCOjima.Auth.requireLogin();
             // モーダル初期化
             FCOjima.UI.initModals();
-            
+
+            // カープールデータ初期化（eventId + 保存データ読み込み）
+            if (FCOjima.Carpool.initDataOnly) {
+                FCOjima.Carpool.initDataOnly();
+            }
+
             // 割り当て機能の初期化
             if (FCOjima.Carpool.Assignment && FCOjima.Carpool.Assignment.init) {
                 FCOjima.Carpool.Assignment.init();
             } else {
                 console.error('割り当て機能の初期化に失敗しました');
             }
-            
+
             // イベント情報の表示
             if (FCOjima.Carpool.Overview && FCOjima.Carpool.Overview.displayEventSummary) {
                 FCOjima.Carpool.Overview.displayEventSummary('assignment-event-info');

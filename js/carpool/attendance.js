@@ -19,7 +19,47 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
      */
     Attendance.init = function() {
         console.log('出欠確認機能を初期化しています...');
-        FCOjima.Carpool.members = FCOjima.Storage.loadMembers();
+
+        // カープールデータ初期化（eventId設定 + 保存データ読み込み）
+        var event = null;
+        if (FCOjima.Carpool.initDataOnly) {
+            event = FCOjima.Carpool.initDataOnly();
+        } else {
+            FCOjima.Carpool.members = FCOjima.Storage.loadMembers();
+            event = FCOjima.Storage.getSelectedEvent();
+            if (event) FCOjima.Carpool.appData.eventId = event.id;
+        }
+
+        // イベント情報ヘッダー表示
+        var eventInfoEl = document.getElementById('attendance-event-info');
+        if (eventInfoEl) {
+            if (event) {
+                var typeLabel = FCOjima.Utils ? FCOjima.Utils.getEventTypeLabel(event.type) : event.type;
+                var dateLabel = FCOjima.Utils ? FCOjima.Utils.formatDateForDisplay(event.date) : event.date;
+                eventInfoEl.className = 'event-summary ' + (event.type || 'other');
+                eventInfoEl.innerHTML =
+                    '<strong>' + UI.escapeHTML(event.title) + '</strong>' +
+                    ' <span class="event-type-badge ' + (event.type || '') + '">' + typeLabel + '</span>' +
+                    '<br><span>' + dateLabel + (event.startTime ? ' ' + event.startTime : '') + '</span>';
+            } else {
+                eventInfoEl.innerHTML = UI.createAlert('info', 'イベントが選択されていません。HUBページからイベントを選択してください。');
+            }
+        }
+
+        // 出欠回答期限表示
+        var deadlineEl = document.getElementById('attendance-deadline');
+        if (deadlineEl) {
+            if (event && event.attendanceDeadline) {
+                var deadline = new Date(event.attendanceDeadline);
+                var now = new Date();
+                var isExpired = deadline < now;
+                deadlineEl.className = 'attendance-deadline' + (isExpired ? ' expired' : '');
+                deadlineEl.innerHTML = '出欠回答期限: ' + deadline.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+            } else {
+                deadlineEl.innerHTML = '';
+            }
+        }
+
         this.setupEventListeners();
         this.updateAttendance();
         this.updateStats();
@@ -63,9 +103,13 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
             var event = FCOjima.Storage.getSelectedEvent();
             var targetGrades = event && event.target && event.target.length > 0 ? event.target : null;
 
+            var targetIndividuals = event && event.targetIndividuals ? event.targetIndividuals : [];
             members.forEach(function(m) {
                 if (m.role !== 'player') return;
-                if (targetGrades && !targetGrades.includes(m.grade)) return;
+                // 学年対象 または 個人追加対象の場合に追加
+                var inGrade = targetGrades ? targetGrades.includes(String(m.grade)) : true;
+                var inIndividual = targetIndividuals.includes(m.id);
+                if (!inGrade && !inIndividual) return;
                 attendance.push({ name: m.name, status: 'unknown', notes: '' });
             });
             FCOjima.Carpool.appData.attendance = attendance;

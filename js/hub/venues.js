@@ -33,7 +33,7 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
 
         const venueLogsBtn = document.getElementById('venues-logs');
         if (venueLogsBtn) {
-            venueLogsBtn.addEventListener('click', () => this.openVenueSelectForDelete());
+            venueLogsBtn.addEventListener('click', () => app.Hub.openLogsModal('venues'));
         }
 
         const searchInput = document.getElementById('venue-search');
@@ -214,11 +214,13 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
             const index = venues.findIndex(v => v.id === parseInt(venueFormId));
             if (index !== -1) {
                 venues[index] = { id: parseInt(venueFormId), name, address, notes };
+                app.Hub.logs = app.Storage.addLog('venues', '会場更新', `「${name}」`, app.Hub.logs);
                 console.log(`会場を更新しました: ${name}`);
             }
         } else {
             const newId = venues.length > 0 ? Math.max(...venues.map(v => v.id)) + 1 : 1;
             venues.push({ id: newId, name, address, notes });
+            app.Hub.logs = app.Storage.addLog('venues', '会場追加', `「${name}」`, app.Hub.logs);
             console.log(`新しい会場を登録しました: ${name}`);
         }
 
@@ -255,6 +257,7 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
 
         if (!UI || UI.showConfirm(`会場「${venue.name}」を削除してもよろしいですか？`)) {
             app.Hub.venues = venues.filter(v => v.id !== venueId);
+            app.Hub.logs = app.Storage.addLog('venues', '会場削除', `「${venue.name}」`, app.Hub.logs);
             console.log(`会場を削除しました: ${venue.name}`);
             if (Storage && Storage.saveVenues) Storage.saveVenues(app.Hub.venues);
             this.renderVenuesList();
