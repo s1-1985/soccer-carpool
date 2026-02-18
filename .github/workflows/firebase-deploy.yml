@@ -20,6 +20,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Deploy Firestore Rules
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/carpool-github-firebase-qQVuP')
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only firestore:rules --project fc-ojimajr-hub
+        env:
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FC_OJIMAJR_HUB }}
+
       - name: Deploy to Firebase Hosting (Preview - PR only)
         if: github.event_name == 'pull_request'
         uses: FirebaseExtended/action-hosting-deploy@v0
