@@ -65,34 +65,44 @@
         </div>
     </div>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="../js/common/firebase-config.js"></script>
+
     <!-- 共通モジュール -->
     <script src="../js/common/global.js"></script>
     <script src="../js/common/utils.js"></script>
     <script src="../js/common/storage.js"></script>
     <script src="../js/common/ui.js"></script>
-    
+    <script src="../js/common/auth.js"></script>
+    <script src="../js/common/db.js"></script>
+
     <!-- 連絡事項用モジュール -->
     <script src="../js/hub/notifications.js"></script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // 連絡事項機能の初期化
+        document.addEventListener('DOMContentLoaded', async function() {
+            await FCOjima.Auth.requireLogin();
+
+            try {
+                FCOjima.Hub.notifications = await FCOjima.DB.loadNotifications();
+            } catch (e) {
+                console.warn('Firestoreロード失敗 → localStorageを使用:', e);
+                FCOjima.Hub.notifications = FCOjima.Storage.loadNotifications();
+            }
+
             if (FCOjima.Hub.Notifications && FCOjima.Hub.Notifications.init) {
                 FCOjima.Hub.Notifications.init();
-            } else {
-                console.error('連絡事項機能の初期化に失敗しました');
             }
-            
-            // フィルターのイベント設定
+
             document.querySelectorAll('.notification-filter-item').forEach(function(item) {
                 item.addEventListener('click', function() {
-                    // アクティブクラスの切り替え
                     document.querySelectorAll('.notification-filter-item').forEach(function(i) {
                         i.classList.remove('active');
                     });
                     this.classList.add('active');
-                    
-                    // フィルタリング処理
                     const filter = this.getAttribute('data-filter');
                     if (FCOjima.Hub.Notifications && FCOjima.Hub.Notifications.filterNotifications) {
                         FCOjima.Hub.Notifications.filterNotifications(filter);

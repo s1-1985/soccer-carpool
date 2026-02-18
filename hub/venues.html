@@ -115,30 +115,44 @@
     <!-- 会場追加ボタン（固定） -->
     <a href="#" id="floating-add-button" class="add-venue-button" title="会場を追加">+</a>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="../js/common/firebase-config.js"></script>
+
     <!-- 共通モジュール -->
     <script src="../js/common/global.js"></script>
     <script src="../js/common/utils.js"></script>
     <script src="../js/common/storage.js"></script>
     <script src="../js/common/ui.js"></script>
-    
+    <script src="../js/common/auth.js"></script>
+    <script src="../js/common/db.js"></script>
+
     <!-- 会場管理用モジュール -->
     <script src="../js/hub/venues.js"></script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // 会場管理機能の初期化
+        document.addEventListener('DOMContentLoaded', async function() {
+            await FCOjima.Auth.requireLogin();
+
+            try {
+                FCOjima.Hub.venues = await FCOjima.DB.loadVenues();
+                FCOjima.Hub.logs   = await FCOjima.DB.loadLogs();
+            } catch (e) {
+                console.warn('Firestoreロード失敗 → localStorageを使用:', e);
+                FCOjima.Hub.venues = FCOjima.Storage.loadVenues();
+                FCOjima.Hub.logs   = FCOjima.Storage.loadLogs();
+            }
+
             if (FCOjima.Hub.Venues && FCOjima.Hub.Venues.init) {
                 FCOjima.Hub.Venues.init();
-            } else {
-                console.error('会場管理機能の初期化に失敗しました');
             }
-            
-            // モーダルの初期化
+
             if (FCOjima.UI && FCOjima.UI.initModals) {
                 FCOjima.UI.initModals();
             }
-            
-            // 浮動追加ボタンのイベント
+
             var floatingAddButton = document.getElementById('floating-add-button');
             if (floatingAddButton) {
                 floatingAddButton.addEventListener('click', function(e) {

@@ -69,9 +69,20 @@
         </div>
     </div>
     
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="js/common/firebase-config.js"></script>
+
     <script>
-        // リダイレクト（オプション）
-        // window.location.href = 'hub/index.html';
+        // ログイン状態に応じてリダイレクト
+        window.FCOjimaFirebase.auth.onAuthStateChanged(function(user) {
+            if (user) {
+                window.location.href = 'hub/index.html';
+            } else {
+                window.location.href = 'hub/login.html';
+            }
+        });
     </script>
 </body>
 </html>

@@ -368,12 +368,20 @@
     <!-- メンバー追加ボタン（固定） -->
     <a href="#" id="floating-add-button" class="add-member-button" title="メンバーを追加" style="display: none;">+</a>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="../js/common/firebase-config.js"></script>
+
     <!-- 共通モジュール -->
     <script src="../js/common/global.js"></script>
     <script src="../js/common/utils.js"></script>
     <script src="../js/common/storage.js"></script>
     <script src="../js/common/ui.js"></script>
-    
+    <script src="../js/common/auth.js"></script>
+    <script src="../js/common/db.js"></script>
+
     <!-- HUBページ用モジュール -->
     <script src="../js/hub/main.js"></script>
     <script src="../js/hub/calendar.js"></script>
@@ -408,10 +416,18 @@
             });
         });
 
-        // DOMContentLoaded イベントで初期化
-        document.addEventListener('DOMContentLoaded', function() {
-            FCOjima.Hub.init();
-            
+        // DOMContentLoaded イベントで初期化（ログイン確認 → Firestoreロード → 画面初期化）
+        document.addEventListener('DOMContentLoaded', async function() {
+            await FCOjima.Auth.requireLogin();
+            await FCOjima.Hub.init();
+
+            // ログインユーザー名をヘッダーに表示
+            const user = FCOjima.Auth.getCurrentUser();
+            if (user) {
+                const header = document.querySelector('header h1');
+                header.textContent += '  [' + (user.displayName || user.email) + ']';
+            }
+
             // モーダルの初期化
             FCOjima.UI.initModals();
 
