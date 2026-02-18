@@ -18,10 +18,11 @@ body {
 }
 
 header {
-    background-color: #3498db;
-    color: white;
+    background-color: #1C1600;
+    color: #E8A200;
     padding: 15px 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+    border-bottom: 3px solid #E8A200;
 }
 
 header h1 {
@@ -62,7 +63,7 @@ header h1 {
 }
 
 .main-nav a.active {
-    background-color: #3498db;
+    background-color: #E8A200;
     color: white;
 }
 
@@ -72,13 +73,15 @@ button {
     border-radius: 4px;
     padding: 8px 16px;
     border: none;
-    background-color: #3498db;
-    color: white;
+    background-color: #E8A200;
+    color: #1C1600;
+    font-weight: 600;
     transition: background-color 0.2s;
 }
 
 button:hover {
-    background-color: #2980b9;
+    background-color: #CC8C00;
+    color: #1C1600;
 }
 
 button.secondary-button {
@@ -280,38 +283,40 @@ tr:hover {
 }
 
 .list-item:hover {
-    background-color: #f0f7ff;
+    background-color: #FFF5D6;
 }
 
 /* タブスタイル */
 .tab {
     overflow: hidden;
-    border-bottom: 2px solid #3498db;
-    background-color: #f8f9fa;
+    border-bottom: 3px solid #E8A200;
+    background-color: #1C1600;
     display: flex;
     flex-wrap: wrap;
 }
 
 .tablinks {
-    background-color: #f8f9fa;
-    color: #333;
+    background-color: #1C1600;
+    color: #aaa;
     border: none;
     outline: none;
     cursor: pointer;
     padding: 14px 20px;
     font-size: 15px;
+    font-weight: 500;
     border-radius: 0;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, color 0.2s;
 }
 
 .tablinks:hover {
-    background-color: #ddd;
-    color: #333;
+    background-color: #2E2400;
+    color: #E8A200;
 }
 
 .tablinks.active {
-    background-color: #3498db;
-    color: white;
+    background-color: #E8A200;
+    color: #1C1600;
+    font-weight: 700;
 }
 
 .tabcontent {
@@ -340,7 +345,7 @@ tr:hover {
     font-size: 12px;
     font-weight: 700;
     border-radius: 10px;
-    background-color: #3498db;
+    background-color: #E8A200;
     color: white;
 }
 
