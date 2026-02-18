@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - claude/carpool-github-firebase-qQVuP
   pull_request:
     branches:
       - main
@@ -29,7 +30,7 @@ jobs:
           channelId: preview-${{ github.event.pull_request.number }}
 
       - name: Deploy to Firebase Hosting (Live - main branch)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/carpool-github-firebase-qQVuP')
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
