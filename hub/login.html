@@ -99,10 +99,10 @@
     <script src="../js/common/firebase-config.js"></script>
 
     <script>
-        const auth = window.FCOjimaFirebase.auth;
+        const loginAuth = window.FCOjimaFirebase.auth;
 
         // 既にログイン済みなら HUB へ
-        auth.onAuthStateChanged(function(user) {
+        loginAuth.onAuthStateChanged(function(user) {
             if (user) {
                 window.location.href = '/hub/index.html';
             }
@@ -110,7 +110,7 @@
 
         document.getElementById('google-signin-btn').addEventListener('click', function() {
             const provider = new firebase.auth.GoogleAuthProvider();
-            auth.signInWithPopup(provider)
+            loginAuth.signInWithPopup(provider)
                 .then(function(result) {
                     window.location.href = '/hub/index.html';
                 })
