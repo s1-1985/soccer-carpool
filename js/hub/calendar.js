@@ -81,6 +81,13 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             app.Hub.openLogsModal('calendar');
         });
         
+        // キャンセルボタン
+        document.getElementById('cancel-event').addEventListener('click', function() {
+            UI.closeModal('event-modal');
+            document.getElementById('event-form').reset();
+            document.getElementById('event-form').removeAttribute('data-event-id');
+        });
+
         // フォーム送信イベント
         document.getElementById('event-form').addEventListener('submit', function(e) {
             e.preventDefault();

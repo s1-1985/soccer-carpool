@@ -66,6 +66,13 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
             });
         }
         
+        // キャンセルボタン
+        document.getElementById('cancel-member').addEventListener('click', function() {
+            UI.closeModal('member-modal');
+            document.getElementById('member-form').reset();
+            document.getElementById('member-form').removeAttribute('data-member-id');
+        });
+
         // フォーム送信イベント
         document.getElementById('member-form').addEventListener('submit', function(e) {
             e.preventDefault();

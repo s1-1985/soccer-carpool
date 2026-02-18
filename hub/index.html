@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FC尾島ジュニア</title>
+    <title>FC尾島ジュニア HUB</title>
     <link rel="stylesheet" href="../css/common.css">
     <link rel="stylesheet" href="../css/hub/calendar.css">
     <link rel="stylesheet" href="../css/hub/members.css">
@@ -13,7 +13,7 @@
 </head>
 <body>
     <header>
-        <h1>FC尾島ジュニア</h1>
+        <h1>FC尾島ジュニア HUB</h1>
     </header>
 
     <div class="container">
@@ -424,6 +424,21 @@
 
             // モーダルの初期化
             FCOjima.UI.initModals();
+
+            // 会場モーダルのキャンセルボタン
+            document.getElementById('cancel-venue').addEventListener('click', function() {
+                FCOjima.UI.closeModal('venue-modal');
+                document.getElementById('venue-form').reset();
+                document.getElementById('venue-form').removeAttribute('data-venue-id');
+            });
+
+            // 会場フォーム送信
+            document.getElementById('venue-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (FCOjima.Hub.Venues && FCOjima.Hub.Venues.saveVenue) {
+                    FCOjima.Hub.Venues.saveVenue();
+                }
+            });
 
             // 浮動追加ボタンの初期設定
             const floatingAddButton = document.getElementById('floating-add-button');
