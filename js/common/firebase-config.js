@@ -16,22 +16,24 @@ const firebaseConfig = {
 // Firebase 初期化
 firebase.initializeApp(firebaseConfig);
 
-// サービスのエクスポート
-const db = firebase.firestore();
-const auth = firebase.auth();
+// Auth（全ページで使用）
+const _auth = firebase.auth();
+
+// Firestore（SDKが読み込まれている場合のみ）
+const _db = (typeof firebase.firestore === 'function') ? firebase.firestore() : null;
 
 // チームID（固定）
 const TEAM_ID = 'fc-ojima';
 
 // Firestoreのコレクション参照
 const Collections = {
-  members:       () => db.collection('teams').doc(TEAM_ID).collection('members'),
-  venues:        () => db.collection('teams').doc(TEAM_ID).collection('venues'),
-  events:        () => db.collection('teams').doc(TEAM_ID).collection('events'),
-  notifications: () => db.collection('teams').doc(TEAM_ID).collection('notifications'),
-  logs:          () => db.collection('teams').doc(TEAM_ID).collection('logs'),
-  eventData:     (eventId) => db.collection('teams').doc(TEAM_ID).collection('eventData').doc(String(eventId))
+  members:       () => _db.collection('teams').doc(TEAM_ID).collection('members'),
+  venues:        () => _db.collection('teams').doc(TEAM_ID).collection('venues'),
+  events:        () => _db.collection('teams').doc(TEAM_ID).collection('events'),
+  notifications: () => _db.collection('teams').doc(TEAM_ID).collection('notifications'),
+  logs:          () => _db.collection('teams').doc(TEAM_ID).collection('logs'),
+  eventData:     (eventId) => _db.collection('teams').doc(TEAM_ID).collection('eventData').doc(String(eventId))
 };
 
-window.FCOjimaFirebase = { db, auth, Collections, TEAM_ID };
+window.FCOjimaFirebase = { db: _db, auth: _auth, Collections, TEAM_ID };
 console.log('Firebase 初期化完了 (プロジェクト: fc-ojimajr-hub)');
