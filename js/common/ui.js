@@ -13,6 +13,29 @@ FCOjima.UI = FCOjima.UI || {};
     const UI = FCOjima.UI;
     
     /**
+     * タブを切り替え
+     * @param {Event} evt - クリックイベント
+     * @param {string} tabName - 表示するタブのID
+     */
+    UI.openTab = function(evt, tabName) {
+        const tabcontents = document.querySelectorAll('.tabcontent');
+        for (let i = 0; i < tabcontents.length; i++) {
+            tabcontents[i].style.display = 'none';
+        }
+        const tablinks = document.querySelectorAll('.tablinks');
+        for (let i = 0; i < tablinks.length; i++) {
+            tablinks[i].classList.remove('active');
+        }
+        const target = document.getElementById(tabName);
+        if (target) {
+            target.style.display = 'block';
+        }
+        if (evt && evt.currentTarget) {
+            evt.currentTarget.classList.add('active');
+        }
+    };
+
+    /**
      * テーブルをクリア
      * @param {string} tableId - テーブルのID
      */

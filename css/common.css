@@ -283,6 +283,42 @@ tr:hover {
     background-color: #f0f7ff;
 }
 
+/* タブスタイル */
+.tab {
+    overflow: hidden;
+    border-bottom: 2px solid #3498db;
+    background-color: #f8f9fa;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.tablinks {
+    background-color: #f8f9fa;
+    color: #333;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 14px 20px;
+    font-size: 15px;
+    border-radius: 0;
+    transition: background-color 0.2s;
+}
+
+.tablinks:hover {
+    background-color: #ddd;
+    color: #333;
+}
+
+.tablinks.active {
+    background-color: #3498db;
+    color: white;
+}
+
+.tabcontent {
+    display: none;
+    padding: 20px 0;
+}
+
 /* グローバルナビゲーション */
 .global-navigation {
     position: fixed;
