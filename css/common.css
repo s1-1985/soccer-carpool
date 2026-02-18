@@ -64,7 +64,8 @@ header h1 {
 
 .main-nav a.active {
     background-color: #E8A200;
-    color: white;
+    color: #1C1600;
+    font-weight: 700;
 }
 
 /* ボタンスタイル */
@@ -131,6 +132,18 @@ textarea {
     border: 1px solid #ddd;
     border-radius: 4px;
     box-sizing: border-box;
+    transition: border-color 0.2s;
+}
+
+input[type="text"]:focus,
+input[type="date"]:focus,
+input[type="time"]:focus,
+input[type="number"]:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: #E8A200;
+    box-shadow: 0 0 0 2px rgba(232, 162, 0, 0.2);
 }
 
 textarea {
@@ -163,7 +176,8 @@ th, td {
 }
 
 th {
-    background-color: #f2f2f2;
+    background-color: #1C1600;
+    color: #E8A200;
     font-weight: bold;
 }
 
@@ -234,7 +248,7 @@ tr:hover {
 .card h2, .card h3 {
     margin-top: 0;
     margin-bottom: 15px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 2px solid #E8A200;
     padding-bottom: 10px;
 }
 
@@ -330,9 +344,10 @@ tr:hover {
     bottom: 0;
     left: 0;
     width: 100%;
-    background-color: #f8f9fa;
+    background-color: #1C1600;
+    border-top: 3px solid #E8A200;
     padding: 10px 20px;
-    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 -3px 8px rgba(0, 0, 0, 0.4);
     display: flex;
     justify-content: space-between;
     z-index: 100;
@@ -346,7 +361,7 @@ tr:hover {
     font-weight: 700;
     border-radius: 10px;
     background-color: #E8A200;
-    color: white;
+    color: #1C1600;
 }
 
 /* 読み込み中表示 */
