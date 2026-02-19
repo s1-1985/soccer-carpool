@@ -531,12 +531,64 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     /**
      * 割り当て機能の初期化
      */
-    Assignment.init = function() {
+    Assignment.init = async function() {
         console.log('割り当て機能を初期化しています...');
 
-        // メンバーとイベントデータをロード
-        app.Carpool.loadMembers();
-        app.Carpool.loadData();
+        // メンバーをロード（Firestore優先 → localStorageフォールバック）
+        if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadMembers) {
+            try {
+                app.Carpool.members = await FCOjima.DB.loadMembers();
+                console.log('メンバーをFirestoreからロードしました: ' + app.Carpool.members.length + '人');
+            } catch (e) {
+                console.warn('Firestoreメンバーロード失敗、localStorageにフォールバック:', e);
+                app.Carpool.loadMembers();
+            }
+        } else {
+            app.Carpool.loadMembers();
+        }
+
+        // イベントデータをロード（Firestore優先 → localStorage フォールバック → Firestore移行）
+        var event = Storage.getSelectedEvent();
+        if (event) {
+            app.Carpool.appData.eventId = event.id;
+            var firestoreLoaded = false;
+            if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadEventData) {
+                try {
+                    var data = await FCOjima.DB.loadEventData(event.id);
+                    // Firestoreにデータがある場合（carRegistrationsが存在する）はそれを使う
+                    if (data && (data.carRegistrations && data.carRegistrations.length > 0 ||
+                                 data.assignments && data.assignments.length > 0 ||
+                                 data.attendance && data.attendance.length > 0)) {
+                        app.Carpool.appData.carRegistrations = data.carRegistrations || [];
+                        app.Carpool.appData.assignments     = data.assignments     || [];
+                        app.Carpool.appData.attendance      = data.attendance      || [];
+                        app.Carpool.appData.notifications   = data.notifications   || [];
+                        firestoreLoaded = true;
+                        console.log('イベントデータをFirestoreからロードしました: 車両=' + app.Carpool.appData.carRegistrations.length + '台');
+                    }
+                } catch (e) {
+                    console.warn('Firestoreイベントデータロード失敗:', e);
+                }
+            }
+            if (!firestoreLoaded) {
+                // localStorageからロード（既存データを引き継ぐ）
+                app.Carpool.loadData();
+                console.log('localStorageからイベントデータをロードしました: 車両=' + app.Carpool.appData.carRegistrations.length + '台');
+                // localStorageのデータがある場合はFirestoreに移行
+                if (app.Carpool.appData.carRegistrations.length > 0 &&
+                    window.FCOjima && FCOjima.DB && FCOjima.DB.saveEventData) {
+                    var migrateData = {
+                        carRegistrations: app.Carpool.appData.carRegistrations,
+                        assignments:      app.Carpool.appData.assignments,
+                        attendance:       app.Carpool.appData.attendance,
+                        notifications:    app.Carpool.appData.notifications
+                    };
+                    FCOjima.DB.saveEventData(event.id, migrateData)
+                        .then(function() { console.log('localStorageデータをFirestoreに移行完了'); })
+                        .catch(function(e) { console.warn('Firestore移行失敗:', e); });
+                }
+            }
+        }
 
         // イベント情報を表示
         this.updateEventInfo();
@@ -658,6 +710,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         if (!carRegistrations || carRegistrations.length === 0) {
             carsContainer.innerHTML = UI.createAlert('info', '車両登録がありません。「車提供」タブで車両を登録してください。');
             console.log('車両登録がありません');
+            // 車両がなくてもメンバーリストは更新する
+            this.updateMembersList();
             return;
         }
         
@@ -667,6 +721,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         if (availableCars.length === 0) {
             carsContainer.innerHTML = UI.createAlert('info', '車両提供可能な登録がありません。');
             console.log('車両提供可能な登録がありません');
+            // 車両がなくてもメンバーリストは更新する
+            this.updateMembersList();
             return;
         }
         

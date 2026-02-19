@@ -488,7 +488,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
     };
 
     /**
-     * イベントデータを保存
+     * イベントデータを保存（localStorage + Firestore）
      */
     app.Carpool.saveData = function() {
         var eventId = this.appData.eventId;
@@ -497,12 +497,20 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
             if (event) eventId = event.id;
         }
         if (!eventId) return;
-        Storage.saveEventData(eventId, {
+        var data = {
             carRegistrations: this.appData.carRegistrations,
             assignments:      this.appData.assignments,
             attendance:       this.appData.attendance,
             notifications:    this.appData.notifications
-        });
+        };
+        // localStorageに保存
+        Storage.saveEventData(eventId, data);
+        // Firestoreにも保存
+        if (window.FCOjima && FCOjima.DB && FCOjima.DB.saveEventData) {
+            FCOjima.DB.saveEventData(eventId, data).catch(function(e) {
+                console.warn('Firestore saveEventData失敗:', e);
+            });
+        }
         console.log('イベントデータを保存しました: eventId=' + eventId);
     };
 
