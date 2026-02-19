@@ -208,13 +208,13 @@ FCOjima.UI = FCOjima.UI || {};
     UI.setFormData = function(form, data) {
         // フォームをリセット
         form.reset();
-        
+
         // オブジェクトの各プロパティをフォームに設定
         for (const key in data) {
             if (data.hasOwnProperty(key)) {
                 const value = data[key];
                 const field = form.elements[key];
-                
+
                 if (field) {
                     if (Array.isArray(value)) {
                         // チェックボックスの配列対応
@@ -242,4 +242,165 @@ FCOjima.UI = FCOjima.UI || {};
             }
         }
     };
+
+    // =========================================================
+    // 以下: モーダル・アラート・エスケープ等の必須関数
+    // =========================================================
+
+    /**
+     * HTMLエスケープ
+     * @param {string} str
+     * @returns {string}
+     */
+    UI.escapeHTML = function(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    };
+
+    /**
+     * アラートHTML文字列を生成
+     * @param {string} type - 'info' | 'success' | 'warning' | 'error'
+     * @param {string} message
+     * @returns {string}
+     */
+    UI.createAlert = function(type, message) {
+        const icons = { info: 'ℹ️', success: '✅', warning: '⚠️', error: '❌' };
+        const icon = icons[type] || icons.info;
+        return `<div class="alert alert-${UI.escapeHTML(type)}">${icon} ${UI.escapeHTML(message)}</div>`;
+    };
+
+    /**
+     * トースト通知を表示
+     * @param {string} message
+     * @param {string} type - 'info' | 'success' | 'warning' | 'error'
+     * @param {number} duration - 表示時間(ms)
+     */
+    UI.showAlert = function(message, type, duration) {
+        type = type || 'info';
+        duration = duration || 3000;
+
+        // 既存のトーストを削除
+        const existing = document.querySelector('.toast-notification');
+        if (existing) existing.remove();
+
+        const toast = document.createElement('div');
+        toast.className = 'toast-notification toast-' + type;
+        toast.textContent = message;
+        toast.style.cssText = [
+            'position:fixed', 'bottom:20px', 'left:50%',
+            'transform:translateX(-50%)',
+            'background:' + (type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : type === 'warning' ? '#ffc107' : '#3498db'),
+            'color:' + (type === 'warning' ? '#333' : '#fff'),
+            'padding:12px 24px', 'border-radius:8px',
+            'font-size:14px', 'z-index:9999',
+            'box-shadow:0 4px 12px rgba(0,0,0,0.3)',
+            'max-width:80vw', 'text-align:center'
+        ].join(';');
+        document.body.appendChild(toast);
+
+        setTimeout(function() {
+            if (toast.parentNode) toast.remove();
+        }, duration);
+    };
+
+    /**
+     * 確認ダイアログ（window.confirm ラッパー）
+     * @param {string} message
+     * @returns {boolean}
+     */
+    UI.showConfirm = function(message) {
+        return window.confirm(message);
+    };
+
+    /**
+     * プロンプトダイアログ（window.prompt ラッパー）
+     * @param {string} message
+     * @param {string} defaultValue
+     * @returns {string|null}
+     */
+    UI.showPrompt = function(message, defaultValue) {
+        return window.prompt(message, defaultValue || '');
+    };
+
+    /**
+     * モーダルを初期化（×ボタン・背景クリックで閉じる）
+     */
+    UI.initModals = function() {
+        // ×ボタンで閉じる
+        document.querySelectorAll('.modal .close').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const modal = btn.closest('.modal');
+                if (modal) modal.style.display = 'none';
+            });
+        });
+
+        // モーダル外クリックで閉じる
+        document.querySelectorAll('.modal').forEach(function(modal) {
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) modal.style.display = 'none';
+            });
+        });
+
+        console.log('モーダルを初期化しました');
+    };
+
+    /**
+     * モーダルを開く
+     * @param {string} modalId
+     */
+    UI.openModal = function(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = 'flex';
+        } else {
+            console.warn('モーダルが見つかりません: ' + modalId);
+        }
+    };
+
+    /**
+     * モーダルを閉じる
+     * @param {string} modalId
+     */
+    UI.closeModal = function(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    };
+
+    /**
+     * タブを開く
+     * @param {Event} evt
+     * @param {string} tabId
+     */
+    UI.openTab = function(evt, tabId) {
+        // すべてのタブコンテンツを非表示
+        document.querySelectorAll('.tab-content').forEach(function(c) {
+            c.style.display = 'none';
+            c.classList.remove('active');
+        });
+
+        // すべてのタブリンクの active を外す
+        document.querySelectorAll('.tablinks').forEach(function(link) {
+            link.classList.remove('active');
+        });
+
+        // 対象タブを表示
+        const target = document.getElementById(tabId);
+        if (target) {
+            target.style.display = 'block';
+            target.classList.add('active');
+        }
+
+        // クリックされたボタンをアクティブに
+        if (evt && evt.currentTarget) {
+            evt.currentTarget.classList.add('active');
+        }
+    };
+
 })();

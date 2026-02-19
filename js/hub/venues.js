@@ -5,23 +5,61 @@
 
 // 名前空間の確保
 window.FCOjima = window.FCOjima || {};
-FCOjima.Venues = FCOjima.Venues || {};
+FCOjima.Hub = FCOjima.Hub || {};
+FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
 
 // 会場管理モジュール
 (function() {
     // 名前空間のショートカット
-    const Venues = FCOjima.Venues;
+    const Venues = FCOjima.Hub.Venues;
     const UI = FCOjima.UI;
     const Utils = FCOjima.Utils;
     const Storage = FCOjima.Storage;
-    
+
+    /**
+     * 会場管理機能の初期化
+     */
+    Venues.init = function() {
+        console.log('会場管理機能を初期化しています...');
+        this.updateVenueList();
+        console.log('会場管理機能の初期化が完了しました');
+    };
+
+    /**
+     * 会場一覧を更新
+     */
+    Venues.updateVenueList = function() {
+        const venues = FCOjima.Hub.venues || [];
+        const tbody = document.querySelector('#venue-table tbody');
+        if (!tbody) return;
+
+        if (venues.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="empty-table-message">登録された会場はありません。</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = '';
+        venues.forEach(function(venue) {
+            const row = document.createElement('tr');
+            row.innerHTML =
+                '<td>' + UI.escapeHTML(venue.name) + '</td>' +
+                '<td>' + UI.escapeHTML(venue.address || '') + '</td>' +
+                '<td>' + UI.escapeHTML(venue.notes || '') + '</td>' +
+                '<td>' +
+                    '<button type="button" class="secondary-button" onclick="FCOjima.Hub.Venues.editVenue(' + venue.id + ')">編集</button> ' +
+                    '<button type="button" class="delete-button" onclick="FCOjima.Hub.Venues.deleteVenue(' + venue.id + ')">削除</button>' +
+                '</td>';
+            tbody.appendChild(row);
+        });
+    };
+
     /**
      * 会場選択モーダルを開く（削除用）
      */
     Venues.openVenueSelectForDelete = function() {
         console.log('会場選択モーダル（削除用）を開きます...');
         
-        const venues = FCOjima.venues;
+        const venues = FCOjima.Hub.venues;
         
         const selectList = document.createElement('div');
         selectList.className = 'select-list';
@@ -65,7 +103,7 @@ FCOjima.Venues = FCOjima.Venues || {};
      * @param {number} venueId - 会場ID（編集時のみ指定、新規追加時はnull）
      */
     Venues.openAddVenueModal = function(venueId = null) {
-        const venues = FCOjima.venues;
+        const venues = FCOjima.Hub.venues;
         
         // モーダルのタイトル設定
         const titleEl = document.querySelector('#venue-modal h2');
@@ -96,8 +134,8 @@ FCOjima.Venues = FCOjima.Venues || {};
      * 問題1: HUB会場登録のログが表示されない - logsパラメータを明示的に渡す
      */
     Venues.saveVenue = function() {
-        const venues = FCOjima.venues;
-        const logs = FCOjima.logs; // ログを取得
+        const venues = FCOjima.Hub.venues;
+        const logs = FCOjima.Hub.logs; // ログを取得
         
         const name = document.getElementById('venue-name').value;
         const address = document.getElementById('venue-address').value;
@@ -127,7 +165,7 @@ FCOjima.Venues = FCOjima.Venues || {};
                 };
                 
                 // ログに記録 - 修正: logs引数を明示的に渡す
-                FCOjima.logs = Storage.addLog('venues', '会場更新', `「${name}」`, logs);
+                FCOjima.Hub.logs = Storage.addLog('venues', '会場更新', `「${name}」`, logs);
                 console.log(`会場を更新しました: ${name}`);
             }
         } else {
@@ -140,13 +178,13 @@ FCOjima.Venues = FCOjima.Venues || {};
             });
             
             // ログに記録 - 修正: logs引数を明示的に渡す
-            FCOjima.logs = Storage.addLog('venues', '会場追加', `「${name}」`, logs);
+            FCOjima.Hub.logs = Storage.addLog('venues', '会場追加', `「${name}」`, logs);
             console.log(`新しい会場を登録しました: ${name}`);
         }
         
         // 会場を保存してUIを更新
         Storage.saveVenues(venues);
-        this.renderVenuesList();
+        this.updateVenueList();
         
         // モーダルを閉じてフォームをリセット
         UI.closeModal('venue-modal');
@@ -168,23 +206,23 @@ FCOjima.Venues = FCOjima.Venues || {};
      * @param {number} venueId - 会場ID
      */
     Venues.deleteVenue = function(venueId) {
-        const venues = FCOjima.venues;
-        const logs = FCOjima.logs; // ログを取得
+        const venues = FCOjima.Hub.venues;
+        const logs = FCOjima.Hub.logs; // ログを取得
         
         const venue = venues.find(v => v.id === venueId);
         if (!venue) return;
         
         if (UI.showConfirm(`会場「${venue.name}」を削除してもよろしいですか？`)) {
             // 会場を削除
-            FCOjima.venues = venues.filter(v => v.id !== venueId);
+            FCOjima.Hub.venues = venues.filter(v => v.id !== venueId);
             
             // ログに記録 - 修正: logs引数を明示的に渡す
-            FCOjima.logs = Storage.addLog('venues', '会場削除', `「${venue.name}」`, logs);
+            FCOjima.Hub.logs = Storage.addLog('venues', '会場削除', `「${venue.name}」`, logs);
             console.log(`会場を削除しました: ${venue.name}`);
             
             // 会場を保存してUIを更新
-            Storage.saveVenues(FCOjima.venues);
-            this.renderVenuesList();
+            Storage.saveVenues(FCOjima.Hub.venues);
+            this.updateVenueList();
         }
     };
     
@@ -193,7 +231,7 @@ FCOjima.Venues = FCOjima.Venues || {};
      * @param {number} venueId - 会場ID
      */
     Venues.openMap = function(venueId) {
-        const venues = FCOjima.venues;
+        const venues = FCOjima.Hub.venues;
         
         const venue = venues.find(v => v.id === venueId);
         if (!venue) return;
@@ -209,7 +247,7 @@ FCOjima.Venues = FCOjima.Venues || {};
      * @param {string} target - 設定先（'venue'または'meeting'）
      */
     Venues.openVenueSelect = function(target) {
-        const venues = FCOjima.venues;
+        const venues = FCOjima.Hub.venues;
         
         const selectList = document.getElementById('venue-select-list');
         selectList.innerHTML = '';
