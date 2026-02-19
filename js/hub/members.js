@@ -7,547 +7,451 @@ FCOjima.Hub = FCOjima.Hub || {};
 FCOjima.Hub.Members = FCOjima.Hub.Members || {};
 
 (function(app) {
-    // 名前空間のショートカット
     var Members = app.Hub.Members;
     var UI = app.UI;
     var Utils = app.Utils;
     var Storage = app.Storage;
-    
+
     /**
      * メンバー管理機能の初期化
      */
     Members.init = function() {
         console.log('メンバー管理機能を初期化しています...');
-        
-        // データの読み込み
         app.Hub.members = Storage.loadMembers();
-        
-        // メンバーリストの描画
         this.renderMembersList();
-        
-        // イベントリスナーの設定
         this.setupEventListeners();
-        
         console.log('メンバー管理機能の初期化が完了しました');
     };
-    
+
     /**
-     * イベントリスナーの設定
+     * イベントリスナーの設定（要素がない場合はスキップ）
      */
     Members.setupEventListeners = function() {
         console.log('メンバー管理のイベントリスナーを設定しています...');
-        
-        // メンバー追加ボタン
-        document.getElementById('add-member').addEventListener('click', function() {
-            Members.openAddMemberModal();
-        });
-        
-        // メンバー編集ボタン
-        document.getElementById('edit-member').addEventListener('click', function() {
-            Members.openMemberSelectForEdit();
-        });
-        
-        // メンバー削除ボタン
-        document.getElementById('delete-member').addEventListener('click', function() {
-            Members.openMemberSelectForDelete();
-        });
-        
-        // ログ表示ボタン
-        document.getElementById('member-logs').addEventListener('click', function() {
-            app.Hub.openLogsModal('members');
-        });
-        
-        // フローティング追加ボタン
-        var floatingAddButton = document.getElementById('floating-add-button');
-        if (floatingAddButton) {
-            floatingAddButton.addEventListener('click', function(e) {
+
+        var addBtn = document.getElementById('add-member');
+        if (addBtn) addBtn.addEventListener('click', function() { Members.openAddMemberModal(); });
+
+        var editBtn = document.getElementById('edit-member');
+        if (editBtn) editBtn.addEventListener('click', function() { Members.openMemberSelectForEdit(); });
+
+        var deleteBtn = document.getElementById('delete-member');
+        if (deleteBtn) deleteBtn.addEventListener('click', function() { Members.openMemberSelectForDelete(); });
+
+        var logsBtn = document.getElementById('member-logs');
+        if (logsBtn) logsBtn.addEventListener('click', function() { app.Hub.openLogsModal('members'); });
+
+        var floatingAddBtn = document.getElementById('floating-add-button');
+        if (floatingAddBtn) {
+            floatingAddBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 Members.openAddMemberModal();
             });
         }
-        
-        // フォーム送信イベント
-        document.getElementById('member-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            Members.saveMember();
-        });
-        
-        // 役割変更時のイベント（背番号フィールドの表示/非表示）
-        document.getElementById('member-role').addEventListener('change', function() {
-            const numberGroup = document.getElementById('number-group');
-            if (this.value === 'player') {
-                numberGroup.style.display = 'block';
-            } else {
-                numberGroup.style.display = 'none';
-            }
-        });
-        
-        // 検索と絞り込み
-        const memberSearch = document.getElementById('member-search');
-        if (memberSearch) {
-            memberSearch.addEventListener('input', function() {
-                Members.filterMembers();
+
+        // メンバーフォーム送信
+        var memberForm = document.getElementById('member-form');
+        if (memberForm) {
+            memberForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                Members.saveMember();
             });
         }
-        
-        const roleFilter = document.getElementById('role-filter');
-        if (roleFilter) {
-            roleFilter.addEventListener('change', function() {
-                Members.filterMembers();
+
+        // キャンセルボタン
+        var cancelBtn = document.getElementById('cancel-member');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function() {
+                UI.closeModal('member-modal');
             });
         }
-        
-        const gradeFilter = document.getElementById('grade-filter');
-        if (gradeFilter) {
-            gradeFilter.addEventListener('change', function() {
-                Members.filterMembers();
+
+        // メンバー詳細モーダルの編集・削除ボタン
+        var editDetailBtn = document.getElementById('edit-member-detail');
+        if (editDetailBtn) {
+            editDetailBtn.addEventListener('click', function() {
+                var memberId = this.getAttribute('data-member-id');
+                if (memberId) {
+                    UI.closeModal('member-details-modal');
+                    Members.openAddMemberModal(memberId);
+                }
             });
         }
-        
-        // 学年フィルターの初期化
+
+        var deleteDetailBtn = document.getElementById('delete-member-detail');
+        if (deleteDetailBtn) {
+            deleteDetailBtn.addEventListener('click', function() {
+                var memberId = this.getAttribute('data-member-id');
+                if (memberId) Members.deleteMember(memberId);
+            });
+        }
+
+        // 役割変更時（背番号フィールドの表示制御）
+        var roleSelect = document.getElementById('member-role');
+        if (roleSelect) {
+            roleSelect.addEventListener('change', function() {
+                var numberGroup = document.getElementById('number-group');
+                if (numberGroup) numberGroup.style.display = (this.value === 'player') ? 'block' : 'none';
+            });
+        }
+
+        // 検索（入力イベント + 検索ボタン）
+        var memberSearch = document.getElementById('member-search');
+        if (memberSearch) memberSearch.addEventListener('input', function() { Members.filterMembers(); });
+
+        var searchBtn = document.getElementById('search-member-btn');
+        if (searchBtn) searchBtn.addEventListener('click', function() { Members.filterMembers(); });
+
+        var roleFilter = document.getElementById('role-filter');
+        if (roleFilter) roleFilter.addEventListener('change', function() { Members.filterMembers(); });
+
+        var gradeFilter = document.getElementById('grade-filter');
+        if (gradeFilter) gradeFilter.addEventListener('change', function() { Members.filterMembers(); });
+
         this.initGradeFilter();
-        
+
         console.log('メンバー管理のイベントリスナー設定が完了しました');
     };
-    
+
     /**
-     * 学年フィルターを初期化
+     * 学年フィルター初期化
      */
     Members.initGradeFilter = function() {
-        const gradeFilter = document.getElementById('grade-filter');
+        var gradeFilter = document.getElementById('grade-filter');
         if (!gradeFilter) return;
-        
-        // 既存のオプションをクリア
-        while (gradeFilter.options.length > 1) {
-            gradeFilter.remove(1);
-        }
-        
-        // メンバーデータから学年を抽出
-        const members = app.Hub.members;
-        const grades = new Set();
-        
-        members.forEach(member => {
-            if (member.grade) {
-                grades.add(member.grade);
-            }
+
+        while (gradeFilter.options.length > 1) gradeFilter.remove(1);
+
+        var grades = new Set();
+        (app.Hub.members || []).forEach(function(m) { if (m.grade) grades.add(m.grade); });
+        if (grades.size === 0) ['年少','年中','年長','1','2','3','4','5','6'].forEach(function(g) { grades.add(g); });
+
+        var gradeOrder = { '年少': -3, '年中': -2, '年長': -1 };
+        var sorted = Array.from(grades).sort(function(a, b) {
+            var va = gradeOrder[a] !== undefined ? gradeOrder[a] : parseInt(a);
+            var vb = gradeOrder[b] !== undefined ? gradeOrder[b] : parseInt(b);
+            return va - vb;
         });
-        
-        // 学年が存在しない場合は基本学年を追加
-        if (grades.size === 0) {
-            ['年少', '年中', '年長', '1', '2', '3', '4', '5', '6'].forEach(grade => {
-                grades.add(grade);
-            });
-        }
-        
-        // ソートして追加
-        const sortedGrades = Array.from(grades).sort((a, b) => {
-            const gradeOrder = {
-                '年少': -3,
-                '年中': -2,
-                '年長': -1
-            };
-            
-            const valA = gradeOrder[a] !== undefined ? gradeOrder[a] : parseInt(a);
-            const valB = gradeOrder[b] !== undefined ? gradeOrder[b] : parseInt(b);
-            
-            return valA - valB;
-        });
-        
-        sortedGrades.forEach(grade => {
-            const option = document.createElement('option');
-            option.value = grade;
-            option.textContent = Utils.getGradeLabel(grade);
-            gradeFilter.appendChild(option);
+
+        sorted.forEach(function(grade) {
+            var opt = document.createElement('option');
+            opt.value = grade;
+            opt.textContent = Utils.getGradeLabel(grade);
+            gradeFilter.appendChild(opt);
         });
     };
-    
+
     /**
-     * メンバーリストをフィルタリング
+     * メンバーリストフィルタリング
      */
     Members.filterMembers = function() {
-        const searchInput = document.getElementById('member-search');
-        const roleFilter = document.getElementById('role-filter');
-        const gradeFilter = document.getElementById('grade-filter');
-        
+        var searchInput = document.getElementById('member-search');
+        var roleFilter = document.getElementById('role-filter');
+        var gradeFilter = document.getElementById('grade-filter');
         if (!searchInput || !roleFilter || !gradeFilter) return;
-        
-        const searchText = searchInput.value.toLowerCase();
-        const selectedRole = roleFilter.value;
-        const selectedGrade = gradeFilter.value;
-        
-        const memberCards = document.querySelectorAll('.member-card');
-        
-        memberCards.forEach(card => {
-            const memberName = card.querySelector('h3').textContent.toLowerCase();
-            const memberRole = card.classList.contains('coach') ? 'coach' :
-                               card.classList.contains('assist') ? 'coach' :
-                               card.classList.contains('player') ? 'player' :
-                               card.classList.contains('parent') ? 'parent' : 'other';
-            
-            let matchesSearch = memberName.includes(searchText);
-            let matchesRole = selectedRole === 'all' || memberRole === selectedRole;
-            let matchesGrade = true; // デフォルトは一致と見なす
-            
-            // 学年フィルターが指定されている場合は確認
+
+        var searchText = searchInput.value.toLowerCase();
+        var selectedRole = roleFilter.value;
+        var selectedGrade = gradeFilter.value;
+
+        document.querySelectorAll('.member-card').forEach(function(card) {
+            var h3 = card.querySelector('h3');
+            var memberName = h3 ? h3.textContent.toLowerCase() : '';
+            var memberRole = card.dataset.role || 'other';
+            var memberGrade = card.dataset.grade || '';
+
+            var matchText = !searchText || memberName.includes(searchText);
+            var roleCategory = (memberRole === 'coach' || memberRole === 'assist') ? 'coach' :
+                               (memberRole === 'father' || memberRole === 'mother') ? 'parent' :
+                               memberRole;
+            var matchRole = selectedRole === 'all' || roleCategory === selectedRole;
+            var matchGrade = true;
             if (selectedGrade !== 'all') {
-                // 選手のみ学年でフィルタリング
-                if (memberRole === 'player') {
-                    const gradeElem = card.querySelector('.detail-row:nth-child(2) .detail-value');
-                    if (gradeElem) {
-                        const grade = gradeElem.textContent.replace('年', '');
-                        matchesGrade = grade === Utils.getGradeLabel(selectedGrade);
-                    } else {
-                        matchesGrade = false;
-                    }
-                } else {
-                    // 選手以外は学年フィルターが指定されている場合は非表示
-                    matchesGrade = false;
-                }
+                matchGrade = (memberRole === 'player') ? memberGrade === selectedGrade : false;
             }
-            
-            // すべての条件に一致する場合のみ表示
-            if (matchesSearch && matchesRole && matchesGrade) {
-                card.style.display = '';
-            } else {
-                card.style.display = 'none';
-            }
+
+            card.style.display = (matchText && matchRole && matchGrade) ? '' : 'none';
         });
     };
-    
+
     /**
-     * メンバーリストを描画
+     * メンバーリスト描画
      */
     Members.renderMembersList = function() {
-        const members = app.Hub.members;
-        
-        const listContainer = document.getElementById('members-list');
+        var members = app.Hub.members || [];
+        var listContainer = document.getElementById('members-list');
         if (!listContainer) return;
-        
+
         listContainer.innerHTML = '';
-        
+
         if (members.length === 0) {
             listContainer.innerHTML = UI.createAlert('info', '登録されているメンバーはいません。');
             return;
         }
-        
-        // メンバーを役割と背番号でソート
-        const sortedMembers = [...members].sort((a, b) => {
-            // 役割の優先順位: 監督, コーチ, 選手, 母, 父, 部員外
-            const rolePriority = {
-                'coach': 1,
-                'assist': 2,
-                'player': 3,
-                'mother': 4,
-                'father': 5,
-                'other': 6
-            };
-            
-            if (rolePriority[a.role] !== rolePriority[b.role]) {
-                return rolePriority[a.role] - rolePriority[b.role];
-            }
-            
-            // 選手の場合は背番号でソート
-            if (a.role === 'player' && b.role === 'player') {
-                const numA = a.number || 999;
-                const numB = b.number || 999;
-                return numA - numB;
-            }
-            
-            // それ以外は名前でソート
-            return a.name.localeCompare(b.name, 'ja');
+
+        var rolePriority = { 'coach': 1, 'assist': 2, 'player': 3, 'mother': 4, 'father': 5, 'other': 6 };
+        var sorted = members.slice().sort(function(a, b) {
+            if (rolePriority[a.role] !== rolePriority[b.role]) return rolePriority[a.role] - rolePriority[b.role];
+            if (a.role === 'player' && b.role === 'player') return (a.number || 999) - (b.number || 999);
+            return (a.name || '').localeCompare(b.name || '', 'ja');
         });
-        
-        sortedMembers.forEach(member => {
-            const memberCard = document.createElement('div');
-            memberCard.className = 'member-card';
-            memberCard.classList.add(member.role);
-            memberCard.dataset.memberId = member.id;
-            
-            // 役割に応じた表示ラベル
-            const roleLabels = {
-                'coach': '監督',
-                'assist': 'コーチ',
-                'player': '選手',
-                'father': '父',
-                'mother': '母',
-                'other': '部員外'
-            };
-            
-            // 学年表示（選手のみ）
-            let gradeDisplay = '';
-            if (member.role === 'player' && member.grade) {
-                gradeDisplay = `<div class="detail-row">
-                    <span class="detail-label">学年:</span>
-                    <span class="detail-value">${Utils.getGradeLabel(member.grade)}</span>
-                </div>`;
-            }
-            
-            // 背番号表示（選手のみ）
-            let numberDisplay = '';
-            if (member.role === 'player' && member.number) {
-                numberDisplay = `<div class="detail-row">
-                    <span class="detail-label">背番号:</span>
-                    <span class="detail-value">${member.number}</span>
-                </div>`;
-            }
-            
-            // 備考表示（あれば）
-            let notesDisplay = '';
-            if (member.notes) {
-                notesDisplay = `<div class="detail-row">
-                    <span class="detail-label">備考:</span>
-                    <span class="detail-value">${UI.escapeHTML(member.notes)}</span>
-                </div>`;
-            }
-            
-            memberCard.innerHTML = `
-                <h3>${UI.escapeHTML(member.name)}</h3>
-                <div class="detail-row">
-                    <span class="detail-label">所属:</span>
-                    <span class="detail-value">${roleLabels[member.role] || member.role}</span>
-                </div>
-                ${gradeDisplay}
-                ${numberDisplay}
-                ${notesDisplay}
-                <div class="member-actions">
-                    <button class="secondary-button" onclick="FCOjima.Hub.Members.editMember(${member.id})">編集</button>
-                </div>
-            `;
-            
-            listContainer.appendChild(memberCard);
+
+        var roleLabels = { 'coach': '監督', 'assist': 'コーチ', 'player': '選手', 'father': '父', 'mother': '母', 'other': '部員外' };
+
+        sorted.forEach(function(member) {
+            var card = document.createElement('div');
+            card.className = 'member-card ' + member.role;
+            card.dataset.memberId = member.id;
+            card.dataset.role = member.role;
+            card.dataset.grade = member.grade || '';
+            card.style.cursor = 'pointer';
+
+            var gradeHtml = (member.role === 'player' && member.grade) ?
+                '<div class="detail-row"><span class="detail-label">学年:</span><span class="detail-value">' + Utils.getGradeLabel(member.grade) + '</span></div>' : '';
+            var numberHtml = (member.role === 'player' && member.number) ?
+                '<div class="detail-row"><span class="detail-label">背番号:</span><span class="detail-value">' + member.number + '</span></div>' : '';
+            var notesHtml = member.notes ?
+                '<div class="detail-row"><span class="detail-label">備考:</span><span class="detail-value">' + UI.escapeHTML(member.notes) + '</span></div>' : '';
+
+            card.innerHTML =
+                '<h3>' + UI.escapeHTML(member.name) + '</h3>' +
+                '<div class="detail-row"><span class="detail-label">所属:</span><span class="detail-value">' + (roleLabels[member.role] || member.role) + '</span></div>' +
+                gradeHtml + numberHtml + notesHtml;
+
+            // クリックで詳細モーダルを開く
+            card.addEventListener('click', function(e) {
+                if (!e.target.classList.contains('secondary-button') && !e.target.classList.contains('delete-button')) {
+                    Members.showMemberDetail(member.id);
+                }
+            });
+
+            listContainer.appendChild(card);
         });
     };
-    
+
     /**
-     * メンバー追加モーダルを開く
-     * @param {number} memberId - メンバーID（編集時のみ指定、新規追加時はnull）
+     * メンバー詳細モーダルを表示
      */
-    Members.openAddMemberModal = function(memberId = null) {
-        const members = app.Hub.members;
-        
-        // モーダルのタイトル設定
-        const titleEl = document.querySelector('#member-modal h2');
-        titleEl.textContent = memberId ? 'メンバーを編集' : 'メンバーを追加';
-        
-        // フォームをリセット
-        document.getElementById('member-form').reset();
-        
-        // 編集の場合は既存データを設定
+    Members.showMemberDetail = function(memberId) {
+        var members = app.Hub.members || [];
+        var member = members.find(function(m) { return String(m.id) === String(memberId); });
+        if (!member) return;
+
+        var roleLabels = { 'coach': '監督', 'assist': 'コーチ', 'player': '選手', 'father': '父', 'mother': '母', 'other': '部員外' };
+
+        var html = '<table style="width:100%;border-collapse:collapse;">';
+        html += '<tr><td style="padding:6px;font-weight:bold;width:40%;">氏名</td><td style="padding:6px;">' + UI.escapeHTML(member.name) + '</td></tr>';
+        html += '<tr><td style="padding:6px;font-weight:bold;">所属</td><td style="padding:6px;">' + (roleLabels[member.role] || member.role) + '</td></tr>';
+        if (member.birth) {
+            var birthDate = new Date(member.birth);
+            var birthStr = birthDate.toLocaleDateString('ja-JP', {year:'numeric',month:'2-digit',day:'2-digit'});
+            html += '<tr><td style="padding:6px;font-weight:bold;">生年月日</td><td style="padding:6px;">' + birthStr + '</td></tr>';
+        }
+        if (member.gender) {
+            html += '<tr><td style="padding:6px;font-weight:bold;">性別</td><td style="padding:6px;">' + (member.gender === 'male' ? '男性' : '女性') + '</td></tr>';
+        }
+        if (member.grade) {
+            html += '<tr><td style="padding:6px;font-weight:bold;">学年</td><td style="padding:6px;">' + Utils.getGradeLabel(member.grade) + '</td></tr>';
+        }
+        if (member.number) {
+            html += '<tr><td style="padding:6px;font-weight:bold;">背番号</td><td style="padding:6px;">' + member.number + '</td></tr>';
+        }
+        if (member.notes) {
+            html += '<tr><td style="padding:6px;font-weight:bold;">備考</td><td style="padding:6px;">' + UI.escapeHTML(member.notes) + '</td></tr>';
+        }
+        html += '</table>';
+
+        var content = document.getElementById('member-details-content');
+        if (content) content.innerHTML = html;
+
+        var editBtn = document.getElementById('edit-member-detail');
+        if (editBtn) editBtn.setAttribute('data-member-id', member.id);
+
+        var deleteBtn = document.getElementById('delete-member-detail');
+        if (deleteBtn) deleteBtn.setAttribute('data-member-id', member.id);
+
+        UI.openModal('member-details-modal');
+    };
+
+    /**
+     * メンバー追加・編集モーダルを開く
+     */
+    Members.openAddMemberModal = function(memberId) {
+        var members = app.Hub.members || [];
+        var titleEl = document.querySelector('#member-modal h2');
+        if (titleEl) titleEl.textContent = memberId ? 'メンバーを編集' : 'メンバーを追加';
+
+        var form = document.getElementById('member-form');
+        if (form) form.reset();
+
         if (memberId) {
-            const member = members.find(m => m.id === memberId);
-            if (member) {
-                // フォームにメンバーIDを設定
-                document.getElementById('member-form').setAttribute('data-member-id', member.id);
-                
+            var member = members.find(function(m) { return String(m.id) === String(memberId); });
+            if (member && form) {
+                form.setAttribute('data-member-id', member.id);
                 document.getElementById('member-name').value = member.name || '';
                 document.getElementById('member-birth').value = member.birth || '';
                 document.getElementById('member-gender').value = member.gender || 'male';
                 document.getElementById('member-role').value = member.role || 'player';
                 document.getElementById('member-number').value = member.number || '';
                 document.getElementById('member-notes').value = member.notes || '';
-                
-                // 役割に応じて背番号フィールドの表示/非表示
-                const numberGroup = document.getElementById('number-group');
-                if (member.role === 'player') {
-                    numberGroup.style.display = 'block';
-                } else {
-                    numberGroup.style.display = 'none';
-                }
+                var ng = document.getElementById('number-group');
+                if (ng) ng.style.display = (member.role === 'player') ? 'block' : 'none';
             }
         } else {
-            // 新規追加の場合はデフォルト値を設定
-            document.getElementById('member-gender').value = 'male';
-            document.getElementById('member-role').value = 'player';
-            document.getElementById('number-group').style.display = 'block';
+            if (form) {
+                form.removeAttribute('data-member-id');
+                document.getElementById('member-gender').value = 'male';
+                document.getElementById('member-role').value = 'player';
+                var ng = document.getElementById('number-group');
+                if (ng) ng.style.display = 'block';
+            }
         }
-        
-        // モーダルを表示
+
         UI.openModal('member-modal');
     };
-    
+
     /**
-     * 新規メンバー保存
+     * メンバー保存
      */
     Members.saveMember = function() {
-        const members = app.Hub.members;
-        const logs = app.Hub.logs;
-        
-        const name = document.getElementById('member-name').value;
-        const birth = document.getElementById('member-birth').value;
-        const gender = document.getElementById('member-gender').value;
-        const role = document.getElementById('member-role').value;
-        const number = role === 'player' ? document.getElementById('member-number').value : null;
-        const notes = document.getElementById('member-notes').value;
-        
-        // バリデーション
+        var members = app.Hub.members || [];
+        var logs = app.Hub.logs || [];
+
+        var name = document.getElementById('member-name').value.trim();
+        var birth = document.getElementById('member-birth').value;
+        var gender = document.getElementById('member-gender').value;
+        var role = document.getElementById('member-role').value;
+        var number = (role === 'player') ? document.getElementById('member-number').value : null;
+        var notes = document.getElementById('member-notes').value.trim();
+
         if (!name) {
-            UI.showAlert('名前は必須です');
+            UI.showAlert('名前は必須です', 'warning');
             return;
         }
-        
-        // 学年を計算
-        let grade = null;
+
+        var grade = null;
         if (role === 'player' && birth) {
             grade = Utils.calculateGrade(birth);
         }
-        
-        // 既存メンバーの更新または新規メンバーの追加
-        const memberFormId = document.getElementById('member-form').getAttribute('data-member-id');
-        
+
+        var form = document.getElementById('member-form');
+        var memberFormId = form ? form.getAttribute('data-member-id') : null;
+
         if (memberFormId) {
-            // 既存メンバーの更新
-            const index = members.findIndex(m => m.id === parseInt(memberFormId));
+            var index = members.findIndex(function(m) { return String(m.id) === String(memberFormId); });
             if (index !== -1) {
-                members[index] = {
-                    id: parseInt(memberFormId),
-                    name,
-                    birth,
-                    gender,
-                    role,
-                    number: number ? parseInt(number) : null,
-                    grade,
-                    notes
-                };
-                
-                // ログに記録
-                app.Hub.logs = Storage.addLog('members', 'メンバー更新', `「${name}」`, logs);
-                console.log(`メンバーを更新しました: ID=${memberFormId}, 名前=${name}`);
+                var origId = members[index].id;
+                members[index] = { id: origId, name: name, birth: birth, gender: gender, role: role, number: number ? parseInt(number) : null, grade: grade, notes: notes };
+                app.Hub.logs = Storage.addLog('members', 'メンバー更新', '「' + name + '」', logs);
             }
         } else {
-            // 新しいメンバーID
-            const newId = members.length > 0 ? Math.max(...members.map(m => m.id)) + 1 : 1;
-            
-            // 新規メンバーを追加
-            members.push({
-                id: newId,
-                name,
-                birth,
-                gender,
-                role,
-                number: number ? parseInt(number) : null,
-                grade,
-                notes
-            });
-            
-            // ログに記録
-            app.Hub.logs = Storage.addLog('members', 'メンバー追加', `「${name}」`, logs);
-            console.log(`新しいメンバーを追加しました: ID=${newId}, 名前=${name}`);
+            var ids = members.map(function(m) { return parseInt(m.id) || 0; });
+            var newId = ids.length > 0 ? Math.max.apply(null, ids) + 1 : 1;
+            members.push({ id: newId, name: name, birth: birth, gender: gender, role: role, number: number ? parseInt(number) : null, grade: grade, notes: notes });
+            app.Hub.logs = Storage.addLog('members', 'メンバー追加', '「' + name + '」', logs);
         }
-        
-        // メンバーを保存してUIを更新
+
         Storage.saveMembers(members);
         this.renderMembersList();
-        
-        // モーダルを閉じてフォームをリセット
+
         UI.closeModal('member-modal');
-        document.getElementById('member-form').reset();
-        document.getElementById('member-form').removeAttribute('data-member-id');
+        if (form) { form.reset(); form.removeAttribute('data-member-id'); }
+        UI.showAlert('メンバーを保存しました', 'success');
     };
-    
+
     /**
      * メンバー編集
-     * @param {number} memberId - メンバーID
      */
     Members.editMember = function(memberId) {
         this.openAddMemberModal(memberId);
     };
-    
+
     /**
      * メンバー削除
-     * @param {number} memberId - メンバーID
      */
     Members.deleteMember = function(memberId) {
-        const members = app.Hub.members;
-        const logs = app.Hub.logs;
-        
-        const member = members.find(m => m.id === memberId);
+        var members = app.Hub.members || [];
+        var member = members.find(function(m) { return String(m.id) === String(memberId); });
         if (!member) return;
-        
-        if (UI.showConfirm(`メンバー「${member.name}」を削除してもよろしいですか？`)) {
-            // メンバーを削除
-            app.Hub.members = members.filter(m => m.id !== memberId);
-            
-            // ログに記録
-            app.Hub.logs = Storage.addLog('members', 'メンバー削除', `「${member.name}」`, logs);
-            
-            // メンバーを保存してUIを更新
-            Storage.saveMembers(app.Hub.members);
-            this.renderMembersList();
-        }
+
+        if (!UI.showConfirm('メンバー「' + member.name + '」を削除してもよろしいですか？')) return;
+
+        app.Hub.logs = Storage.addLog('members', 'メンバー削除', '「' + member.name + '」', app.Hub.logs || []);
+        app.Hub.members = members.filter(function(m) { return String(m.id) !== String(memberId); });
+        Storage.saveMembers(app.Hub.members);
+        this.renderMembersList();
+
+        UI.closeModal('member-details-modal');
+        UI.showAlert('メンバーを削除しました', 'success');
     };
-    
+
     /**
-     * メンバー選択モーダルを開く（編集用）
+     * メンバー選択（編集用）
      */
     Members.openMemberSelectForEdit = function() {
-        const members = app.Hub.members;
-        
-        const selectList = document.createElement('div');
+        var members = app.Hub.members || [];
+        var logsContent = document.getElementById('logs-content');
+        if (!logsContent) return;
+
+        var h3 = document.createElement('h3');
+        h3.textContent = '編集するメンバーを選択';
+        var selectList = document.createElement('div');
         selectList.className = 'select-list';
-        
+
         if (members.length === 0) {
-            selectList.innerHTML = UI.createAlert('info', '登録されているメンバーはいません。');
+            selectList.innerHTML = UI.createAlert('info', 'メンバーがいません。');
         } else {
-            members.forEach(member => {
-                const item = document.createElement('div');
+            members.forEach(function(member) {
+                var item = document.createElement('div');
                 item.className = 'list-item';
                 item.textContent = member.name;
-                
-                item.addEventListener('click', () => {
-                    this.openAddMemberModal(member.id);
+                item.addEventListener('click', function() {
                     UI.closeModal('logs-modal');
+                    Members.openAddMemberModal(member.id);
                 });
-                
                 selectList.appendChild(item);
             });
         }
-        
-        // 既存のログコンテンツを置き換え
-        const logsContent = document.getElementById('logs-content');
+
         logsContent.innerHTML = '';
-        logsContent.appendChild(document.createElement('h3')).textContent = 'メンバーを選択';
+        logsContent.appendChild(h3);
         logsContent.appendChild(selectList);
-        
-        // モーダルを表示
         UI.openModal('logs-modal');
     };
-    
+
     /**
-     * メンバー選択モーダルを開く（削除用）
+     * メンバー選択（削除用）
      */
     Members.openMemberSelectForDelete = function() {
-        const members = app.Hub.members;
-        
-        const selectList = document.createElement('div');
+        var members = app.Hub.members || [];
+        var logsContent = document.getElementById('logs-content');
+        if (!logsContent) return;
+
+        var h3 = document.createElement('h3');
+        h3.textContent = '削除するメンバーを選択';
+        var selectList = document.createElement('div');
         selectList.className = 'select-list';
-        
+
         if (members.length === 0) {
-            selectList.innerHTML = UI.createAlert('info', '登録されているメンバーはいません。');
+            selectList.innerHTML = UI.createAlert('info', 'メンバーがいません。');
         } else {
-            members.forEach(member => {
-                const item = document.createElement('div');
+            members.forEach(function(member) {
+                var item = document.createElement('div');
                 item.className = 'list-item';
                 item.textContent = member.name;
-                
-                item.addEventListener('click', () => {
-                    if (UI.showConfirm(`本当に「${member.name}」を削除しますか？`)) {
-                        this.deleteMember(member.id);
-                    }
+                item.style.color = '#c0392b';
+                item.addEventListener('click', function() {
                     UI.closeModal('logs-modal');
+                    Members.deleteMember(member.id);
                 });
-                
                 selectList.appendChild(item);
             });
         }
-        
-        // 既存のログコンテンツを置き換え
-        const logsContent = document.getElementById('logs-content');
+
         logsContent.innerHTML = '';
-        logsContent.appendChild(document.createElement('h3')).textContent = 'メンバーを選択';
+        logsContent.appendChild(h3);
         logsContent.appendChild(selectList);
-        
-        // モーダルを表示
         UI.openModal('logs-modal');
     };
-    
+
 })(window.FCOjima);

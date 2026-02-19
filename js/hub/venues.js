@@ -1,284 +1,288 @@
 /**
  * FC尾島ジュニア - 会場管理
- * 会場情報の管理に関する機能を提供（続き）
  */
 
-// 名前空間の確保
 window.FCOjima = window.FCOjima || {};
 FCOjima.Hub = FCOjima.Hub || {};
 FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
 
-// 会場管理モジュール
-(function() {
-    // 名前空間のショートカット
-    const Venues = FCOjima.Hub.Venues;
-    const UI = FCOjima.UI;
-    const Utils = FCOjima.Utils;
-    const Storage = FCOjima.Storage;
+(function(app) {
+    var Venues = app.Hub.Venues;
+    var UI = app.UI;
+    var Storage = app.Storage;
 
     /**
      * 会場管理機能の初期化
      */
     Venues.init = function() {
         console.log('会場管理機能を初期化しています...');
-        this.updateVenueList();
+        this.renderVenueList();
+        this.setupEventListeners();
         console.log('会場管理機能の初期化が完了しました');
     };
 
     /**
-     * 会場一覧を更新
+     * イベントリスナーを設定
      */
-    Venues.updateVenueList = function() {
-        const venues = FCOjima.Hub.venues || [];
-        const tbody = document.querySelector('#venue-table tbody');
-        if (!tbody) return;
+    Venues.setupEventListeners = function() {
+        // 会場追加ボタン
+        var addBtn = document.getElementById('add-venue');
+        if (addBtn) {
+            addBtn.addEventListener('click', function() {
+                Venues.openAddVenueModal();
+            });
+        }
+
+        // フローティング追加ボタン（会場登録タブ表示時）
+        var floatingBtn = document.getElementById('floating-add-button');
+        if (floatingBtn) {
+            // floating button は index.html のインラインスクリプトで制御
+        }
+
+        // 会場フォーム送信
+        var venueForm = document.getElementById('venue-form');
+        if (venueForm) {
+            venueForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                Venues.saveVenue();
+            });
+        }
+
+        // キャンセルボタン
+        var cancelBtn = document.getElementById('cancel-venue');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function() {
+                UI.closeModal('venue-modal');
+            });
+        }
+
+        // ログ表示ボタン
+        var logsBtn = document.getElementById('venues-logs');
+        if (logsBtn) {
+            logsBtn.addEventListener('click', function() {
+                app.Hub.openLogsModal('venues');
+            });
+        }
+
+        // 検索
+        var searchInput = document.getElementById('venue-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                Venues.filterVenues(this.value, document.getElementById('venue-type-filter') ? document.getElementById('venue-type-filter').value : 'all');
+            });
+        }
+
+        var typeFilter = document.getElementById('venue-type-filter');
+        if (typeFilter) {
+            typeFilter.addEventListener('change', function() {
+                Venues.filterVenues(document.getElementById('venue-search') ? document.getElementById('venue-search').value : '', this.value);
+            });
+        }
+    };
+
+    /**
+     * 会場一覧をレンダリング（カード形式）
+     */
+    Venues.renderVenueList = function() {
+        var venues = app.Hub.venues || [];
+        var listEl = document.getElementById('venues-list');
+        if (!listEl) return;
 
         if (venues.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="empty-table-message">登録された会場はありません。</td></tr>';
+            listEl.innerHTML = UI.createAlert('info', '登録された会場はありません。');
             return;
         }
 
-        tbody.innerHTML = '';
+        listEl.innerHTML = '';
+        var typeLabels = { ground: 'グラウンド', gym: '体育館', park: '公園', other: 'その他' };
+
         venues.forEach(function(venue) {
-            const row = document.createElement('tr');
-            row.innerHTML =
-                '<td>' + UI.escapeHTML(venue.name) + '</td>' +
-                '<td>' + UI.escapeHTML(venue.address || '') + '</td>' +
-                '<td>' + UI.escapeHTML(venue.notes || '') + '</td>' +
-                '<td>' +
-                    '<button type="button" class="secondary-button" onclick="FCOjima.Hub.Venues.editVenue(' + venue.id + ')">編集</button> ' +
-                    '<button type="button" class="delete-button" onclick="FCOjima.Hub.Venues.deleteVenue(' + venue.id + ')">削除</button>' +
-                '</td>';
-            tbody.appendChild(row);
+            var card = document.createElement('div');
+            card.className = 'venue-card';
+            card.dataset.venueId = venue.id;
+            card.dataset.venueName = venue.name || '';
+            card.dataset.venueType = venue.type || '';
+
+            var typeLabel = typeLabels[venue.type] || venue.type || '';
+
+            card.innerHTML =
+                '<div class="venue-card-header">' +
+                    '<h3 class="venue-name">' + UI.escapeHTML(venue.name || '') + '</h3>' +
+                    (typeLabel ? '<span class="venue-type-badge">' + UI.escapeHTML(typeLabel) + '</span>' : '') +
+                '</div>' +
+                '<div class="venue-card-body">' +
+                    (venue.address ? '<div class="venue-address">📍 ' + UI.escapeHTML(venue.address) + '</div>' : '') +
+                    (venue.notes ? '<div class="venue-notes">' + UI.escapeHTML(venue.notes) + '</div>' : '') +
+                '</div>' +
+                '<div class="venue-card-actions">' +
+                    (venue.address ? '<button type="button" class="secondary-button" onclick="window.open(\'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(venue.address) + '\',\'_blank\')">地図を開く</button>' : '') +
+                    '<button type="button" class="secondary-button" onclick="FCOjima.Hub.Venues.editVenue(\'' + venue.id + '\')">編集</button>' +
+                    '<button type="button" class="delete-button" onclick="FCOjima.Hub.Venues.deleteVenue(\'' + venue.id + '\')">削除</button>' +
+                '</div>';
+
+            listEl.appendChild(card);
+        });
+    };
+
+    // 後方互換性のため updateVenueList も用意
+    Venues.updateVenueList = Venues.renderVenueList;
+
+    /**
+     * 会場フィルタリング
+     */
+    Venues.filterVenues = function(searchText, typeFilter) {
+        var cards = document.querySelectorAll('.venue-card');
+        var text = (searchText || '').toLowerCase();
+        var type = typeFilter || 'all';
+
+        cards.forEach(function(card) {
+            var name = (card.dataset.venueName || '').toLowerCase();
+            var cardType = card.dataset.venueType || '';
+            var matchText = !text || name.includes(text);
+            var matchType = type === 'all' || cardType === type;
+            card.style.display = (matchText && matchType) ? '' : 'none';
         });
     };
 
     /**
-     * 会場選択モーダルを開く（削除用）
-     */
-    Venues.openVenueSelectForDelete = function() {
-        console.log('会場選択モーダル（削除用）を開きます...');
-        
-        const venues = FCOjima.Hub.venues;
-        
-        const selectList = document.createElement('div');
-        selectList.className = 'select-list';
-        
-        if (venues.length === 0) {
-            selectList.innerHTML = UI.createAlert('info', '登録されている会場はありません。');
-        } else {
-            // 会場名でソート
-            const sortedVenues = [...venues].sort((a, b) => 
-                a.name.localeCompare(b.name, 'ja')
-            );
-            
-            sortedVenues.forEach(venue => {
-                const item = document.createElement('div');
-                item.className = 'list-item';
-                item.textContent = venue.name;
-                
-                item.addEventListener('click', () => {
-                    if (UI.showConfirm(`本当に「${venue.name}」を削除しますか？`)) {
-                        this.deleteVenue(venue.id);
-                    }
-                    UI.closeModal('logs-modal');
-                });
-                
-                selectList.appendChild(item);
-            });
-        }
-        
-        // 既存のログコンテンツを置き換え
-        const logsContent = document.getElementById('logs-content');
-        logsContent.innerHTML = '';
-        logsContent.appendChild(document.createElement('h3')).textContent = '削除する会場を選択';
-        logsContent.appendChild(selectList);
-        
-        // モーダルを表示
-        UI.openModal('logs-modal');
-    };
-    
-    /**
      * 会場追加モーダルを開く
-     * @param {number} venueId - 会場ID（編集時のみ指定、新規追加時はnull）
      */
-    Venues.openAddVenueModal = function(venueId = null) {
-        const venues = FCOjima.Hub.venues;
-        
-        // モーダルのタイトル設定
-        const titleEl = document.querySelector('#venue-modal h2');
-        titleEl.textContent = venueId ? '会場を編集' : '会場を追加';
-        
-        // フォームをリセット
-        document.getElementById('venue-form').reset();
-        
-        // 編集の場合は既存データを設定
+    Venues.openAddVenueModal = function(venueId) {
+        var venues = app.Hub.venues || [];
+
+        var titleEl = document.querySelector('#venue-modal h2');
+        if (titleEl) titleEl.textContent = venueId ? '会場を編集' : '会場を追加';
+
+        var form = document.getElementById('venue-form');
+        if (form) form.reset();
+
         if (venueId) {
-            const venue = venues.find(v => v.id === venueId);
+            var venue = venues.find(function(v) { return String(v.id) === String(venueId); });
             if (venue) {
-                // フォームに会場IDを設定
-                document.getElementById('venue-form').setAttribute('data-venue-id', venue.id);
-                
+                form.setAttribute('data-venue-id', venue.id);
                 document.getElementById('venue-name').value = venue.name || '';
+                var typeEl = document.getElementById('venue-type');
+                if (typeEl) typeEl.value = venue.type || 'ground';
                 document.getElementById('venue-address').value = venue.address || '';
                 document.getElementById('venue-notes').value = venue.notes || '';
             }
+        } else {
+            if (form) form.removeAttribute('data-venue-id');
         }
-        
-        // モーダルを表示
+
         UI.openModal('venue-modal');
     };
-    
+
     /**
-     * 新規会場保存
-     * 問題1: HUB会場登録のログが表示されない - logsパラメータを明示的に渡す
+     * 会場を保存
      */
     Venues.saveVenue = function() {
-        const venues = FCOjima.Hub.venues;
-        const logs = FCOjima.Hub.logs; // ログを取得
-        
-        const name = document.getElementById('venue-name').value;
-        const address = document.getElementById('venue-address').value;
-        const notes = document.getElementById('venue-notes').value;
-        
-        // バリデーション
+        var venues = app.Hub.venues || [];
+        var logs = app.Hub.logs || [];
+
+        var name = document.getElementById('venue-name').value.trim();
+        var typeEl = document.getElementById('venue-type');
+        var type = typeEl ? typeEl.value : 'other';
+        var address = document.getElementById('venue-address').value.trim();
+        var notes = document.getElementById('venue-notes').value.trim();
+
         if (!name || !address) {
-            UI.showAlert('会場名と住所は必須です');
+            UI.showAlert('会場名と住所は必須です', 'warning');
             return;
         }
-        
-        // 新しい会場ID
-        const newId = venues.length > 0 ? Math.max(...venues.map(v => v.id)) + 1 : 1;
-        
-        // 既存会場の更新または新規会場の追加
-        const venueFormId = document.getElementById('venue-form').getAttribute('data-venue-id');
-        
+
+        var form = document.getElementById('venue-form');
+        var venueFormId = form ? form.getAttribute('data-venue-id') : null;
+
+        var user = (app.Auth && app.Auth.getDisplayName) ? app.Auth.getDisplayName() : 'システム';
+
         if (venueFormId) {
-            // 既存会場の更新
-            const index = venues.findIndex(v => v.id === parseInt(venueFormId));
+            var index = venues.findIndex(function(v) { return String(v.id) === String(venueFormId); });
             if (index !== -1) {
-                venues[index] = {
-                    id: parseInt(venueFormId),
-                    name,
-                    address,
-                    notes
-                };
-                
-                // ログに記録 - 修正: logs引数を明示的に渡す
-                FCOjima.Hub.logs = Storage.addLog('venues', '会場更新', `「${name}」`, logs);
-                console.log(`会場を更新しました: ${name}`);
+                venues[index] = { id: venues[index].id, name: name, type: type, address: address, notes: notes };
+                app.Hub.logs = Storage.addLog('venues', '会場更新', '「' + name + '」', logs);
             }
         } else {
-            // 新規会場を追加
-            venues.push({
-                id: newId,
-                name,
-                address,
-                notes
-            });
-            
-            // ログに記録 - 修正: logs引数を明示的に渡す
-            FCOjima.Hub.logs = Storage.addLog('venues', '会場追加', `「${name}」`, logs);
-            console.log(`新しい会場を登録しました: ${name}`);
+            var newId = venues.length > 0 ? Math.max.apply(null, venues.map(function(v) { return parseInt(v.id) || 0; })) + 1 : 1;
+            venues.push({ id: newId, name: name, type: type, address: address, notes: notes });
+            app.Hub.venues = venues;
+            app.Hub.logs = Storage.addLog('venues', '会場追加', '「' + name + '」', logs);
         }
-        
-        // 会場を保存してUIを更新
+
         Storage.saveVenues(venues);
-        this.updateVenueList();
-        
-        // モーダルを閉じてフォームをリセット
+        this.renderVenueList();
+
         UI.closeModal('venue-modal');
-        document.getElementById('venue-form').reset();
-        document.getElementById('venue-form').removeAttribute('data-venue-id');
+        if (form) {
+            form.reset();
+            form.removeAttribute('data-venue-id');
+        }
+        UI.showAlert('会場を保存しました', 'success');
     };
-    
+
     /**
      * 会場編集
-     * @param {number} venueId - 会場ID
      */
     Venues.editVenue = function(venueId) {
         this.openAddVenueModal(venueId);
     };
-    
+
     /**
      * 会場削除
-     * 問題1: HUB会場登録のログが表示されない - logsパラメータを明示的に渡す
-     * @param {number} venueId - 会場ID
      */
     Venues.deleteVenue = function(venueId) {
-        const venues = FCOjima.Hub.venues;
-        const logs = FCOjima.Hub.logs; // ログを取得
-        
-        const venue = venues.find(v => v.id === venueId);
+        var venues = app.Hub.venues || [];
+        var venue = venues.find(function(v) { return String(v.id) === String(venueId); });
         if (!venue) return;
-        
-        if (UI.showConfirm(`会場「${venue.name}」を削除してもよろしいですか？`)) {
-            // 会場を削除
-            FCOjima.Hub.venues = venues.filter(v => v.id !== venueId);
-            
-            // ログに記録 - 修正: logs引数を明示的に渡す
-            FCOjima.Hub.logs = Storage.addLog('venues', '会場削除', `「${venue.name}」`, logs);
-            console.log(`会場を削除しました: ${venue.name}`);
-            
-            // 会場を保存してUIを更新
-            Storage.saveVenues(FCOjima.Hub.venues);
-            this.updateVenueList();
-        }
+
+        if (!UI.showConfirm('会場「' + venue.name + '」を削除してもよろしいですか？')) return;
+
+        var user = (app.Auth && app.Auth.getDisplayName) ? app.Auth.getDisplayName() : 'システム';
+        app.Hub.logs = Storage.addLog('venues', '会場削除', '「' + venue.name + '」', app.Hub.logs || []);
+
+        app.Hub.venues = venues.filter(function(v) { return String(v.id) !== String(venueId); });
+        Storage.saveVenues(app.Hub.venues);
+        this.renderVenueList();
+        UI.showAlert('会場を削除しました', 'success');
     };
-    
+
     /**
-     * 地図を表示
-     * @param {number} venueId - 会場ID
-     */
-    Venues.openMap = function(venueId) {
-        const venues = FCOjima.Hub.venues;
-        
-        const venue = venues.find(v => v.id === venueId);
-        if (!venue) return;
-        
-        // Google Mapsを開く
-        const address = encodeURIComponent(venue.address);
-        const mapUrl = `https://www.google.com/maps/search/?api=1&query=${address}`;
-        Utils.openNewTab(mapUrl);
-    };
-    
-    /**
-     * 会場選択モーダルを開く
-     * @param {string} target - 設定先（'venue'または'meeting'）
+     * 会場選択モーダルを開く（イベント作成時）
+     * @param {string} target - 'venue' または 'meeting'
      */
     Venues.openVenueSelect = function(target) {
-        const venues = FCOjima.Hub.venues;
-        
-        const selectList = document.getElementById('venue-select-list');
+        var venues = app.Hub.venues || [];
+        var selectList = document.getElementById('venue-select-list');
+        if (!selectList) return;
+
         selectList.innerHTML = '';
-        
+
         if (venues.length === 0) {
             selectList.innerHTML = UI.createAlert('info', '登録されている会場はありません。');
         } else {
-            // 会場名でソート
-            const sortedVenues = [...venues].sort((a, b) => 
-                a.name.localeCompare(b.name, 'ja')
-            );
-            
-            sortedVenues.forEach(venue => {
-                const item = document.createElement('div');
+            var sorted = venues.slice().sort(function(a, b) { return (a.name || '').localeCompare(b.name || '', 'ja'); });
+
+            sorted.forEach(function(venue) {
+                var item = document.createElement('div');
                 item.className = 'list-item';
                 item.textContent = venue.name;
-                
+
                 item.addEventListener('click', function() {
-                    // ターゲットによって設定先を変える
                     if (target === 'venue') {
-                        document.getElementById('event-venue').value = venue.name;
+                        var el = document.getElementById('event-venue');
+                        if (el) el.value = venue.name;
                     } else if (target === 'meeting') {
-                        document.getElementById('event-meeting-place').value = venue.name;
+                        var el = document.getElementById('event-meeting-place');
+                        if (el) el.value = venue.name;
                     }
                     UI.closeModal('venue-select-modal');
                 });
-                
+
                 selectList.appendChild(item);
             });
         }
-        
+
         UI.openModal('venue-select-modal');
     };
-})();
+
+})(window.FCOjima);

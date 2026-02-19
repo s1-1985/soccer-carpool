@@ -211,7 +211,9 @@ FCOjima.Storage = FCOjima.Storage || {};
         
         const now = new Date();
         const datetime = now.toISOString();
-        const user = 'システム'; // ログイン機能実装までのダミーユーザー
+        const user = (window.FCOjima && window.FCOjima.Auth && window.FCOjima.Auth.getDisplayName)
+            ? window.FCOjima.Auth.getDisplayName()
+            : 'システム';
         
         // 各ログにユニークIDを付与
         const logId = Date.now().toString() + Math.floor(Math.random() * 1000);
