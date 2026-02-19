@@ -18,10 +18,11 @@ body {
 }
 
 header {
-    background-color: #3498db;
-    color: white;
+    background-color: #1C1600;
+    color: #E8A200;
     padding: 15px 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+    border-bottom: 3px solid #E8A200;
 }
 
 header h1 {
@@ -62,40 +63,9 @@ header h1 {
 }
 
 .main-nav a.active {
-    background-color: #3498db;
-    color: white;
-}
-
-/* タブスタイル */
-.tab {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    border-bottom: 2px solid #ddd;
-    margin-bottom: 20px;
-}
-
-.tablinks {
-    background-color: #f1f1f1;
-    color: #333;
-    border: none;
-    border-radius: 4px 4px 0 0;
-    padding: 10px 16px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.tablinks:hover {
-    background-color: #ddd;
-}
-
-.tablinks.active {
-    background-color: #3498db;
-    color: white;
-}
-
-.tabcontent {
-    display: none;
+    background-color: #E8A200;
+    color: #1C1600;
+    font-weight: 700;
 }
 
 /* ボタンスタイル */
@@ -104,13 +74,15 @@ button {
     border-radius: 4px;
     padding: 8px 16px;
     border: none;
-    background-color: #3498db;
-    color: white;
+    background-color: #E8A200;
+    color: #1C1600;
+    font-weight: 600;
     transition: background-color 0.2s;
 }
 
 button:hover {
-    background-color: #2980b9;
+    background-color: #CC8C00;
+    color: #1C1600;
 }
 
 button.secondary-button {
@@ -160,6 +132,18 @@ textarea {
     border: 1px solid #ddd;
     border-radius: 4px;
     box-sizing: border-box;
+    transition: border-color 0.2s;
+}
+
+input[type="text"]:focus,
+input[type="date"]:focus,
+input[type="time"]:focus,
+input[type="number"]:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: #E8A200;
+    box-shadow: 0 0 0 2px rgba(232, 162, 0, 0.2);
 }
 
 textarea {
@@ -192,7 +176,8 @@ th, td {
 }
 
 th {
-    background-color: #f2f2f2;
+    background-color: #1C1600;
+    color: #E8A200;
     font-weight: bold;
 }
 
@@ -263,7 +248,7 @@ tr:hover {
 .card h2, .card h3 {
     margin-top: 0;
     margin-bottom: 15px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 2px solid #E8A200;
     padding-bottom: 10px;
 }
 
@@ -312,7 +297,45 @@ tr:hover {
 }
 
 .list-item:hover {
-    background-color: #f0f7ff;
+    background-color: #FFF5D6;
+}
+
+/* タブスタイル */
+.tab {
+    overflow: hidden;
+    border-bottom: 3px solid #E8A200;
+    background-color: #1C1600;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.tablinks {
+    background-color: #1C1600;
+    color: #aaa;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 14px 20px;
+    font-size: 15px;
+    font-weight: 500;
+    border-radius: 0;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.tablinks:hover {
+    background-color: #2E2400;
+    color: #E8A200;
+}
+
+.tablinks.active {
+    background-color: #E8A200;
+    color: #1C1600;
+    font-weight: 700;
+}
+
+.tabcontent {
+    display: none;
+    padding: 20px 0;
 }
 
 /* グローバルナビゲーション */
@@ -321,9 +344,10 @@ tr:hover {
     bottom: 0;
     left: 0;
     width: 100%;
-    background-color: #f8f9fa;
+    background-color: #1C1600;
+    border-top: 3px solid #E8A200;
     padding: 10px 20px;
-    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 -3px 8px rgba(0, 0, 0, 0.4);
     display: flex;
     justify-content: space-between;
     z-index: 100;
@@ -336,8 +360,8 @@ tr:hover {
     font-size: 12px;
     font-weight: 700;
     border-radius: 10px;
-    background-color: #3498db;
-    color: white;
+    background-color: #E8A200;
+    color: #1C1600;
 }
 
 /* 読み込み中表示 */

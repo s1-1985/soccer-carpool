@@ -6,7 +6,7 @@
     border-radius: 8px;
     padding: 12px 15px;
     margin-bottom: 20px;
-    border-left: 4px solid #3498db;
+    border-left: 4px solid #E8A200;
     font-weight: 500;
 }
 
@@ -71,8 +71,9 @@
 }
 
 .carpool-nav a.active {
-    background-color: #3498db;
-    color: white;
+    background-color: #E8A200;
+    color: #1C1600;
+    font-weight: 700;
 }
 
 /* フォームセクション */
@@ -122,9 +123,10 @@
     bottom: 0;
     left: 0;
     width: 100%;
-    background-color: #f8f9fa;
+    background-color: #1C1600;
+    border-top: 3px solid #E8A200;
     padding: 10px 20px;
-    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 -3px 8px rgba(0, 0, 0, 0.4);
     display: flex;
     justify-content: space-between;
     z-index: 100;
