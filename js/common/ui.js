@@ -379,8 +379,8 @@ FCOjima.UI = FCOjima.UI || {};
      * @param {string} tabId
      */
     UI.openTab = function(evt, tabId) {
-        // すべてのタブコンテンツを非表示
-        document.querySelectorAll('.tab-content').forEach(function(c) {
+        // すべてのタブコンテンツを非表示（tabcontent / tab-content 両対応）
+        document.querySelectorAll('.tabcontent, .tab-content').forEach(function(c) {
             c.style.display = 'none';
             c.classList.remove('active');
         });
