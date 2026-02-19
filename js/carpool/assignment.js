@@ -164,7 +164,9 @@
             app.Carpool.saveData();
             
             // UIを更新
-            app.Carpool.CarProvision.updateCarRegistrations();
+            if (app.Carpool.CarProvision && app.Carpool.CarProvision.updateCarRegistrations) {
+                app.Carpool.CarProvision.updateCarRegistrations();
+            }
             this.updateAssignments();
             
             console.log(`ドライバーを更新しました: ${newDriver}`);
@@ -463,16 +465,20 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
      */
     Assignment.init = function() {
         console.log('割り当て機能を初期化しています...');
-        
+
+        // メンバーとイベントデータをロード
+        app.Carpool.loadMembers();
+        app.Carpool.loadData();
+
         // イベント情報を表示
         this.updateEventInfo();
-        
+
         // 割り当て一覧を更新
         this.updateAssignments();
-        
+
         // イベントリスナーの設定
         this.setupEventListeners();
-        
+
         console.log('割り当て機能の初期化が完了しました');
     };
     
@@ -532,7 +538,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     Assignment.updateEventInfo = function() {
         console.log('イベント情報を表示します...');
         
-        const eventInfo = document.getElementById('assignmentEventInfo');
+        const eventInfo = document.getElementById('assignment-event-info');
         if (!eventInfo) {
             console.log('イベント情報表示領域が見つかりません');
             return;
