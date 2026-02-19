@@ -48,7 +48,7 @@
 .car-header {
     font-weight: bold;
     font-size: 18px;
-    color: #3498db;
+    color: #E8A200;
     margin-bottom: 10px;
     padding-bottom: 5px;
     border-bottom: 1px solid #eee;
@@ -130,8 +130,8 @@
 }
 
 .seat.filled {
-    background-color: #d1ecf1;
-    border-color: #bee5eb;
+    background-color: #FFF5D6;
+    border-color: #E8A200;
 }
 
 .seat.dragover {
@@ -150,7 +150,7 @@
 .member-icon {
     width: 40px;
     height: 40px;
-    background-color: #3498db;
+    background-color: #E8A200;
     color: white;
     border-radius: 50%;
     display: flex;
@@ -252,11 +252,11 @@
 
 /* 保存ボタン */
 .save-button {
-    background-color: #007bff;
+    background-color: #E8A200;
 }
 
 .save-button:hover {
-    background-color: #0069d9;
+    background-color: #CC8C00;
 }
 
 /* 空車両メッセージ */
@@ -275,7 +275,7 @@
 }
 
 .member-item.player .member-icon {
-    background-color: #007bff;
+    background-color: #E8A200;
 }
 
 .member-item.parent .member-icon {

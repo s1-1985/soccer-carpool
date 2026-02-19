@@ -58,8 +58,8 @@
 }
 
 .today {
-    background-color: #e8f4ff;
-    border: 1px solid #2196F3;
+    background-color: #FFF5D6;
+    border: 2px solid #E8A200;
 }
 
 .sunday .date {
@@ -67,7 +67,7 @@
 }
 
 .saturday .date {
-    color: #3498db;
+    color: #CC8C00;
 }
 
 /* イベント表示 */

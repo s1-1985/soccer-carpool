@@ -12,11 +12,11 @@
     padding: 15px;
     margin-bottom: 15px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    border-left: 4px solid #3498db;
+    border-left: 4px solid #E8A200;
 }
 
 .notification-card.info {
-    border-left-color: #3498db;
+    border-left-color: #E8A200;
 }
 
 .notification-card.success {
@@ -179,7 +179,7 @@
 }
 
 .notification-filter-item.active {
-    background-color: #3498db;
+    background-color: #E8A200;
     color: white;
 }
 
