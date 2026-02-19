@@ -66,6 +66,38 @@ header h1 {
     color: white;
 }
 
+/* タブスタイル */
+.tab {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    border-bottom: 2px solid #ddd;
+    margin-bottom: 20px;
+}
+
+.tablinks {
+    background-color: #f1f1f1;
+    color: #333;
+    border: none;
+    border-radius: 4px 4px 0 0;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.tablinks:hover {
+    background-color: #ddd;
+}
+
+.tablinks.active {
+    background-color: #3498db;
+    color: white;
+}
+
+.tabcontent {
+    display: none;
+}
+
 /* ボタンスタイル */
 button {
     cursor: pointer;
