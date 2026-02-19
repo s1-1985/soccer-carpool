@@ -1,267 +1,162 @@
 /**
- * FC尾島ジュニア - 連絡事項管理
- * 連絡事項の管理に関する機能を提供
+ * FC尾島ジュニア - 連絡事項管理（Hub.Notifications）
+ * カテゴリなし・ログ付き版
  */
 
-// 名前空間の確保
 window.FCOjima = window.FCOjima || {};
-FCOjima.Notifications = FCOjima.Notifications || {};
+FCOjima.Hub = FCOjima.Hub || {};
+FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
 
-// 連絡事項管理モジュール
-(function() {
-    // 名前空間のショートカット
-    const Notifications = FCOjima.Notifications;
-    const UI = FCOjima.UI;
-    const Utils = FCOjima.Utils;
-    const Storage = FCOjima.Storage;
-    
-    /**
-     * 連絡事項の初期化
-     */
+(function(app) {
+    var Notifications = app.Hub.Notifications;
+    var UI = app.UI;
+    var Storage = app.Storage;
+
     Notifications.init = function() {
         console.log('連絡事項機能を初期化しています...');
-        
-        // イベントリスナーの設定
         this.setupEventListeners();
-        
-        // 連絡事項の表示
         this.renderNotifications();
-        
         console.log('連絡事項機能の初期化が完了しました');
     };
-    
-    /**
-     * イベントリスナーの設定
-     */
+
     Notifications.setupEventListeners = function() {
-        console.log('連絡事項のイベントリスナーを設定します...');
-        
-        // 連絡事項フィルターのイベントリスナー
-        const filterItems = document.querySelectorAll('.notification-filter-item');
-        if (filterItems.length > 0) {
-            filterItems.forEach(item => {
-                item.addEventListener('click', () => {
-                    // すべてのフィルターからactiveを削除
-                    filterItems.forEach(i => i.classList.remove('active'));
-                    // クリックされたフィルターにactiveを追加
-                    item.classList.add('active');
-                    // フィルタリング
-                    this.filterNotifications(item.dataset.filter);
-                });
+        // 送信ボタン
+        var sendBtn = document.getElementById('send-notification');
+        if (sendBtn) {
+            sendBtn.addEventListener('click', function() {
+                Notifications.sendNotification();
             });
         }
-        
-        console.log('連絡事項のイベントリスナー設定が完了しました');
+
+        // ログ表示ボタン
+        var logsBtn = document.getElementById('notifications-logs');
+        if (logsBtn) {
+            logsBtn.addEventListener('click', function() {
+                app.Hub.openLogsModal('notifications');
+            });
+        }
     };
-    
-    /**
-     * 連絡事項の表示
-     * 問題14: HUBの連絡事項表示機能の修正
-     */
+
     Notifications.renderNotifications = function() {
-        console.log('連絡事項を表示します...');
-        
-        const notificationsList = document.getElementById('notificationsList');
-        if (!notificationsList) {
-            console.log('連絡事項リスト要素が見つかりません');
+        var listEl = document.getElementById('notificationsList');
+        if (!listEl) return;
+
+        var notifications = app.Hub.notifications || [];
+
+        if (notifications.length === 0) {
+            listEl.innerHTML = UI.createAlert('info', '連絡事項はありません。');
             return;
         }
-        
-        if (FCOjima.notifications.length === 0) {
-            notificationsList.innerHTML = UI.createAlert('info', '連絡事項はありません。');
-            console.log('連絡事項がありません');
-            return;
-        }
-        
-        notificationsList.innerHTML = '';
-        
-        // 日付の新しい順に表示
-        const sortedNotifications = [...FCOjima.notifications].sort((a, b) => {
-            // 日付文字列からDateオブジェクトを作成して比較
+
+        listEl.innerHTML = '';
+        var sorted = notifications.slice().sort(function(a, b) {
             return new Date(b.date) - new Date(a.date);
         });
-        
-        sortedNotifications.forEach((notification, index) => {
-            const notificationDiv = document.createElement('div');
-            notificationDiv.className = `notification-card ${notification.type || 'info'}`;
-            
-            // 投稿者と日時を表示
-            const notificationHeader = document.createElement('div');
-            notificationHeader.className = 'notification-header';
-            notificationHeader.innerHTML = `
-                <div class="notification-date">${notification.date}</div>
-                <div class="notification-author">${notification.user ? UI.escapeHTML(notification.user) : ''}</div>
-            `;
-            
-            // 内容を表示
-            const notificationContent = document.createElement('div');
-            notificationContent.className = 'notification-content';
-            notificationContent.innerHTML = UI.escapeHTML(notification.text).replace(/\n/g, '<br>');
-            
-            // アクションボタンを表示
-            const actionButtons = document.createElement('div');
-            actionButtons.className = 'notification-actions';
-            actionButtons.innerHTML = `
-                <button type="button" class="secondary-button share-notification" data-index="${index}">共有</button>
-                <button type="button" class="delete-button delete-notification" data-index="${index}">削除</button>
-            `;
-            
-            notificationDiv.appendChild(notificationHeader);
-            notificationDiv.appendChild(notificationContent);
-            notificationDiv.appendChild(actionButtons);
-            notificationsList.appendChild(notificationDiv);
+
+        sorted.forEach(function(n, i) {
+            var div = document.createElement('div');
+            div.className = 'notification-card';
+
+            var dateStr = n.date || '';
+            var userStr = n.user ? UI.escapeHTML(n.user) : '';
+            var textStr = UI.escapeHTML(n.text || '').replace(/\n/g, '<br>');
+
+            div.innerHTML =
+                '<div class="notification-header">' +
+                    '<div class="notification-date">' + dateStr + '</div>' +
+                    '<div class="notification-author">' + userStr + '</div>' +
+                '</div>' +
+                '<div class="notification-content">' + textStr + '</div>' +
+                '<div class="notification-actions">' +
+                    '<button type="button" class="secondary-button" data-action="share" data-index="' + i + '">LINEで共有</button>' +
+                    '<button type="button" class="delete-button" data-action="delete" data-index="' + i + '">削除</button>' +
+                '</div>';
+
+            listEl.appendChild(div);
         });
-        
-        // ボタンにイベントリスナーを設定
-        const shareButtons = notificationsList.querySelectorAll('.share-notification');
-        const deleteButtons = notificationsList.querySelectorAll('.delete-notification');
-        
-        shareButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                this.shareNotification(parseInt(button.dataset.index));
+
+        listEl.querySelectorAll('button[data-action]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var action = this.dataset.action;
+                var index = parseInt(this.dataset.index);
+                if (action === 'share') {
+                    Notifications.shareNotification(index);
+                } else if (action === 'delete') {
+                    Notifications.deleteNotification(index);
+                }
             });
-        });
-        
-        deleteButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                this.deleteNotification(parseInt(button.dataset.index));
-            });
-        });
-        
-        console.log('連絡事項の表示が完了しました');
-    };
-    
-    /**
-     * 連絡事項のフィルタリング
-     * @param {string} filter - フィルターの種類（'all', 'important', 'event', 'schedule'）
-     */
-    Notifications.filterNotifications = function(filter) {
-        console.log(`連絡事項をフィルタリングします: ${filter}`);
-        
-        const cards = document.querySelectorAll('.notification-card');
-        
-        // すべて表示
-        if (filter === 'all') {
-            cards.forEach(card => {
-                card.style.display = 'block';
-            });
-            return;
-        }
-        
-        // フィルターに一致するものだけ表示
-        cards.forEach(card => {
-            if (card.classList.contains(filter)) {
-                card.style.display = 'block';
-            } else {
-                card.style.display = 'none';
-            }
         });
     };
-    
-    /**
-     * 連絡事項の送信
-     * 問題14: HUBの連絡事項機能の修正
-     */
+
     Notifications.sendNotification = function() {
-        console.log('連絡事項を送信します...');
-        
-        const text = document.getElementById('notificationText').value;
-        const category = document.getElementById('notification-category') ? 
-                        document.getElementById('notification-category').value : 'info';
-        
+        var textEl = document.getElementById('notificationText');
+        var text = textEl ? textEl.value.trim() : '';
+
         if (!text) {
-            UI.showAlert('連絡内容を入力してください');
-            console.log('連絡内容が未入力です');
+            UI.showAlert('連絡内容を入力してください', 'warning');
             return;
         }
-        
-        // 現在日時
-        const now = new Date();
-        const formattedDate = now.toLocaleDateString('ja-JP', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-        });
-        const formattedTime = now.toLocaleTimeString('ja-JP', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-        
-        // 新しい通知を追加
-        FCOjima.notifications.unshift({
-            date: `${formattedDate} ${formattedTime}`,
-            text: text,
-            type: category,
-            user: 'システム' // ログイン機能実装までのダミーユーザー
-        });
-        
-        // 保存とUI更新
-        Storage.saveNotifications(FCOjima.notifications);
+
+        var now = new Date();
+        var dateStr = now.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }) +
+                      ' ' + now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+
+        var user = (app.Auth && app.Auth.getDisplayName) ? app.Auth.getDisplayName() : 'システム';
+
+        var newItem = { date: dateStr, text: text, user: user };
+
+        app.Hub.notifications = app.Hub.notifications || [];
+        app.Hub.notifications.unshift(newItem);
+
+        // ログ記録
+        app.Hub.logs = Storage.addLog('notifications', '連絡事項追加', '「' + text.substring(0, 30) + '」', app.Hub.logs);
+
+        Storage.saveNotifications(app.Hub.notifications);
         this.renderNotifications();
-        
-        // フォームリセット
-        document.getElementById('notificationText').value = '';
-        
-        UI.showAlert('連絡事項を送信しました');
-        console.log('連絡事項を送信しました');
+
+        if (textEl) textEl.value = '';
+        UI.showAlert('連絡事項を送信しました', 'success');
     };
-    
-    /**
-     * 連絡事項の共有
-     * @param {number} index - 連絡事項のインデックス
-     */
+
     Notifications.shareNotification = function(index) {
-        console.log(`連絡事項を共有します: インデックス=${index}`);
-        
-        const notification = FCOjima.notifications[index];
-        if (!notification) {
-            console.log('指定された連絡事項が見つかりません');
-            return;
+        var notifications = app.Hub.notifications || [];
+        var n = notifications[index];
+        if (!n) return;
+
+        var url = window.location.origin + '/hub/index.html';
+        var message = '【FC 尾島ジュニア 連絡事項】\n' + (n.date || '') + '\n\n' + (n.text || '') + '\n\n' + url;
+
+        var copied = false;
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(message).then(function() {
+                UI.showAlert('クリップボードにコピーしました', 'success');
+            });
+            copied = true;
         }
-        
-        // 共有メッセージを生成
-        let message = '【連絡事項】\n';
-        message += `${notification.date}\n\n`;
-        message += notification.text;
-        
-        // テキストをクリップボードにコピー
-        if (Utils.copyToClipboard(message)) {
-            UI.showAlert('連絡事項をクリップボードにコピーしました。LINEなどに貼り付けて共有できます。');
-            
-            // LINEでの共有（モバイルのみ）
-            if (Utils.shareViaLINE(message)) {
-                UI.showAlert('LINEでの共有を開始しました');
-            }
-        } else {
-            UI.showAlert('クリップボードへのコピーに失敗しました');
+
+        var lineUrl = 'https://line.me/R/msg/text/?' + encodeURIComponent(message);
+        if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+            window.location.href = lineUrl;
+        } else if (!copied) {
+            UI.showAlert('共有テキストを準備しました。LINEなどに貼り付けてください。', 'info');
         }
-        
-        console.log('連絡事項の共有が完了しました');
     };
-    
-    /**
-     * 連絡事項の削除
-     * @param {number} index - 連絡事項のインデックス
-     */
+
     Notifications.deleteNotification = function(index) {
-        console.log(`連絡事項を削除します: インデックス=${index}`);
-        
-        const notification = FCOjima.notifications[index];
-        if (!notification) {
-            console.log('指定された連絡事項が見つかりません');
-            return;
-        }
-        
-        if (UI.showConfirm('この連絡事項を削除してもよろしいですか？')) {
-            FCOjima.notifications.splice(index, 1);
-            
-            // 保存とUI更新
-            Storage.saveNotifications(FCOjima.notifications);
-            this.renderNotifications();
-            
-            console.log('連絡事項を削除しました');
-        } else {
-            console.log('連絡事項の削除がキャンセルされました');
-        }
+        var notifications = app.Hub.notifications || [];
+        var n = notifications[index];
+        if (!n) return;
+
+        if (!UI.showConfirm('この連絡事項を削除してもよろしいですか？')) return;
+
+        var user = (app.Auth && app.Auth.getDisplayName) ? app.Auth.getDisplayName() : 'システム';
+        app.Hub.logs = Storage.addLog('notifications', '連絡事項削除', '「' + (n.text || '').substring(0, 30) + '」', app.Hub.logs);
+
+        notifications.splice(index, 1);
+        app.Hub.notifications = notifications;
+        Storage.saveNotifications(notifications);
+        this.renderNotifications();
+        UI.showAlert('連絡事項を削除しました', 'success');
     };
-})();
+
+})(window.FCOjima);

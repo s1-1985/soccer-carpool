@@ -96,22 +96,54 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             app.Hub.Venues.openVenueSelect('meeting');
         });
         
+        // キャンセルボタン（イベント追加モーダル）
+        var cancelEventBtn = document.getElementById('cancel-event');
+        if (cancelEventBtn) {
+            cancelEventBtn.addEventListener('click', function() {
+                UI.closeModal('event-modal');
+            });
+        }
+
+        // 学年外選手追加ボタン
+        var addExtraPlayersBtn = document.getElementById('add-extra-players');
+        if (addExtraPlayersBtn) {
+            addExtraPlayersBtn.addEventListener('click', function() {
+                Calendar.openExtraPlayerModal();
+            });
+        }
+
+        // 学年外選手確定ボタン
+        var confirmExtraBtn = document.getElementById('confirm-extra-players');
+        if (confirmExtraBtn) {
+            confirmExtraBtn.addEventListener('click', function() {
+                Calendar.confirmExtraPlayers();
+            });
+        }
+
+        // 学年外選手キャンセルボタン
+        var cancelExtraBtn = document.getElementById('cancel-extra-players');
+        if (cancelExtraBtn) {
+            cancelExtraBtn.addEventListener('click', function() {
+                UI.closeModal('extra-player-modal');
+            });
+        }
+
         // イベント詳細モーダルのボタン
         document.getElementById('manage-event').addEventListener('click', function() {
             const eventId = this.getAttribute('data-event-id');
             Calendar.navigateToCarpool(eventId);
         });
-        
+
         document.getElementById('edit-event').addEventListener('click', function() {
             const eventId = this.getAttribute('data-event-id');
             Calendar.editEvent(eventId);
         });
-        
+
         document.getElementById('delete-event').addEventListener('click', function() {
             const eventId = this.getAttribute('data-event-id');
             Calendar.deleteEvent(eventId);
         });
-        
+
         console.log('カレンダーのイベントリスナー設定が完了しました');
     };
     
@@ -362,8 +394,11 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
      */
     Calendar.showEventDetails = function(eventId) {
         const events = app.Hub.events;
-        const event = events.find(e => e.id === parseInt(eventId));
-        if (!event) return;
+        const event = events.find(e => String(e.id) === String(eventId));
+        if (!event) {
+            console.warn('イベントが見つかりません: id=' + eventId, events.map(e=>e.id));
+            return;
+        }
         
         const content = document.getElementById('event-details-content');
         
@@ -420,6 +455,49 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             </div>`;
         }
         
+        // 出欠一覧（イベントの対象学年メンバー）
+        let attendanceDisplay = '';
+        const members = app.Hub.members || [];
+        const targetGradeValues = event.target || [];
+        const extraPlayers = event.extraPlayers || [];
+        let targetMembers = [];
+        if (targetGradeValues.length > 0) {
+            targetMembers = members.filter(m => m.role === 'player' && targetGradeValues.includes(m.grade));
+        }
+        // 学年外追加選手
+        extraPlayers.forEach(name => {
+            if (!targetMembers.find(m => m.name === name)) {
+                const m = members.find(m => m.name === name);
+                if (m) targetMembers.push(m);
+            }
+        });
+        if (targetMembers.length > 0) {
+            const eventData = Storage.loadEventData(event.id);
+            const attendance = eventData.attendance || [];
+            const statusMap = {};
+            attendance.forEach(a => { statusMap[a.name] = a.status; });
+
+            const rows = targetMembers.map(m => {
+                const st = statusMap[m.name] || 'pending';
+                const label = st === 'present' ? '○' : st === 'absent' ? '×' : '－';
+                const cls = st === 'present' ? 'color:green' : st === 'absent' ? 'color:red' : 'color:#999';
+                return `<span style="margin-right:12px;"><b style="${cls}">${label}</b> ${UI.escapeHTML(m.name)}</span>`;
+            }).join('');
+
+            attendanceDisplay = `<div class="detail-item"><span class="detail-label">出欠確認:</span><br><div style="margin-top:4px;line-height:2;">${rows}</div></div>`;
+        }
+
+        // イベントログ
+        const allLogs = app.Hub.logs || [];
+        const eventLogs = allLogs.filter(l => l.type === 'calendar' && l.details && l.details.includes(UI.escapeHTML(event.title).substring(0, 10)));
+        let eventLogDisplay = '';
+        if (eventLogs.length > 0) {
+            const logRows = eventLogs.slice(-5).map(l =>
+                `<div style="font-size:0.85em;border-bottom:1px solid #eee;padding:2px 0;">${l.datetime ? l.datetime.substring(0,16).replace('T',' ') : ''} [${UI.escapeHTML(l.user||'')}] ${UI.escapeHTML(l.action||'')} ${UI.escapeHTML(l.details||'')}</div>`
+            ).join('');
+            eventLogDisplay = `<div class="detail-item" style="margin-top:8px;"><span class="detail-label">ログ（直近5件）:</span><div>${logRows}</div></div>`;
+        }
+
         content.innerHTML = `
             <h3>${UI.escapeHTML(event.title)}</h3>
             <div class="detail-item">
@@ -444,6 +522,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 ${UI.escapeHTML(event.notes)}
             </div>
             ` : ''}
+            ${attendanceDisplay}
+            ${eventLogDisplay}
         `;
         
         // ボタンにイベントIDを設定
@@ -599,17 +679,23 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         
         // 新しいイベントを追加または既存イベントを更新
         const eventFormId = document.getElementById('event-form').getAttribute('data-event-id');
-        
+
+        // 追加選手
+        const extraPlayersVal = document.getElementById('event-extra-players');
+        const extraPlayers = extraPlayersVal && extraPlayersVal.value ? extraPlayersVal.value.split(',').filter(Boolean) : [];
+
         if (eventFormId) {
             // 既存イベントの更新
-            const index = events.findIndex(e => e.id === parseInt(eventFormId));
+            const index = events.findIndex(e => String(e.id) === String(eventFormId));
             if (index !== -1) {
+                const origId = events[index].id;
                 events[index] = {
-                    id: parseInt(eventFormId),
+                    id: origId,
                     date,
                     type,
                     title,
                     target,
+                    extraPlayers,
                     targetNotes,
                     attendanceDeadline,
                     departureTime,
@@ -631,6 +717,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 type,
                 title,
                 target,
+                extraPlayers,
                 targetNotes,
                 attendanceDeadline,
                 departureTime,
@@ -654,6 +741,11 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         UI.closeModal('event-modal');
         document.getElementById('event-form').reset();
         document.getElementById('event-form').removeAttribute('data-event-id');
+        var extraInput = document.getElementById('event-extra-players');
+        if (extraInput) extraInput.value = '';
+        var extraListEl = document.getElementById('extra-players-list');
+        if (extraListEl) { extraListEl.innerHTML = ''; extraListEl.style.display = 'none'; }
+        UI.showAlert('イベントを保存しました', 'success');
     };
     
     /**
@@ -662,7 +754,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
      */
     Calendar.editEvent = function(eventId) {
         const events = app.Hub.events;
-        const event = events.find(e => e.id === parseInt(eventId));
+        const event = events.find(e => String(e.id) === String(eventId));
         if (!event) return;
         
         // モーダルのタイトル設定
@@ -722,13 +814,13 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
     Calendar.deleteEvent = function(eventId) {
         const events = app.Hub.events;
         const logs = app.Hub.logs;
-        
-        const event = events.find(e => e.id === parseInt(eventId));
+
+        const event = events.find(e => String(e.id) === String(eventId));
         if (!event) return;
-        
+
         if (UI.showConfirm(`イベント「${event.title}」を削除してもよろしいですか？`)) {
             // イベントを削除
-            app.Hub.events = events.filter(e => e.id !== parseInt(eventId));
+            app.Hub.events = events.filter(e => String(e.id) !== String(eventId));
             
             // ログに記録
             app.Hub.logs = Storage.addLog('calendar', 'イベント削除', `「${event.title}」（${event.date}）`, logs);
@@ -749,14 +841,74 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
      */
     Calendar.navigateToCarpool = function(eventId) {
         const events = app.Hub.events;
-        
+
         // イベント情報をセッションストレージに保存
-        const event = events.find(e => e.id === parseInt(eventId));
+        const event = events.find(e => String(e.id) === String(eventId));
         if (event) {
             Storage.setSelectedEvent(event);
             // 配車管理ページに移動
             window.location.href = '../carpool/index.html';
         }
     };
-    
+
+    /**
+     * 学年外選手追加モーダルを開く
+     */
+    Calendar.openExtraPlayerModal = function() {
+        var members = app.Hub.members || [];
+        var checkedGrades = Array.from(document.querySelectorAll('input[name="event-target"]:checked')).map(cb => cb.value);
+
+        // 指定学年外の選手を抽出
+        var extraCandidates = members.filter(function(m) {
+            return m.role === 'player' && (!checkedGrades.length || !checkedGrades.includes(m.grade));
+        });
+
+        // 現在選択中の追加選手
+        var currentExtra = (document.getElementById('event-extra-players').value || '').split(',').filter(Boolean);
+
+        var listEl = document.getElementById('extra-player-list');
+        listEl.innerHTML = '';
+
+        if (extraCandidates.length === 0) {
+            listEl.innerHTML = '<p style="padding:10px;color:#999;">対象外の選手はいません。</p>';
+        } else {
+            extraCandidates.forEach(function(m) {
+                var item = document.createElement('label');
+                item.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px;border-bottom:1px solid #eee;cursor:pointer;';
+
+                var cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.value = m.name;
+                cb.checked = currentExtra.includes(m.name);
+
+                var gradeLabel = Utils.getGradeLabel(m.grade || '');
+                item.appendChild(cb);
+                item.appendChild(document.createTextNode(m.name + (gradeLabel ? ' (' + gradeLabel + ')' : '')));
+                listEl.appendChild(item);
+            });
+        }
+
+        UI.openModal('extra-player-modal');
+    };
+
+    /**
+     * 学年外選手選択を確定
+     */
+    Calendar.confirmExtraPlayers = function() {
+        var checked = Array.from(document.querySelectorAll('#extra-player-list input[type=checkbox]:checked')).map(cb => cb.value);
+
+        document.getElementById('event-extra-players').value = checked.join(',');
+
+        var listEl = document.getElementById('extra-players-list');
+        if (checked.length > 0) {
+            listEl.innerHTML = '<b>追加選手: </b>' + checked.map(name => '<span style="background:#fff3cd;padding:2px 6px;border-radius:4px;margin:2px;">' + UI.escapeHTML(name) + '</span>').join('');
+            listEl.style.display = 'block';
+        } else {
+            listEl.innerHTML = '';
+            listEl.style.display = 'none';
+        }
+
+        UI.closeModal('extra-player-modal');
+    };
+
 })(window.FCOjima);

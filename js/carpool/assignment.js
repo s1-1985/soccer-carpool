@@ -1,4 +1,17 @@
 /**
+ * FC尾島ジュニア - 座席割り振り補助関数
+ * ※ このブロックは下部の Assignment IIFE と同じオブジェクトを操作する
+ */
+FCOjima.Carpool = FCOjima.Carpool || {};
+FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
+
+(function(app) {
+    var Assignment = app.Carpool.Assignment;
+    var UI = app.UI;
+    var Utils = app.Utils;
+    var Storage = app.Storage;
+
+    /**
      * 座席をクリア
      * @param {HTMLElement} seat - 座席要素
      */
@@ -28,27 +41,76 @@
      */
     Assignment.openSeatEditModal = function(seat) {
         console.log('座席編集モーダルを開きます...');
-        
+
         const seatEditModal = document.getElementById('seat-edit-modal');
-        if (!seatEditModal) {
-            console.log('座席編集モーダルが見つかりません');
-            return;
-        }
-        
-        // 現在選択されている座席の情報を保存
+        if (!seatEditModal) return;
+
         const seatEditForm = document.getElementById('seat-edit-form');
         seatEditForm.dataset.carIndex = seat.dataset.carIndex;
         seatEditForm.dataset.seatType = seat.dataset.seatType;
         seatEditForm.dataset.seatIndex = seat.dataset.seatIndex;
-        
-        // 現在の乗車メンバーを表示
-        const seatPerson = document.getElementById('seat-person');
-        seatPerson.value = seat.dataset.person || '';
-        
-        // モーダルを表示
+
+        // 現在の配置状況を表示
+        const currentInfo = document.getElementById('seat-current-info');
+        const currentPerson = seat.dataset.person;
+        if (currentInfo) {
+            currentInfo.textContent = currentPerson
+                ? '現在: ' + currentPerson + '（別の名前をタップで変更）'
+                : '空席 — 配置するメンバーをタップしてください';
+        }
+
+        // メンバーリストを生成（全メンバー + 荷物、割り当て済みを除く）
+        const memberList = document.getElementById('seat-member-list');
+        if (memberList) {
+            memberList.innerHTML = '';
+
+            const members = app.Carpool.members || [];
+            const assignedPeople = [];
+            document.querySelectorAll('.seat.filled').forEach(function(s) {
+                if (s !== seat && s.dataset.person) assignedPeople.push(s.dataset.person);
+            });
+
+            const available = members.filter(function(m) {
+                return !assignedPeople.includes(m.name);
+            });
+            available.push({ id: 'luggage', name: '荷物', role: 'other' });
+
+            const roleOrder = { coach: 1, assist: 2, player: 3, father: 4, mother: 4, other: 5 };
+            available.sort(function(a, b) {
+                return (roleOrder[a.role] || 5) - (roleOrder[b.role] || 5);
+            });
+
+            if (available.length === 0) {
+                memberList.innerHTML = '<p style="padding:10px;color:#999;">配置できるメンバーがいません</p>';
+            } else {
+                available.forEach(function(member) {
+                    var item = document.createElement('div');
+                    item.style.cssText = 'padding:10px 14px;border-bottom:1px solid #eee;cursor:pointer;display:flex;align-items:center;gap:10px;';
+                    if (currentPerson === member.name) item.style.background = '#fff3cd';
+
+                    var initials = document.createElement('span');
+                    initials.style.cssText = 'width:32px;height:32px;border-radius:50%;background:#E8A200;color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.85em;font-weight:bold;flex-shrink:0;';
+                    initials.textContent = (member.name || '').substring(0, 2);
+
+                    var nameSpan = document.createElement('span');
+                    nameSpan.textContent = member.name;
+
+                    item.appendChild(initials);
+                    item.appendChild(nameSpan);
+
+                    item.addEventListener('click', function() {
+                        Assignment.setSeatOccupant(seat, member.name);
+                        UI.closeModal('seat-edit-modal');
+                        Assignment.saveAssignments();
+                        Assignment.updateMembersList();
+                    });
+
+                    memberList.appendChild(item);
+                });
+            }
+        }
+
         UI.openModal('seat-edit-modal');
-        
-        console.log(`座席編集モーダルを開きました: 車両=${seat.dataset.carIndex}, 座席=${seat.dataset.seatType} ${parseInt(seat.dataset.seatIndex) + 1}`);
     };
     
     /**
@@ -430,13 +492,19 @@
             message += '配車割り当てが設定されていません。';
         }
         
+        // 出欠確認・割り当てページのURLを追加
+        var baseUrl = window.location.origin;
+        message += '\n\n▼ 出欠確認:\n' + baseUrl + '/carpool/attendance.html';
+        message += '\n▼ 座席割り当て:\n' + baseUrl + '/carpool/assignments.html';
+
         // テキストをクリップボードにコピー
         if (Utils.copyToClipboard(message)) {
             UI.showAlert('配車情報をクリップボードにコピーしました。LINEなどに貼り付けて共有できます。');
-            
+
             // LINEでの共有（モバイルのみ）
-            if (Utils.shareViaLINE(message)) {
-                UI.showAlert('LINEでの共有を開始しました');
+            if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+                var lineUrl = 'https://line.me/R/msg/text/?' + encodeURIComponent(message);
+                window.location.href = lineUrl;
             }
         } else {
             UI.showAlert('クリップボードへのコピーに失敗しました');
@@ -526,6 +594,14 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         if (clearSeatButton) {
             clearSeatButton.addEventListener('click', function() {
                 Assignment.clearSelectedSeat();
+            });
+        }
+
+        // キャンセルボタン
+        var cancelSeatBtn = document.getElementById('cancel-seat-edit');
+        if (cancelSeatBtn) {
+            cancelSeatBtn.addEventListener('click', function() {
+                UI.closeModal('seat-edit-modal');
             });
         }
         

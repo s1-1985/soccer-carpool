@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>座席割り当て - FC尾島ジュニア</title>
-    <link rel="stylesheet" href="../css/common.css?v=20260219">
-    <link rel="stylesheet" href="../css/carpool/common.css?v=20260219">
-    <link rel="stylesheet" href="../css/carpool/assignment.css?v=20260219">
+    <link rel="stylesheet" href="../css/common.css?v=20260219b">
+    <link rel="stylesheet" href="../css/carpool/common.css?v=20260219b">
+    <link rel="stylesheet" href="../css/carpool/assignment.css?v=20260219b">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -59,14 +59,14 @@
     <div id="seat-edit-modal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
-            <h2>座席の編集</h2>
+            <h2>座席に配置するメンバーを選択</h2>
+            <div id="seat-current-info" style="padding:8px;background:#f5f5f5;border-radius:4px;margin-bottom:10px;font-size:0.9em;"></div>
+            <div id="seat-member-list" style="max-height:300px;overflow-y:auto;border:1px solid #eee;border-radius:4px;">
+                <!-- メンバーリストがJSで動的に生成される -->
+            </div>
             <form id="seat-edit-form">
-                <div class="form-group">
-                    <label for="seat-person">乗車メンバー:</label>
-                    <input type="text" id="seat-person">
-                </div>
-                <div class="form-actions">
-                    <button type="submit">保存</button>
+                <input type="hidden" id="seat-person">
+                <div class="form-actions" style="margin-top:10px;">
                     <button type="button" id="cancel-seat-edit">キャンセル</button>
                     <button type="button" id="clear-seat" class="delete-button">座席をクリア</button>
                 </div>
@@ -84,19 +84,19 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script src="../js/common/firebase-config.js?v=20260219"></script>
+    <script src="../js/common/firebase-config.js?v=20260219b"></script>
 
     <!-- 共通モジュール -->
-    <script src="../js/common/global.js?v=20260219"></script>
-    <script src="../js/common/utils.js?v=20260219"></script>
-    <script src="../js/common/storage.js?v=20260219"></script>
-    <script src="../js/common/ui.js?v=20260219"></script>
-    <script src="../js/common/auth.js?v=20260219"></script>
-    <script src="../js/common/db.js?v=20260219"></script>
+    <script src="../js/common/global.js?v=20260219b"></script>
+    <script src="../js/common/utils.js?v=20260219b"></script>
+    <script src="../js/common/storage.js?v=20260219b"></script>
+    <script src="../js/common/ui.js?v=20260219b"></script>
+    <script src="../js/common/auth.js?v=20260219b"></script>
+    <script src="../js/common/db.js?v=20260219b"></script>
 
     <!-- 配車管理用モジュール -->
-    <script src="../js/carpool/overview.js?v=20260219"></script>
-    <script src="../js/carpool/assignment.js?v=20260219"></script>
+    <script src="../js/carpool/overview.js?v=20260219b"></script>
+    <script src="../js/carpool/assignment.js?v=20260219b"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', async function() {
