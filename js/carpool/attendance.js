@@ -13,9 +13,203 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
     // 名前空間のショートカット
     const Attendance = FCOjima.Carpool.Attendance;
     const UI = FCOjima.UI;
-    
+
     /**
-     * メンバー選択モーダルを開く（続き）
+     * 出欠確認機能の初期化
+     */
+    Attendance.init = function() {
+        console.log('出欠確認機能を初期化しています...');
+
+        // メンバーとイベントデータをロード
+        FCOjima.Carpool.loadMembers();
+        FCOjima.Carpool.loadData();
+
+        // イベント情報を表示
+        this.updateEventInfo();
+
+        // 出欠データが空なら対象学年の選手を自動追加
+        const event = FCOjima.Storage.getSelectedEvent();
+        if (event && FCOjima.Carpool.appData.attendance.length === 0) {
+            this.autoPopulateFromTargetGrades(event);
+        }
+
+        // テーブルと統計を更新
+        this.updateAttendance();
+        this.updateStats();
+
+        console.log('出欠確認機能の初期化が完了しました');
+    };
+
+    /**
+     * イベント情報を表示
+     */
+    Attendance.updateEventInfo = function() {
+        const event = FCOjima.Storage.getSelectedEvent();
+        const header = document.getElementById('event-header');
+        if (header && event) {
+            header.textContent = FCOjima.Utils.formatDateForDisplay(event.date) + ' ' + event.title;
+        }
+
+        const eventInfo = document.getElementById('attendance-event-info');
+        if (eventInfo && event) {
+            eventInfo.className = 'event-summary ' + (event.type || 'other');
+            eventInfo.innerHTML = '<strong>' + UI.escapeHTML(event.title) + '</strong>' +
+                ' (' + FCOjima.Utils.formatDateForDisplay(event.date) + ')';
+        } else if (eventInfo) {
+            eventInfo.innerHTML = UI.createAlert('info', 'イベントが選択されていません。');
+        }
+
+        const deadlineEl = document.getElementById('attendance-deadline');
+        if (deadlineEl) {
+            if (event && event.attendanceDeadline) {
+                const d = new Date(event.attendanceDeadline);
+                const expired = d < new Date();
+                deadlineEl.innerHTML = '<span class="deadline-icon">⏰</span> 出欠回答期限: ' +
+                    d.toLocaleString('ja-JP') + (expired ? ' <strong>（期限切れ）</strong>' : '');
+                deadlineEl.className = 'attendance-deadline' + (expired ? ' expired' : '');
+            } else {
+                deadlineEl.innerHTML = '';
+            }
+        }
+    };
+
+    /**
+     * 対象学年から出欠リストを自動生成
+     * @param {Object} event - イベントオブジェクト
+     */
+    Attendance.autoPopulateFromTargetGrades = function(event) {
+        const members = FCOjima.Carpool.members;
+        const targetGrades = (event && event.target && event.target.length > 0) ? event.target : null;
+
+        const players = members.filter(function(m) {
+            if (m.role !== 'player') return false;
+            if (targetGrades) {
+                return m.grade && targetGrades.includes(m.grade);
+            }
+            return true;
+        });
+
+        players.forEach(function(player) {
+            FCOjima.Carpool.appData.attendance.push({
+                name: player.name,
+                status: 'unknown',
+                notes: ''
+            });
+        });
+
+        if (players.length > 0) {
+            FCOjima.Carpool.saveData();
+            console.log('対象学年から ' + players.length + ' 人を出欠リストに追加しました');
+        }
+    };
+
+    /**
+     * 出欠テーブルを更新
+     */
+    Attendance.updateAttendance = function() {
+        const tbody = document.querySelector('#attendance-table tbody');
+        if (!tbody) return;
+
+        const attendance = FCOjima.Carpool.appData.attendance || [];
+        const members = FCOjima.Carpool.members;
+
+        if (attendance.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-row">出欠データがありません。「メンバーを追加」ボタンからメンバーを追加してください。</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = '';
+        attendance.forEach(function(item, index) {
+            const member = members.find(function(m) { return m.name === item.name; });
+            const grade = member && member.grade ? FCOjima.Utils.getGradeLabel(member.grade) : '-';
+
+            const row = document.createElement('tr');
+            const escapedName = item.name.replace(/'/g, "\\'");
+            row.innerHTML =
+                '<td>' + UI.escapeHTML(item.name) + '</td>' +
+                '<td>' + UI.escapeHTML(grade) + '</td>' +
+                '<td><select class="attendance-select ' + item.status + '" data-index="' + index + '">' +
+                    '<option value="unknown"' + (item.status === 'unknown' ? ' selected' : '') + '>未回答</option>' +
+                    '<option value="present"' + (item.status === 'present' ? ' selected' : '') + '>参加</option>' +
+                    '<option value="absent"' + (item.status === 'absent'  ? ' selected' : '') + '>不参加</option>' +
+                '</select></td>' +
+                '<td><input type="text" class="attendance-notes" data-index="' + index + '" value="' + UI.escapeHTML(item.notes || '') + '"></td>' +
+                '<td><button type="button" class="delete-button small-button" onclick="FCOjima.Carpool.Attendance.removeMemberFromAttendance(\'' + escapedName + '\')">削除</button></td>';
+
+            tbody.appendChild(row);
+
+            row.querySelector('.attendance-select').addEventListener('change', function() {
+                this.className = 'attendance-select ' + this.value;
+            });
+        });
+    };
+
+    /**
+     * 統計情報を更新
+     */
+    Attendance.updateStats = function() {
+        const statsDiv = document.getElementById('attendance-stats');
+        if (!statsDiv) return;
+
+        const attendance = FCOjima.Carpool.appData.attendance || [];
+        const total   = attendance.length;
+        const present = attendance.filter(function(a) { return a.status === 'present'; }).length;
+        const absent  = attendance.filter(function(a) { return a.status === 'absent';  }).length;
+        const unknown = attendance.filter(function(a) { return a.status === 'unknown'; }).length;
+
+        statsDiv.innerHTML =
+            '<div class="stat-item"><span class="stat-label">合計</span><span class="stat-value">' + total   + '人</span></div>' +
+            '<div class="stat-item"><span class="stat-label">参加</span><span class="stat-value present">' + present + '人</span></div>' +
+            '<div class="stat-item"><span class="stat-label">不参加</span><span class="stat-value absent">' + absent  + '人</span></div>' +
+            '<div class="stat-item"><span class="stat-label">未回答</span><span class="stat-value unknown">' + unknown + '人</span></div>';
+    };
+
+    /**
+     * 出欠を保存
+     */
+    Attendance.saveAttendance = function() {
+        const attendance = FCOjima.Carpool.appData.attendance || [];
+
+        document.querySelectorAll('.attendance-select').forEach(function(select) {
+            const idx = parseInt(select.dataset.index);
+            if (attendance[idx]) attendance[idx].status = select.value;
+        });
+
+        document.querySelectorAll('.attendance-notes').forEach(function(input) {
+            const idx = parseInt(input.dataset.index);
+            if (attendance[idx]) attendance[idx].notes = input.value;
+        });
+
+        FCOjima.Carpool.appData.attendance = attendance;
+        FCOjima.Carpool.saveData();
+        this.updateStats();
+        UI.showAlert('出欠を保存しました');
+    };
+
+    /**
+     * 未回答者へのリマインドメッセージを生成
+     */
+    Attendance.reminderAttendance = function() {
+        const attendance = FCOjima.Carpool.appData.attendance || [];
+        const unknown = attendance.filter(function(a) { return a.status === 'unknown'; });
+
+        if (unknown.length === 0) {
+            UI.showAlert('未回答者はいません');
+            return;
+        }
+
+        const names = unknown.map(function(a) { return a.name; }).join('、');
+        const message = '【出欠リマインド】\n以下の方から出欠の回答がまだです。\n' + names + '\n\nご回答をお願いします。';
+
+        if (FCOjima.Utils.copyToClipboard(message)) {
+            UI.showAlert('リマインドメッセージをクリップボードにコピーしました。LINEなどに貼り付けて共有できます。');
+        } else {
+            UI.showAlert('クリップボードへのコピーに失敗しました');
+        }
+    };
+
+    /**
+     * メンバー選択モーダルを開く
      */
     Attendance.openMemberSelectModal = function() {
         console.log('メンバー選択モーダルを開きます...');

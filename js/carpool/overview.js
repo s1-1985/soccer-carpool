@@ -454,5 +454,64 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         console.log('HUBページに戻ります...');
         window.location.href = '../hub/index.html';
     };
-    
+
+    /**
+     * イベント概要を指定コンテナに表示（他タブから呼ばれる）
+     * @param {string} containerId - 表示先要素ID
+     */
+    Overview.displayEventSummary = function(containerId) {
+        var container = document.getElementById(containerId);
+        if (!container) return;
+        var event = Storage.getSelectedEvent();
+        if (!event) {
+            container.innerHTML = UI.createAlert('info', 'イベントが選択されていません。');
+            return;
+        }
+        container.className = 'event-summary ' + (event.type || 'other');
+        container.innerHTML = '<strong>' + UI.escapeHTML(event.title) + '</strong>' +
+            ' (' + Utils.formatDateForDisplay(event.date) + ' ' + (event.startTime || '') + ')';
+    };
+
+    /**
+     * イベントデータをロード（carRegistrations/assignments/attendance/notifications）
+     */
+    app.Carpool.loadData = function() {
+        var event = Storage.getSelectedEvent();
+        if (!event) return;
+        this.appData.eventId = event.id;
+        var data = Storage.loadEventData(event.id);
+        this.appData.carRegistrations = data.carRegistrations || [];
+        this.appData.assignments     = data.assignments     || [];
+        this.appData.attendance      = data.attendance      || [];
+        this.appData.notifications   = data.notifications   || [];
+        console.log('イベントデータをロードしました: eventId=' + event.id);
+    };
+
+    /**
+     * イベントデータを保存
+     */
+    app.Carpool.saveData = function() {
+        var eventId = this.appData.eventId;
+        if (!eventId) {
+            var event = Storage.getSelectedEvent();
+            if (event) eventId = event.id;
+        }
+        if (!eventId) return;
+        Storage.saveEventData(eventId, {
+            carRegistrations: this.appData.carRegistrations,
+            assignments:      this.appData.assignments,
+            attendance:       this.appData.attendance,
+            notifications:    this.appData.notifications
+        });
+        console.log('イベントデータを保存しました: eventId=' + eventId);
+    };
+
+    /**
+     * メンバーを FCOjima.Carpool.members にロード
+     */
+    app.Carpool.loadMembers = function() {
+        this.members = Storage.loadMembers();
+        console.log('メンバーをロードしました: ' + this.members.length + '人');
+    };
+
 })(window.FCOjima);
