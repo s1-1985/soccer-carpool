@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /* FC尾島ジュニア - カレンダー画面スタイル */
 
 /* カレンダーコントロール */
@@ -163,10 +164,113 @@
     padding: 2px;
     background: rgba(0, 0, 0, 0.1);
     border-radius: 3px;
+=======
+/* FC尾島ジュニア - カレンダー機能スタイル */
+
+/* カレンダー制御 */
+.controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.month-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.view-toggle {
+    display: flex;
+    gap: 5px;
+}
+
+/* カレンダー表示 */
+.weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-weight: bold;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+}
+
+.calendar-day {
+    min-height: 80px;
+    border: 1px solid #ddd;
+    padding: 5px;
+    position: relative;
+    background-color: white;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.date {
+    font-weight: bold;
+    text-align: right;
+    margin-bottom: 5px;
+}
+
+.other-month {
+    background-color: #f9f9f9;
+    color: #aaa;
+}
+
+.today {
+    background-color: #FFF5D6;
+    border: 2px solid #E8A200;
+}
+
+.sunday .date {
+    color: #dc3545;
+}
+
+.saturday .date {
+    color: #CC8C00;
+}
+
+/* イベント表示 */
+.event {
+    padding: 2px 4px;
+    margin-bottom: 2px;
+    border-radius: 3px;
+    font-size: 11px;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+    display: block;
+    box-sizing: border-box;
+}
+
+.event.game {
+    background-color: #fbe7d9;
+    border-left: 3px solid #f39c12;
+}
+
+.event.practice {
+    background-color: #d1f2eb;
+    border-left: 3px solid #2ecc71;
+}
+
+.event.other {
+    background-color: #ebdef0;
+    border-left: 3px solid #9b59b6;
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
 }
 
 /* リスト表示 */
 .events-list {
+<<<<<<< HEAD
     display: flex;
     flex-direction: column;
     gap: 15px;
@@ -476,10 +580,103 @@
     background: linear-gradient(135deg, #20c997, #28a745);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+=======
+    margin-bottom: 20px;
+}
+
+.date-heading {
+    padding: 10px;
+    background-color: #f2f2f2;
+    font-weight: bold;
+    margin-top: 15px;
+    border-radius: 4px;
+}
+
+.event-item {
+    margin: 5px 0;
+    padding: 10px;
+    background-color: white;
+    border-radius: 4px;
+    border-left: 5px solid #ddd;
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+
+.event-item:hover {
+    transform: translateX(5px);
+}
+
+.event-item.game {
+    border-left-color: #f39c12;
+}
+
+.event-item.practice {
+    border-left-color: #2ecc71;
+}
+
+.event-item.other {
+    border-left-color: #9b59b6;
+}
+
+.event-item.empty {
+    border-left-color: #ddd;
+    color: #999;
+    background-color: #f9f9f9;
+}
+
+.event-title {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.event-details {
+    font-size: 14px;
+    color: #666;
+}
+
+/* イベント詳細カード */
+.event-detail-card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.detail-row {
+    margin-bottom: 10px;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.detail-label {
+    font-weight: 500;
+    width: 120px;
+    color: #555;
+}
+
+.detail-value {
+    flex: 1;
+}
+
+/* チェックボックスグループ */
+.checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
 }
 
 /* レスポンシブ対応 */
 @media screen and (max-width: 768px) {
+<<<<<<< HEAD
     .calendar-cell {
         min-height: 80px;
         padding: 5px;
@@ -496,11 +693,15 @@
     }
     
     .event-item {
+=======
+    .controls {
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
         flex-direction: column;
         align-items: flex-start;
         gap: 10px;
     }
     
+<<<<<<< HEAD
     .event-date {
         margin-right: 0;
         margin-bottom: 10px;
@@ -619,5 +820,29 @@
     #calendar-content {
         padding: 10px;
         overflow-x: auto;
+=======
+    .calendar-grid {
+        grid-template-columns: repeat(7, 1fr);
+        font-size: 14px;
+    }
+    
+    .calendar-day {
+        min-height: 60px;
+        padding: 2px;
+    }
+    
+    .event {
+        padding: 2px 4px;
+        font-size: 10px;
+    }
+    
+    .detail-row {
+        flex-direction: column;
+    }
+    
+    .detail-label {
+        width: 100%;
+        margin-bottom: 5px;
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
     }
 }

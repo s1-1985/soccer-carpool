@@ -1,8 +1,13 @@
+<<<<<<< HEAD
 ﻿<!DOCTYPE html>
+=======
+<!DOCTYPE html>
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<<<<<<< HEAD
     <title>会場登録 - FC尾島Jr HUB</title>
     
     <!-- CSS読み込み -->
@@ -348,11 +353,92 @@
                 <div class="modal-actions">
                     <button type="button" class="btn close-modal">キャンセル</button>
                     <button type="button" id="save-venue" class="btn btn-primary">保存</button>
+=======
+    <title>会場管理 - FC尾島ジュニア</title>
+    <link rel="stylesheet" href="../css/common.css?v=20260219b">
+    <link rel="stylesheet" href="../css/hub/venues.css?v=20260219b">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <h1>FC尾島ジュニア 会場管理</h1>
+    </header>
+
+    <nav class="main-nav">
+        <ul>
+            <li><a href="calendar.html">カレンダー</a></li>
+            <li><a href="members.html">メンバー</a></li>
+            <li><a href="notifications.html">連絡事項</a></li>
+            <li><a href="venues.html" class="active">会場登録</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <div class="venue-search-filter">
+                <div class="venue-search">
+                    <input type="text" id="venue-search" placeholder="会場名で検索..." class="form-control">
+                </div>
+                <div class="venue-filter">
+                    <select id="venue-type-filter" class="form-control">
+                        <option value="all">全てのタイプ</option>
+                        <option value="ground">グラウンド</option>
+                        <option value="gym">体育館</option>
+                        <option value="park">公園</option>
+                        <option value="other">その他</option>
+                    </select>
+                </div>
+            </div>
+
+            <h2>会場一覧</h2>
+            <div id="venues-list" class="venues-list">
+                <!-- 会場リストがJSで動的に生成される -->
+                <div class="loading">読み込み中...</div>
+            </div>
+            <div class="action-buttons">
+                <button id="add-venue">会場を追加</button>
+                <button id="venues-logs" class="secondary-button">ログを表示</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 会場追加/編集モーダル -->
+    <div id="venue-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>会場を追加</h2>
+            <form id="venue-form">
+                <div class="form-group">
+                    <label for="venue-name">会場名</label>
+                    <input type="text" id="venue-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="venue-type">会場タイプ</label>
+                    <select id="venue-type">
+                        <option value="ground">グラウンド</option>
+                        <option value="gym">体育館</option>
+                        <option value="park">公園</option>
+                        <option value="other">その他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="venue-address">住所</label>
+                    <input type="text" id="venue-address" required>
+                </div>
+                <div class="form-group">
+                    <label for="venue-notes">備考</label>
+                    <textarea id="venue-notes"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit">保存</button>
+                    <button type="button" id="cancel-venue">キャンセル</button>
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
                 </div>
             </form>
         </div>
     </div>
 
+<<<<<<< HEAD
     <!-- JavaScript読み込み -->
     <script src="../js/common/firebase-config.js"></script>
     <script src="../js/common/auth.js"></script>
@@ -362,5 +448,84 @@
     <script src="../js/common/utils.js"></script>
     <script src="../js/hub/venues.js"></script>
     <script src="../js/hub/main.js"></script>
+=======
+    <!-- 会場詳細モーダル -->
+    <div id="venue-details-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="venue-details-content">
+                <!-- 会場詳細がJSで動的に生成される -->
+            </div>
+            <div class="modal-actions">
+                <button id="edit-venue-detail">編集</button>
+                <button id="delete-venue" class="delete-button">削除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ログ表示モーダル -->
+    <div id="logs-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>操作ログ</h2>
+            <div id="logs-content">
+                <!-- ログ内容がJSで動的に生成される -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 会場追加ボタン（固定） -->
+    <a href="#" id="floating-add-button" class="add-venue-button" title="会場を追加">+</a>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="../js/common/firebase-config.js?v=20260219b"></script>
+
+    <!-- 共通モジュール -->
+    <script src="../js/common/global.js?v=20260219b"></script>
+    <script src="../js/common/utils.js?v=20260219b"></script>
+    <script src="../js/common/storage.js?v=20260219b"></script>
+    <script src="../js/common/ui.js?v=20260219b"></script>
+    <script src="../js/common/auth.js?v=20260219b"></script>
+    <script src="../js/common/db.js?v=20260219b"></script>
+
+    <!-- 会場管理用モジュール -->
+    <script src="../js/hub/venues.js?v=20260219b"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            await FCOjima.Auth.requireLogin();
+
+            try {
+                FCOjima.Hub.venues = await FCOjima.DB.loadVenues();
+                FCOjima.Hub.logs   = await FCOjima.DB.loadLogs();
+            } catch (e) {
+                console.warn('Firestoreロード失敗 → localStorageを使用:', e);
+                FCOjima.Hub.venues = FCOjima.Storage.loadVenues();
+                FCOjima.Hub.logs   = FCOjima.Storage.loadLogs();
+            }
+
+            if (FCOjima.Hub.Venues && FCOjima.Hub.Venues.init) {
+                FCOjima.Hub.Venues.init();
+            }
+
+            if (FCOjima.UI && FCOjima.UI.initModals) {
+                FCOjima.UI.initModals();
+            }
+
+            var floatingAddButton = document.getElementById('floating-add-button');
+            if (floatingAddButton) {
+                floatingAddButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (FCOjima.Hub.Venues && FCOjima.Hub.Venues.openAddVenueModal) {
+                        FCOjima.Hub.Venues.openAddVenueModal();
+                    }
+                });
+            }
+        });
+    </script>
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
 </body>
 </html>

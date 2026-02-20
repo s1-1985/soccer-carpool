@@ -1,5 +1,13 @@
+<<<<<<< HEAD
 {
   "projects": {
     "default": "fc-ojima-hub"
   }
 }
+=======
+{
+  "projects": {
+    "default": "fc-ojimajr-hub"
+  }
+}
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e

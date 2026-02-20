@@ -1,0 +1,161 @@
+/* FC尾島ジュニア - 配車管理共通スタイル */
+
+/* イベント情報表示 */
+.event-summary {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 12px 15px;
+    margin-bottom: 20px;
+    border-left: 4px solid #E8A200;
+    font-weight: 500;
+}
+
+.event-summary.game {
+    border-left-color: #f39c12;
+}
+
+.event-summary.practice {
+    border-left-color: #2ecc71;
+}
+
+.event-summary.other {
+    border-left-color: #9b59b6;
+}
+
+/* 統計情報表示 */
+.stats-summary {
+    background-color: #f8f9fa;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+/* タブコンテンツ用ヘッダー */
+.tab-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.tab-header h2 {
+    margin: 0;
+}
+
+.tab-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* 配車管理ナビゲーション */
+.carpool-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+.carpool-nav a {
+    text-decoration: none;
+    color: #333;
+    padding: 8px 12px;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+    transition: background-color 0.2s;
+}
+
+.carpool-nav a:hover {
+    background-color: #e9ecef;
+}
+
+.carpool-nav a.active {
+    background-color: #E8A200;
+    color: #1C1600;
+    font-weight: 700;
+}
+
+/* フォームセクション */
+.form-section {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.form-section h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+/* テーブルセクション */
+.table-section {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.table-section h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+/* 配車管理フッター */
+.carpool-footer {
+    background-color: white;
+    padding: 15px 20px;
+    border-top: 1px solid #ddd;
+    margin-top: 30px;
+    text-align: center;
+}
+
+/* グローバルナビゲーション */
+.global-navigation {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: #1C1600;
+    border-top: 3px solid #E8A200;
+    padding: 10px 20px;
+    box-shadow: 0 -3px 8px rgba(0, 0, 0, 0.4);
+    display: flex;
+    justify-content: space-between;
+    z-index: 100;
+}
+
+/* 出欠期限の赤字表示 */
+.deadline-expired {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+/* レスポンシブ対応 */
+@media screen and (max-width: 768px) {
+    .carpool-nav {
+        flex-direction: column;
+    }
+    
+    .tab-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .global-navigation {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .global-navigation button {
+        width: 100%;
+    }
+}

@@ -1,8 +1,13 @@
+<<<<<<< HEAD
 ﻿<!DOCTYPE html>
+=======
+<!DOCTYPE html>
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<<<<<<< HEAD
     <title>カレンダー管理 - FC尾島Jr HUB</title>
     
     <!-- CSS読み込み -->
@@ -260,11 +265,144 @@
                 <div class="modal-actions">
                     <button type="button" class="btn close-modal">キャンセル</button>
                     <button type="button" id="save-event" class="btn btn-primary">保存</button>
+=======
+    <title>カレンダー - FC尾島ジュニア</title>
+    <link rel="stylesheet" href="../css/common.css?v=20260219b">
+    <link rel="stylesheet" href="../css/hub/calendar.css?v=20260219b">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <h1>FC尾島ジュニア カレンダー</h1>
+    </header>
+
+    <nav class="main-nav">
+        <ul>
+            <li><a href="calendar.html" class="active">カレンダー</a></li>
+            <li><a href="members.html">メンバー</a></li>
+            <li><a href="notifications.html">連絡事項</a></li>
+            <li><a href="venues.html">会場登録</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <div class="controls">
+                <div class="month-control">
+                    <button id="prev-month" class="secondary-button">&lt;</button>
+                    <h2 id="current-month">2025年4月</h2>
+                    <button id="next-month" class="secondary-button">&gt;</button>
+                </div>
+                <div class="view-toggle">
+                    <button id="calendar-view" class="active">カレンダー</button>
+                    <button id="list-view" class="secondary-button">リスト</button>
+                </div>
+            </div>
+
+            <!-- カレンダー表示 -->
+            <div id="calendar-container" class="view-container">
+                <div class="weekdays">
+                    <div>日</div>
+                    <div>月</div>
+                    <div>火</div>
+                    <div>水</div>
+                    <div>木</div>
+                    <div>金</div>
+                    <div>土</div>
+                </div>
+                <div id="calendar-grid" class="calendar-grid">
+                    <!-- カレンダーの日付がJSで動的に生成される -->
+                    <div class="loading">読み込み中...</div>
+                </div>
+            </div>
+
+            <!-- リスト表示 -->
+            <div id="list-container" class="view-container hidden">
+                <div id="events-list" class="events-list">
+                    <!-- イベントリストがJSで動的に生成される -->
+                    <div class="loading">読み込み中...</div>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button id="add-event">予定を追加</button>
+                <button id="view-logs" class="secondary-button">ログを表示</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 予定追加・編集モーダル -->
+    <div id="event-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>予定を追加</h2>
+            <form id="event-form">
+                <div class="form-group">
+                    <label for="event-date">日付</label>
+                    <input type="date" id="event-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="event-type">種類</label>
+                    <select id="event-type" required>
+                        <option value="game">試合</option>
+                        <option value="practice">練習</option>
+                        <option value="other">その他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="event-title">タイトル</label>
+                    <input type="text" id="event-title" placeholder="例: vs青葉FC" required>
+                </div>
+                <div class="form-group">
+                    <label for="event-target">対象学年</label>
+                    <div id="event-target-grades" class="checkbox-group">
+                        <!-- 学年チェックボックスがJSで動的に生成される -->
+                    </div>
+                    <input type="text" id="event-target-notes" placeholder="備考（例: 〇〇君のみ参加）">
+                </div>
+                <div class="form-group">
+                    <label for="event-attendance-deadline">出欠回答期限</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="date" id="event-attendance-deadline-date">
+                        <input type="time" id="event-attendance-deadline-time">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="event-departure-time">出発時間</label>
+                    <input type="time" id="event-departure-time">
+                </div>
+                <div class="form-group">
+                    <label for="event-meeting-place">集合場所</label>
+                    <input type="text" id="event-meeting-place" placeholder="集合場所を入力">
+                    <button type="button" id="select-meeting-venue" class="secondary-button">登録会場から選択</button>
+                </div>
+                <div class="form-group">
+                    <label for="event-venue">会場</label>
+                    <input type="text" id="event-venue" placeholder="会場を入力">
+                    <button type="button" id="select-venue" class="secondary-button">登録会場から選択</button>
+                </div>
+                <div class="form-group">
+                    <label for="event-start-time">開始時間</label>
+                    <input type="time" id="event-start-time">
+                </div>
+                <div class="form-group">
+                    <label for="event-end-time">終了時間</label>
+                    <input type="time" id="event-end-time">
+                </div>
+                <div class="form-group">
+                    <label for="event-notes">備考</label>
+                    <textarea id="event-notes" placeholder="その他の備考事項"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit">保存</button>
+                    <button type="button" id="cancel-event">キャンセル</button>
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
                 </div>
             </form>
         </div>
     </div>
 
+<<<<<<< HEAD
     <!-- JavaScript読み込み -->
     <script src="../js/common/firebase-config.js"></script>
     <script src="../js/common/auth.js"></script>
@@ -274,5 +412,85 @@
     <script src="../js/common/utils.js"></script>
     <script src="../js/hub/calendar.js"></script>
     <script src="../js/hub/main.js"></script>
+=======
+    <!-- イベント詳細モーダル -->
+    <div id="event-details-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="event-details-content">
+                <!-- イベント詳細がJSで動的に生成される -->
+            </div>
+            <div class="modal-actions">
+                <button id="manage-event">配車管理</button>
+                <button id="edit-event">編集</button>
+                <button id="delete-event">削除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 会場選択モーダル -->
+    <div id="venue-select-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>会場を選択</h2>
+            <div id="venue-select-list" class="select-list">
+                <!-- 会場リストがJSで動的に生成される -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ログ表示モーダル -->
+    <div id="logs-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>操作ログ</h2>
+            <div id="logs-content">
+                <!-- ログ内容がJSで動的に生成される -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="../js/common/firebase-config.js?v=20260219b"></script>
+
+    <!-- 共通モジュール -->
+    <script src="../js/common/global.js?v=20260219b"></script>
+    <script src="../js/common/utils.js?v=20260219b"></script>
+    <script src="../js/common/storage.js?v=20260219b"></script>
+    <script src="../js/common/ui.js?v=20260219b"></script>
+    <script src="../js/common/auth.js?v=20260219b"></script>
+    <script src="../js/common/db.js?v=20260219b"></script>
+
+    <!-- カレンダー用モジュール -->
+    <script src="../js/hub/calendar.js?v=20260219b"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            await FCOjima.Auth.requireLogin();
+
+            try {
+                FCOjima.Hub.events  = await FCOjima.DB.loadEvents();
+                FCOjima.Hub.venues  = await FCOjima.DB.loadVenues();
+                FCOjima.Hub.logs    = await FCOjima.DB.loadLogs();
+            } catch (e) {
+                console.warn('Firestoreロード失敗 → localStorageを使用:', e);
+                FCOjima.Hub.events  = FCOjima.Storage.loadEvents();
+                FCOjima.Hub.venues  = FCOjima.Storage.loadVenues();
+                FCOjima.Hub.logs    = FCOjima.Storage.loadLogs();
+            }
+
+            if (FCOjima.Hub.Calendar && FCOjima.Hub.Calendar.init) {
+                FCOjima.Hub.Calendar.init();
+            }
+
+            if (FCOjima.UI && FCOjima.UI.initModals) {
+                FCOjima.UI.initModals();
+            }
+        });
+    </script>
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
 </body>
 </html>

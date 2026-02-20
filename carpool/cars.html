@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>車提供 - FC尾島ジュニア</title>
+    <link rel="stylesheet" href="../css/common.css?v=20260219">
+    <link rel="stylesheet" href="../css/carpool/common.css?v=20260219">
+    <link rel="stylesheet" href="../css/carpool/carprovision.css?v=20260219">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <h1 id="event-header">FC尾島ジュニア 車提供</h1>
+    </header>
+
+    <nav class="carpool-nav">
+        <a href="index.html">概要</a>
+        <a href="attendance.html">出欠確認</a>
+        <a href="cars.html" class="active">車提供</a>
+        <a href="assignments.html">割り当て</a>
+        <a href="notifications.html">連絡</a>
+    </nav>
+
+    <div class="container">
+        <div id="carEventInfo" class="event-summary">
+            <!-- イベント情報がJSで動的に生成される -->
+            <div class="loading">読み込み中...</div>
+        </div>
+        
+        <div class="card">
+            <h2>車の提供登録</h2>
+            <div class="car-form">
+                <div class="form-group">
+                    <label for="parentName">運転者:</label>
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" id="parentName" style="flex:1;">
+                        <button type="button" id="select-driver" class="secondary-button">メンバーから選ぶ</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="canDrive">車の提供:</label>
+                    <select id="canDrive">
+                        <option value="both">行き帰り可能</option>
+                        <option value="no">不可</option>
+                        <option value="to">行きのみ可能</option>
+                        <option value="from">帰りのみ可能</option>
+                    </select>
+                </div>
+                <div id="carDetails">
+                    <h4>乗車可能人数</h4>
+                    <div class="seat-inputs">
+                        <div class="form-group">
+                            <div class="seat-type-icon">
+                                <div class="seat-icon">助</div>
+                            </div>
+                            <label for="frontSeat">助手席:</label>
+                            <select id="frontSeat">
+                                <option value="0">0席</option>
+                                <option value="1" selected>1席</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <div class="seat-type-icon">
+                                <div class="seat-icon">中</div>
+                            </div>
+                            <label for="middleSeat">中列:</label>
+                            <select id="middleSeat">
+                                <option value="0">0席</option>
+                                <option value="1">1席</option>
+                                <option value="2">2席</option>
+                                <option value="3" selected>3席</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <div class="seat-type-icon">
+                                <div class="seat-icon">後</div>
+                            </div>
+                            <label for="backSeat">後列:</label>
+                            <select id="backSeat">
+                                <option value="0" selected>0席</option>
+                                <option value="1">1席</option>
+                                <option value="2">2席</option>
+                                <option value="3">3席</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="carNotes">備考:</label>
+                        <input type="text" id="carNotes" placeholder="部員外の兄弟児等を乗せたい場合は記入してください。その他特記事項あれば。">
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button type="button" id="register-car">登録</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>登録済み車両</h2>
+            <div id="car-stats" class="car-stats">
+                <!-- 車両統計がJSで動的に生成される -->
+                <div class="loading">読み込み中...</div>
+            </div>
+            <div class="table-container">
+                <table id="registeredCars">
+                    <thead>
+                        <tr>
+                            <th>運転者</th>
+                            <th>提供</th>
+                            <th>助手席</th>
+                            <th>中列</th>
+                            <th>後列</th>
+                            <th>合計</th>
+                            <th>備考</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- 登録データがJSで動的に生成される -->
+                        <tr>
+                            <td colspan="8" class="empty-table-message">読み込み中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 運転者選択モーダル -->
+    <div id="driver-select-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>運転者を選択</h2>
+            <div id="driver-select-list" class="select-list">
+                <!-- メンバーリストがJSで動的に生成される -->
+                <div class="loading">読み込み中...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- グローバルナビゲーション -->
+    <div class="global-navigation">
+        <button id="back-to-hub">HUBに戻る</button>
+        <button id="next-to-assignments" class="share-button">次へ:割り当て</button>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="../js/common/firebase-config.js?v=20260219"></script>
+
+    <!-- 共通モジュール -->
+    <script src="../js/common/global.js?v=20260219"></script>
+    <script src="../js/common/utils.js?v=20260219"></script>
+    <script src="../js/common/storage.js?v=20260219"></script>
+    <script src="../js/common/ui.js?v=20260219"></script>
+    <script src="../js/common/auth.js?v=20260219"></script>
+    <script src="../js/common/db.js?v=20260219"></script>
+
+    <!-- 配車管理用モジュール -->
+    <script src="../js/carpool/overview.js?v=20260219"></script>
+    <script src="../js/carpool/carprovision.js?v=20260219"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            await FCOjima.Auth.requireLogin();
+            // モーダル初期化
+            FCOjima.UI.initModals();
+            
+            // 車提供機能の初期化
+            if (FCOjima.Carpool.CarProvision && FCOjima.Carpool.CarProvision.init) {
+                FCOjima.Carpool.CarProvision.init();
+            } else {
+                console.error('車提供機能の初期化に失敗しました');
+            }
+            
+            // イベント情報の表示
+            if (FCOjima.Carpool.Overview && FCOjima.Carpool.Overview.displayEventSummary) {
+                FCOjima.Carpool.Overview.displayEventSummary('carEventInfo');
+            }
+            
+            // 車両提供条件変更イベント
+            document.getElementById('canDrive').addEventListener('change', function() {
+                var carDetails = document.getElementById('carDetails');
+                carDetails.style.display = (this.value === 'no') ? 'none' : 'block';
+            });
+            
+            // 運転者選択ボタン
+            document.getElementById('select-driver').addEventListener('click', function() {
+                if (FCOjima.Carpool.CarProvision && FCOjima.Carpool.CarProvision.openDriverSelectModal) {
+                    FCOjima.Carpool.CarProvision.openDriverSelectModal();
+                }
+            });
+            
+            // 車両登録ボタン
+            document.getElementById('register-car').addEventListener('click', function() {
+                if (FCOjima.Carpool.CarProvision && FCOjima.Carpool.CarProvision.registerCar) {
+                    FCOjima.Carpool.CarProvision.registerCar();
+                }
+            });
+            
+            // HUBに戻るボタンの設定
+            document.getElementById('back-to-hub').addEventListener('click', function() {
+                if (FCOjima.Carpool.Overview && FCOjima.Carpool.Overview.goToMainPage) {
+                    FCOjima.Carpool.Overview.goToMainPage();
+                } else {
+                    window.location.href = '../hub/index.html';
+                }
+            });
+            
+            // 次へボタンの設定
+            document.getElementById('next-to-assignments').addEventListener('click', function() {
+                window.location.href = 'assignments.html';
+            });
+        });
+    </script>
+</body>
+</html>

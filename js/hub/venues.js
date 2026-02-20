@@ -1,21 +1,24 @@
 /**
+
  * FC尾島ジュニア - 会場管理機能（Firebase版）
  * 会場情報の管理、Google Maps連携、フィルタリング機能
  */
 
 // 名前空間の確保
+
 window.FCOjima = window.FCOjima || {};
 FCOjima.Hub = FCOjima.Hub || {};
 FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
 
+
 // 会場管理モジュール
-(function() {
+(function () {
     const Venues = FCOjima.Hub.Venues;
     const Firestore = FCOjima.Firestore;
     const Auth = FCOjima.Auth;
     const UI = FCOjima.UI;
     const Utils = FCOjima.Utils;
-    
+
     // データ
     let venues = [];
     let venuesUnsubscribe = null;
@@ -24,11 +27,11 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
         area: 'all'
     };
     let currentEditingVenue = null;
-    
+
     /**
      * 会場管理機能の初期化
      */
-    Venues.init = async function() {
+    Venues.init = async function () {
         try {
             // 認証チェック
             if (!Auth.isLoggedIn()) {
@@ -36,27 +39,27 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
                 UI.showAlert('ログインが必要です', 'warning');
                 return;
             }
-            
+
             // 会場データをリアルタイム監視で読み込み
             setupRealtimeListeners();
-            
+
             // UI要素の初期化
             setupEventListeners();
             updateDisplay();
-            
+
             // モーダルの初期化
             if (UI && UI.initModals) {
                 UI.initModals();
             }
-            
+
             console.log('会場管理機能を初期化しました（Firebase版）');
-            
+
         } catch (error) {
             console.error('会場管理初期化エラー:', error);
             UI.showAlert('会場管理の初期化に失敗しました', 'danger');
         }
     };
-    
+
     /**
      * リアルタイムリスナーの設定
      */
@@ -65,14 +68,14 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
         if (venuesUnsubscribe) {
             venuesUnsubscribe();
         }
-        
+
         // 会場のリアルタイム監視
         venuesUnsubscribe = Firestore.watchVenues((updatedVenues) => {
             venues = updatedVenues;
             updateDisplay();
         });
     }
-    
+
     /**
      * イベントリスナーの設定
      */
@@ -80,27 +83,27 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
         // フィルター機能
         const typeFilter = document.getElementById('type-filter');
         const areaFilter = document.getElementById('area-filter');
-        
+
         if (typeFilter) {
-            typeFilter.addEventListener('change', function() {
+            typeFilter.addEventListener('change', function () {
                 currentFilters.type = this.value;
                 updateDisplay();
             });
         }
-        
+
         if (areaFilter) {
-            areaFilter.addEventListener('change', function() {
+            areaFilter.addEventListener('change', function () {
                 currentFilters.area = this.value;
                 updateDisplay();
             });
         }
-        
+
         // 会場追加ボタン
         const addVenueBtn = document.getElementById('add-venue');
         if (addVenueBtn) {
             addVenueBtn.addEventListener('click', () => openVenueModal());
         }
-        
+
         // 会場フォーム送信
         const venueForm = document.getElementById('venue-form');
         if (venueForm) {
@@ -109,57 +112,57 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
                 saveVenue();
             });
         }
-        
+
         // 検索機能
         const searchInput = document.getElementById('venue-search');
         if (searchInput) {
             searchInput.addEventListener('input', updateDisplay);
         }
-        
+
         // 住所から座標を取得ボタン
         const geocodeBtn = document.getElementById('geocode-address');
         if (geocodeBtn) {
             geocodeBtn.addEventListener('click', geocodeAddress);
         }
-        
+
         // 地図表示切り替え
         const toggleMapBtn = document.getElementById('toggle-map-view');
         if (toggleMapBtn) {
             toggleMapBtn.addEventListener('click', toggleMapView);
         }
     }
-    
+
     /**
      * 表示を更新
      */
     function updateDisplay() {
         const venuesList = document.getElementById('venues-list');
         if (!venuesList) return;
-        
+
         // フィルタリングとソート
         const filteredVenues = getFilteredVenues();
-        
+
         if (filteredVenues.length === 0) {
             venuesList.innerHTML = '<div class="no-venues">条件に一致する会場がありません。</div>';
             updateStats();
             return;
         }
-        
+
         // カード形式で表示
         let html = '<div class="venues-grid">';
-        
+
         filteredVenues.forEach(venue => {
             html += createVenueCard(venue);
         });
-        
+
         html += '</div>';
-        
+
         venuesList.innerHTML = html;
-        
+
         // 統計の更新
         updateStats();
     }
-    
+
     /**
      * 会場カードを作成
      */
@@ -167,7 +170,7 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
         const typeLabel = getTypeLabel(venue.type);
         const mapLink = generateMapLink(venue.address);
         const distance = venue.distance ? `約${venue.distance}km` : '';
-        
+
         return `
             <div class="venue-card" data-venue-id="${venue.id}">
                 <div class="venue-card-header">
@@ -224,21 +227,21 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
             </div>
         `;
     }
-    
+
     /**
      * 会場モーダルを開く
      */
     function openVenueModal(venue = null) {
         currentEditingVenue = venue;
-        
+
         const form = document.getElementById('venue-form');
         const modal = document.getElementById('venue-modal');
-        
+
         if (!form || !modal) return;
-        
+
         // フォームのリセット
         form.reset();
-        
+
         if (venue) {
             // 編集モード
             form.dataset.venueId = venue.id;
@@ -253,17 +256,17 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
             document.getElementById('venue-notes').value = venue.notes || '';
             document.getElementById('venue-latitude').value = venue.latitude || '';
             document.getElementById('venue-longitude').value = venue.longitude || '';
-            
+
             document.getElementById('modal-title').textContent = '会場編集';
         } else {
             // 新規作成モード
             delete form.dataset.venueId;
             document.getElementById('modal-title').textContent = '会場追加';
         }
-        
+
         UI.openModal('venue-modal');
     }
-    
+
     /**
      * 会場を保存
      */
@@ -272,7 +275,7 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
             const form = document.getElementById('venue-form');
             const formData = new FormData(form);
             const venueId = form.dataset.venueId;
-            
+
             // フォームデータを取得
             const venueData = {
                 name: formData.get('name').trim(),
@@ -287,35 +290,35 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
                 latitude: formData.get('latitude') ? parseFloat(formData.get('latitude')) : null,
                 longitude: formData.get('longitude') ? parseFloat(formData.get('longitude')) : null
             };
-            
+
             // バリデーション
             if (!venueData.name) {
                 UI.showAlert('会場名を入力してください', 'warning');
                 return;
             }
-            
+
             if (!venueData.address) {
                 UI.showAlert('住所を入力してください', 'warning');
                 return;
             }
-            
+
             // 重複チェック
-            const duplicateName = venues.find(v => 
-                v.id !== venueId && 
+            const duplicateName = venues.find(v =>
+                v.id !== venueId &&
                 v.name.toLowerCase() === venueData.name.toLowerCase()
             );
-            
+
             if (duplicateName) {
                 UI.showAlert('同じ名前の会場が既に登録されています', 'warning');
                 return;
             }
-            
+
             // 権限チェック
             if (!Auth.hasPermission('manager')) {
                 UI.showAlert('会場の編集権限がありません', 'danger');
                 return;
             }
-            
+
             // Firestoreに保存
             if (venueId) {
                 // 既存会場の更新
@@ -329,65 +332,65 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
                 await Firestore.addLog('venues', `会場「${venueData.name}」を追加しました`);
                 UI.showAlert('会場を追加しました', 'success');
             }
-            
+
             // モーダルを閉じる
             UI.closeModal('venue-modal');
-            
+
         } catch (error) {
             console.error('会場保存エラー:', error);
             UI.showAlert('会場の保存に失敗しました', 'danger');
         }
     }
-    
+
     /**
      * 会場を削除
      */
-    Venues.deleteVenue = async function(venueId) {
+    Venues.deleteVenue = async function (venueId) {
         try {
             const venue = venues.find(v => v.id === venueId);
             if (!venue) return;
-            
+
             if (!confirm(`会場「${venue.name}」を削除しますか？\n※この操作は取り消せません`)) {
                 return;
             }
-            
+
             // 権限チェック
             if (!Auth.hasPermission('manager')) {
                 UI.showAlert('会場の削除権限がありません', 'danger');
                 return;
             }
-            
+
             await Firestore.deleteDocument('venues', venueId);
             await Firestore.addLog('venues', `会場「${venue.name}」を削除しました`);
-            
+
             UI.showAlert('会場を削除しました', 'success');
-            
+
         } catch (error) {
             console.error('会場削除エラー:', error);
             UI.showAlert('会場の削除に失敗しました', 'danger');
         }
     };
-    
+
     /**
      * 会場を編集
      */
-    Venues.editVenue = function(venueId) {
+    Venues.editVenue = function (venueId) {
         const venue = venues.find(v => v.id === venueId);
         if (venue) {
             openVenueModal(venue);
         }
     };
-    
+
     /**
      * 会場詳細を表示
      */
-    Venues.viewVenue = function(venueId) {
+    Venues.viewVenue = function (venueId) {
         const venue = venues.find(v => v.id === venueId);
         if (!venue) return;
-        
+
         const modal = document.getElementById('venue-detail-modal');
         if (!modal) return;
-        
+
         // 会場詳細の表示
         document.getElementById('detail-name').textContent = venue.name;
         document.getElementById('detail-type').textContent = getTypeLabel(venue.type);
@@ -398,25 +401,25 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
         document.getElementById('detail-parking').textContent = venue.parking || '-';
         document.getElementById('detail-facilities').textContent = venue.facilities || '-';
         document.getElementById('detail-notes').textContent = venue.notes || '-';
-        document.getElementById('detail-coordinates').textContent = 
+        document.getElementById('detail-coordinates').textContent =
             venue.latitude && venue.longitude ? `${venue.latitude}, ${venue.longitude}` : '-';
-        document.getElementById('detail-created').textContent = 
+        document.getElementById('detail-created').textContent =
             venue.createdAt ? Utils.formatDate(new Date(venue.createdAt)) : '-';
-        
+
         // 地図リンクの設定
         const mapLink = document.getElementById('detail-map-link');
         if (mapLink) {
             mapLink.href = generateMapLink(venue.address);
         }
-        
+
         // 距離計算の表示
         if (venue.distance) {
             document.getElementById('detail-distance').textContent = `約${venue.distance}km`;
         }
-        
+
         UI.openModal('venue-detail-modal');
     };
-    
+
     /**
      * 住所から座標を取得（ジオコーディング）
      */
@@ -424,20 +427,20 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
         const addressInput = document.getElementById('venue-address');
         const latitudeInput = document.getElementById('venue-latitude');
         const longitudeInput = document.getElementById('venue-longitude');
-        
+
         if (!addressInput.value.trim()) {
             UI.showAlert('住所を入力してください', 'warning');
             return;
         }
-        
+
         try {
             // Google Maps Geocoding APIを使用
             const address = encodeURIComponent(addressInput.value.trim());
             const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${address}&key=YOUR_GOOGLE_MAPS_API_KEY`;
-            
+
             // 実際の実装では、サーバーサイドでAPIキーを使用することを推奨
             UI.showAlert('ジオコーディング機能は開発中です。手動で座標を入力してください。', 'info');
-            
+
             // 開発時のダミー実装（実際にはGoogle Maps APIを使用）
             const dummyCoordinates = getDummyCoordinates(addressInput.value);
             if (dummyCoordinates) {
@@ -445,13 +448,13 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
                 longitudeInput.value = dummyCoordinates.lng;
                 UI.showAlert('座標を取得しました（ダミーデータ）', 'success');
             }
-            
+
         } catch (error) {
             console.error('ジオコーディングエラー:', error);
             UI.showAlert('座標の取得に失敗しました', 'danger');
         }
     }
-    
+
     /**
      * 開発用のダミー座標取得
      */
@@ -464,17 +467,17 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
             '足利': { lat: 36.3411, lng: 139.4497 },
             '館林': { lat: 36.2452, lng: 139.5405 }
         };
-        
+
         for (const [key, coords] of Object.entries(dummyLocations)) {
             if (address.includes(key)) {
                 return coords;
             }
         }
-        
+
         // デフォルトは太田市役所
         return { lat: 36.2929, lng: 139.3744 };
     }
-    
+
     /**
      * 地図ビューの切り替え
      */
@@ -482,7 +485,7 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
         const mapContainer = document.getElementById('venues-map-container');
         const listContainer = document.getElementById('venues-list');
         const toggleBtn = document.getElementById('toggle-map-view');
-        
+
         if (mapContainer.style.display === 'none') {
             // 地図表示
             mapContainer.style.display = 'block';
@@ -496,7 +499,7 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
             toggleBtn.textContent = '地図表示';
         }
     }
-    
+
     /**
      * 地図の初期化
      */
@@ -504,7 +507,7 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
         // 実際の実装では Google Maps JavaScript API を使用
         const mapContainer = document.getElementById('venues-map');
         if (!mapContainer) return;
-        
+
         mapContainer.innerHTML = `
             <div class="map-placeholder">
                 <p>🗺️ 地図表示機能は開発中です</p>
@@ -521,7 +524,7 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
             </div>
         `;
     }
-    
+
     /**
      * Google Maps URLを生成
      */
@@ -530,26 +533,26 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
         const encoded = encodeURIComponent(address);
         return `https://www.google.com/maps/search/?api=1&query=${encoded}`;
     }
-    
+
     /**
      * フィルタリングされた会場を取得
      */
     function getFilteredVenues() {
         const searchTerm = document.getElementById('venue-search')?.value.toLowerCase() || '';
-        
+
         return venues.filter(venue => {
             // タイプフィルター
             const typeMatch = currentFilters.type === 'all' || venue.type === currentFilters.type;
-            
+
             // エリアフィルター（住所に基づく）
-            const areaMatch = currentFilters.area === 'all' || 
-                            (venue.address && venue.address.includes(currentFilters.area));
-            
+            const areaMatch = currentFilters.area === 'all' ||
+                (venue.address && venue.address.includes(currentFilters.area));
+
             // 検索フィルター
-            const searchMatch = !searchTerm || 
-                               venue.name.toLowerCase().includes(searchTerm) ||
-                               (venue.address && venue.address.toLowerCase().includes(searchTerm));
-            
+            const searchMatch = !searchTerm ||
+                venue.name.toLowerCase().includes(searchTerm) ||
+                (venue.address && venue.address.toLowerCase().includes(searchTerm));
+
             return typeMatch && areaMatch && searchMatch;
         }).sort((a, b) => {
             // ソート順: タイプ → 名前
@@ -557,11 +560,11 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
                 const typeOrder = { 'ground': 0, 'gym': 1, 'park': 2, 'other': 3 };
                 return (typeOrder[a.type] || 4) - (typeOrder[b.type] || 4);
             }
-            
+
             return a.name.localeCompare(b.name);
         });
     }
-    
+
     /**
      * タイプラベルを取得
      */
@@ -574,7 +577,7 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
         };
         return labels[type] || type;
     }
-    
+
     /**
      * 統計情報の更新
      */
@@ -583,33 +586,33 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
         const groundsCount = document.getElementById('grounds-count');
         const gymsCount = document.getElementById('gyms-count');
         const parksCount = document.getElementById('parks-count');
-        
+
         if (totalVenues) {
             totalVenues.textContent = venues.length;
         }
-        
+
         if (groundsCount) {
             groundsCount.textContent = venues.filter(v => v.type === 'ground').length;
         }
-        
+
         if (gymsCount) {
             gymsCount.textContent = venues.filter(v => v.type === 'gym').length;
         }
-        
+
         if (parksCount) {
             parksCount.textContent = venues.filter(v => v.type === 'park').length;
         }
     }
-    
+
     /**
      * CSV形式で会場リストをエクスポート
      */
-    Venues.exportVenues = function() {
+    Venues.exportVenues = function () {
         if (venues.length === 0) {
             UI.showAlert('エクスポートする会場がありません', 'warning');
             return;
         }
-        
+
         const csvHeader = 'Name,Type,Address,Phone,Website,Capacity,Parking,Notes,Latitude,Longitude,Created\n';
         const csvData = venues.map(venue => {
             return [
@@ -626,41 +629,42 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
                 venue.createdAt ? Utils.formatDate(new Date(venue.createdAt)) : ''
             ].map(field => `"${String(field).replace(/"/g, '""')}"`).join(',');
         }).join('\n');
-        
+
         const csvContent = csvHeader + csvData;
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
-        
+
         link.href = URL.createObjectURL(blob);
         link.download = `fc-ojima-venues-${new Date().toISOString().split('T')[0]}.csv`;
         link.click();
-        
+
         UI.showAlert('会場リストをエクスポートしました', 'success');
     };
-    
+
     /**
      * 表示の更新（外部から呼び出し可能）
      */
     Venues.updateDisplay = updateDisplay;
-    
+
     /**
      * クリーンアップ
      */
-    Venues.destroy = function() {
+    Venues.destroy = function () {
         if (venuesUnsubscribe) {
             venuesUnsubscribe();
             venuesUnsubscribe = null;
         }
     };
-    
+
     // ページから離れる時のクリーンアップ
     window.addEventListener('beforeunload', Venues.destroy);
-    
+
 })();
 
 // ページ読み込み時に初期化
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     if (typeof FCOjima !== 'undefined' && FCOjima.Hub && FCOjima.Hub.Venues) {
         FCOjima.Hub.Venues.init();
     }
 });
+

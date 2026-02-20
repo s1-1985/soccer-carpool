@@ -1,8 +1,13 @@
+<<<<<<< HEAD
 ﻿<!DOCTYPE html>
+=======
+<!DOCTYPE html>
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<<<<<<< HEAD
     <title>驟崎ｻ顔ｮ｡逅・- FC蟆ｾ蟲ｶ繧ｸ繝･繝九い</title>
     <link rel="stylesheet" href="../css/common.css">
     <link rel="stylesheet" href="../css/carpool/overview.css">
@@ -233,11 +238,83 @@
                         <div class="summary-label">蜑ｲ繧雁ｽ薙※</div>
                         <div class="summary-value" id="assignment-summary">-/-</div>
                         <div class="summary-detail">驟咲ｽｮ貂・蜿ょ刈閠・/div>
+=======
+    <title>配車管理 - FC尾島ジュニア</title>
+    <link rel="stylesheet" href="../css/common.css?v=20260219">
+    <link rel="stylesheet" href="../css/carpool/common.css?v=20260219">
+    <link rel="stylesheet" href="../css/carpool/overview.css?v=20260219">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <h1 id="event-header">FC尾島ジュニア 配車管理</h1>
+    </header>
+
+    <nav class="carpool-nav">
+        <a href="index.html" class="active">概要</a>
+        <a href="attendance.html">出欠確認</a>
+        <a href="cars.html">車提供</a>
+        <a href="assignments.html">割り当て</a>
+        <a href="notifications.html">連絡</a>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <h2>イベント概要</h2>
+            <div id="event-summary" class="event-details">
+                <!-- イベント情報がここに表示される -->
+                <div class="loading">読み込み中...</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>手順・チェックリスト</h2>
+            <div class="step-list">
+                <div class="step-item">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>出欠確認</h3>
+                        <p>参加メンバーの確認をしましょう。未回答者がいる場合はリマインドを送りましょう。</p>
+                        <div class="action-buttons">
+                            <a href="attendance.html" class="button">出欠確認へ</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="step-item">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>車両提供</h3>
+                        <p>保護者の皆様に車両提供の依頼をしましょう。</p>
+                        <div class="action-buttons">
+                            <a href="cars.html" class="button">車提供へ</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="step-item">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>割り当て</h3>
+                        <p>選手や監督・コーチを車両に割り当てましょう。</p>
+                        <div class="action-buttons">
+                            <a href="assignments.html" class="button">割り当てへ</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="step-item">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h3>連絡</h3>
+                        <p>配車に関する情報や注意事項を共有しましょう。</p>
+                        <div class="action-buttons">
+                            <a href="notifications.html" class="button">連絡へ</a>
+                        </div>
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
                     </div>
                 </div>
             </div>
         </div>
 
+<<<<<<< HEAD
         <!-- 繧｢繧ｯ繧ｷ繝ｧ繝ｳ繝懊ち繝ｳ -->
         <div class="action-buttons">
             <button id="refresh-data" class="secondary-button">繝・・繧ｿ繧呈峩譁ｰ</button>
@@ -256,10 +333,18 @@
             <div class="modal-actions">
                 <button id="continue-anyway" class="secondary-button">邯夊｡・/button>
                 <button id="fix-issues">蝠城｡後ｒ隗｣豎ｺ</button>
+=======
+        <div class="card">
+            <h2>状況サマリー</h2>
+            <div id="status-summary" class="status-summary">
+                <!-- 状況サマリーがJSで動的に生成される -->
+                <div class="loading">読み込み中...</div>
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
             </div>
         </div>
     </div>
 
+<<<<<<< HEAD
     <!-- 蜈ｱ騾壹Δ繧ｸ繝･繝ｼ繝ｫ -->
     <script src="../js/common/global.js"></script>
     <script src="../js/common/utils.js"></script>
@@ -270,3 +355,53 @@
     <script src="../js/carpool/overview.js"></script>
 </body>
 </html>
+=======
+    <!-- グローバルナビゲーション -->
+    <div class="global-navigation">
+        <button id="back-to-hub">HUBに戻る</button>
+        <button id="share-event-button" class="share-button">LINEで共有</button>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="../js/common/firebase-config.js?v=20260219"></script>
+
+    <!-- 共通モジュール -->
+    <script src="../js/common/global.js?v=20260219"></script>
+    <script src="../js/common/utils.js?v=20260219"></script>
+    <script src="../js/common/storage.js?v=20260219"></script>
+    <script src="../js/common/ui.js?v=20260219"></script>
+    <script src="../js/common/auth.js?v=20260219"></script>
+    <script src="../js/common/db.js?v=20260219"></script>
+
+    <!-- 配車管理用モジュール -->
+    <script src="../js/carpool/overview.js?v=20260219"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            await FCOjima.Auth.requireLogin();
+
+            if (FCOjima.Carpool.Overview && FCOjima.Carpool.Overview.init) {
+                FCOjima.Carpool.Overview.init();
+            }
+
+            document.getElementById('back-to-hub').addEventListener('click', function() {
+                if (FCOjima.Carpool.Overview && FCOjima.Carpool.Overview.goToMainPage) {
+                    FCOjima.Carpool.Overview.goToMainPage();
+                } else {
+                    window.location.href = '../hub/index.html';
+                }
+            });
+
+            document.getElementById('share-event-button').addEventListener('click', function() {
+                if (FCOjima.Carpool.Overview && FCOjima.Carpool.Overview.shareEventViaLINE) {
+                    FCOjima.Carpool.Overview.shareEventViaLINE();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e

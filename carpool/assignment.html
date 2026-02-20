@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>座席割り当て - FC尾島ジュニア</title>
+    <link rel="stylesheet" href="../css/common.css?v=20260219">
+    <link rel="stylesheet" href="../css/carpool/common.css?v=20260219">
+    <link rel="stylesheet" href="../css/carpool/assignment.css?v=20260219">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <h1 id="event-header">FC尾島ジュニア 座席割り当て</h1>
+    </header>
+
+    <nav class="carpool-nav">
+        <a href="index.html">概要</a>
+        <a href="attendance.html">出欠確認</a>
+        <a href="cars.html">車提供</a>
+        <a href="assignments.html" class="active">割り当て</a>
+        <a href="notifications.html">連絡</a>
+    </nav>
+
+    <div class="container">
+        <div id="assignment-event-info" class="event-summary">
+            <!-- イベント情報がJSで動的に生成される -->
+            <div class="loading">読み込み中...</div>
+        </div>
+
+        <div class="assignment-container">
+            <!-- 左側：車両座席エリア -->
+            <div class="car-seats-container">
+                <h3>車両座席配置</h3>
+                <div class="cars-scroll-area" id="cars-container">
+                    <!-- 車両情報がJSで動的に生成される -->
+                    <div class="loading">読み込み中...</div>
+                </div>
+            </div>
+            
+            <!-- 右側：メンバーリストエリア -->
+            <div class="members-assignment-container">
+                <h3>配置可能なメンバー</h3>
+                <div class="members-scroll-area" id="members-container">
+                    <!-- メンバーリストがJSで動的に生成される -->
+                    <div class="loading">読み込み中...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="action-buttons">
+            <button id="generate-random" class="random-assign-button">ランダム配置</button>
+            <button id="save-assignments" class="save-button">保存</button>
+            <button id="share-assignments" class="share-button">LINEで共有</button>
+        </div>
+    </div>
+
+    <!-- 座席編集モーダル -->
+    <div id="seat-edit-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>座席の編集</h2>
+            <form id="seat-edit-form">
+                <div class="form-group">
+                    <label for="seat-person">乗車メンバー:</label>
+                    <input type="text" id="seat-person">
+                </div>
+                <div class="form-actions">
+                    <button type="submit">保存</button>
+                    <button type="button" id="cancel-seat-edit">キャンセル</button>
+                    <button type="button" id="clear-seat" class="delete-button">座席をクリア</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- グローバルナビゲーション -->
+    <div class="global-navigation">
+        <button id="back-to-hub">HUBに戻る</button>
+        <button id="save-and-share-button" class="share-button">保存して共有</button>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="../js/common/firebase-config.js?v=20260219"></script>
+
+    <!-- 共通モジュール -->
+    <script src="../js/common/global.js?v=20260219"></script>
+    <script src="../js/common/utils.js?v=20260219"></script>
+    <script src="../js/common/storage.js?v=20260219"></script>
+    <script src="../js/common/ui.js?v=20260219"></script>
+    <script src="../js/common/auth.js?v=20260219"></script>
+    <script src="../js/common/db.js?v=20260219"></script>
+
+    <!-- 配車管理用モジュール -->
+    <script src="../js/carpool/overview.js?v=20260219"></script>
+    <script src="../js/carpool/assignment.js?v=20260219"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            await FCOjima.Auth.requireLogin();
+            // モーダル初期化
+            FCOjima.UI.initModals();
+            
+            // 割り当て機能の初期化
+            if (FCOjima.Carpool.Assignment && FCOjima.Carpool.Assignment.init) {
+                FCOjima.Carpool.Assignment.init();
+            } else {
+                console.error('割り当て機能の初期化に失敗しました');
+            }
+            
+            // イベント情報の表示
+            if (FCOjima.Carpool.Overview && FCOjima.Carpool.Overview.displayEventSummary) {
+                FCOjima.Carpool.Overview.displayEventSummary('assignment-event-info');
+            }
+            
+            // HUBに戻るボタンの設定
+            document.getElementById('back-to-hub').addEventListener('click', function() {
+                if (FCOjima.Carpool.Overview && FCOjima.Carpool.Overview.goToMainPage) {
+                    FCOjima.Carpool.Overview.goToMainPage();
+                } else {
+                    window.location.href = '../hub/index.html';
+                }
+            });
+            
+            // 保存して共有ボタンの設定
+            document.getElementById('save-and-share-button').addEventListener('click', function() {
+                if (FCOjima.Carpool.Assignment) {
+                    if (FCOjima.Carpool.Assignment.saveAssignments) {
+                        FCOjima.Carpool.Assignment.saveAssignments();
+                    }
+                    if (FCOjima.Carpool.Assignment.shareAssignments) {
+                        FCOjima.Carpool.Assignment.shareAssignments();
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

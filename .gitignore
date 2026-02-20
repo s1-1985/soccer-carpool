@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Logs
 logs
 *.log
@@ -73,3 +74,23 @@ node_modules/
 
 # dataconnect generated files
 .dataconnect
+=======
+# Firebase
+.firebase/
+firebase-debug.log
+.firebaserc.local
+
+# Node (Firebase CLIを使う場合)
+node_modules/
+npm-debug.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e

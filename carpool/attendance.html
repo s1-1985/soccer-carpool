@@ -1,8 +1,13 @@
+<<<<<<< HEAD
 ﻿<!DOCTYPE html>
+=======
+<!DOCTYPE html>
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<<<<<<< HEAD
     <title>蜃ｺ谺遒ｺ隱・- FC蟆ｾ蟲ｶ繧ｸ繝･繝九い</title>
     <link rel="stylesheet" href="../css/common.css">
     <link rel="stylesheet" href="../css/carpool/attendance.css">
@@ -224,10 +229,65 @@
                     <tbody id="attendance-tbody">
                         <tr>
                             <td colspan="6" class="loading">隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ...</td>
+=======
+    <title>出欠確認 - FC尾島ジュニア</title>
+    <link rel="stylesheet" href="../css/common.css?v=20260219">
+    <link rel="stylesheet" href="../css/carpool/common.css?v=20260219">
+    <link rel="stylesheet" href="../css/carpool/attendance.css?v=20260219">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <h1 id="event-header">FC尾島ジュニア 出欠確認</h1>
+    </header>
+
+    <nav class="carpool-nav">
+        <a href="index.html">概要</a>
+        <a href="attendance.html" class="active">出欠確認</a>
+        <a href="cars.html">車提供</a>
+        <a href="assignments.html">割り当て</a>
+        <a href="notifications.html">連絡</a>
+    </nav>
+
+    <div class="container">
+        <div id="attendance-event-info" class="event-summary">
+            <!-- イベント情報がJSで動的に生成される -->
+            <div class="loading">読み込み中...</div>
+        </div>
+
+        <div id="attendance-deadline" class="attendance-deadline">
+            <!-- 出欠期限がJSで動的に生成される -->
+            <div class="loading">読み込み中...</div>
+        </div>
+        
+        <div id="attendance-stats" class="attendance-stats">
+            <!-- 出欠統計がJSで動的に生成される -->
+            <div class="loading">読み込み中...</div>
+        </div>
+
+        <div class="card">
+            <h2>選手の出欠確認</h2>
+            <div class="table-container">
+                <table id="attendance-table" class="attendance-table">
+                    <thead>
+                        <tr>
+                            <th>選手名</th>
+                            <th>学年</th>
+                            <th>出欠</th>
+                            <th>備考</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- データがJSで動的に生成される -->
+                        <tr>
+                            <td colspan="5" class="empty-row">読み込み中...</td>
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
                         </tr>
                     </tbody>
                 </table>
             </div>
+<<<<<<< HEAD
         </div>
 
         <div class="action-buttons">
@@ -300,10 +360,29 @@ FC蟆ｾ蟲ｶ繧ｸ繝･繝九い縺ｮ豢ｻ蜍輔↓縺泌鵠蜉帙＞縺溘
                 <button id="send-line-reminder">LINE縺ｧ騾∽ｿ｡</button>
                 <button id="copy-reminder">繝｡繝・そ繝ｼ繧ｸ繧偵さ繝斐・</button>
                 <button id="cancel-reminder" class="secondary-button">繧ｭ繝｣繝ｳ繧ｻ繝ｫ</button>
+=======
+            <div class="action-buttons">
+                <button type="button" id="save-attendance">出欠を保存</button>
+                <button type="button" id="reminder-attendance" class="reminder-button">未回答者にリマインド</button>
+                <button type="button" id="add-attendee">メンバーを追加</button>
             </div>
         </div>
     </div>
 
+    <!-- メンバー選択モーダル -->
+    <div id="member-select-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>メンバーを選択</h2>
+            <div id="member-select-list" class="select-list">
+                <!-- メンバーリストがJSで動的に生成される -->
+                <div class="loading">読み込み中...</div>
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
+            </div>
+        </div>
+    </div>
+
+<<<<<<< HEAD
     <!-- 蜈ｱ騾壹Δ繧ｸ繝･繝ｼ繝ｫ -->
     <script src="../js/common/global.js"></script>
     <script src="../js/common/utils.js"></script>
@@ -314,3 +393,93 @@ FC蟆ｾ蟲ｶ繧ｸ繝･繝九い縺ｮ豢ｻ蜍輔↓縺泌鵠蜉帙＞縺溘
     <script src="../js/carpool/attendance.js"></script>
 </body>
 </html>
+=======
+    <!-- グローバルナビゲーション -->
+    <div class="global-navigation">
+        <button id="back-to-hub">HUBに戻る</button>
+        <button id="share-event-button" class="share-button">LINEで共有</button>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="../js/common/firebase-config.js?v=20260219"></script>
+
+    <!-- 共通モジュール -->
+    <script src="../js/common/global.js?v=20260219"></script>
+    <script src="../js/common/utils.js?v=20260219"></script>
+    <script src="../js/common/storage.js?v=20260219"></script>
+    <script src="../js/common/ui.js?v=20260219"></script>
+    <script src="../js/common/auth.js?v=20260219"></script>
+    <script src="../js/common/db.js?v=20260219"></script>
+
+    <!-- 配車管理用モジュール -->
+    <script src="../js/carpool/overview.js?v=20260219"></script>
+    <script src="../js/carpool/attendance.js?v=20260219"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            await FCOjima.Auth.requireLogin();
+            // 出欠確認機能の初期化
+            if (FCOjima.Carpool.Attendance && FCOjima.Carpool.Attendance.init) {
+                FCOjima.Carpool.Attendance.init();
+            } else {
+                console.error('出欠確認機能の初期化に失敗しました');
+            }
+            
+            // モーダルの初期化
+            if (FCOjima.UI && FCOjima.UI.initModals) {
+                FCOjima.UI.initModals();
+            }
+            
+            // 出欠保存ボタン
+            var saveAttendanceButton = document.getElementById('save-attendance');
+            if (saveAttendanceButton) {
+                saveAttendanceButton.addEventListener('click', function() {
+                    if (FCOjima.Carpool.Attendance && FCOjima.Carpool.Attendance.saveAttendance) {
+                        FCOjima.Carpool.Attendance.saveAttendance();
+                    }
+                });
+            }
+            
+            // リマインドボタン
+            var reminderButton = document.getElementById('reminder-attendance');
+            if (reminderButton) {
+                reminderButton.addEventListener('click', function() {
+                    if (FCOjima.Carpool.Attendance && FCOjima.Carpool.Attendance.reminderAttendance) {
+                        FCOjima.Carpool.Attendance.reminderAttendance();
+                    }
+                });
+            }
+            
+            // メンバー追加ボタン
+            var addAttendeeButton = document.getElementById('add-attendee');
+            if (addAttendeeButton) {
+                addAttendeeButton.addEventListener('click', function() {
+                    if (FCOjima.Carpool.Attendance && FCOjima.Carpool.Attendance.openMemberSelectModal) {
+                        FCOjima.Carpool.Attendance.openMemberSelectModal();
+                    }
+                });
+            }
+            
+            // HUBに戻るボタンの設定
+            document.getElementById('back-to-hub').addEventListener('click', function() {
+                if (FCOjima.Carpool.Overview && FCOjima.Carpool.Overview.goToMainPage) {
+                    FCOjima.Carpool.Overview.goToMainPage();
+                } else {
+                    window.location.href = '../hub/index.html';
+                }
+            });
+            
+            // イベント共有ボタンの設定
+            document.getElementById('share-event-button').addEventListener('click', function() {
+                if (FCOjima.Carpool.Overview && FCOjima.Carpool.Overview.shareEventViaLINE) {
+                    FCOjima.Carpool.Overview.shareEventViaLINE();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e

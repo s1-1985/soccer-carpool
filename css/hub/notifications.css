@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /* FC尾島ジュニア - 連絡事項管理スタイル */
 
 /* コントロール */
@@ -75,12 +76,46 @@
 .notification-item.highlight {
     border-color: #3498db;
     box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+=======
+/* FC尾島ジュニア - 連絡事項機能スタイル */
+
+/* 連絡事項リスト */
+.notifications-list {
+    margin-bottom: 30px;
+}
+
+/* 連絡事項カード */
+.notification-card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-left: 4px solid #E8A200;
+}
+
+.notification-card.info {
+    border-left-color: #E8A200;
+}
+
+.notification-card.success {
+    border-left-color: #28a745;
+}
+
+.notification-card.warning {
+    border-left-color: #ffc107;
+}
+
+.notification-card.danger {
+    border-left-color: #dc3545;
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
 }
 
 /* 連絡事項ヘッダー */
 .notification-header {
     display: flex;
     justify-content: space-between;
+<<<<<<< HEAD
     align-items: flex-start;
     margin-bottom: 12px;
 }
@@ -132,10 +167,25 @@
     font-size: 12px;
     color: #888;
     font-weight: 500;
+=======
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #eee;
+}
+
+.notification-date {
+    font-weight: bold;
+    color: #555;
+}
+
+.notification-author {
+    color: #888;
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
 }
 
 /* 連絡事項内容 */
 .notification-content {
+<<<<<<< HEAD
     color: #333;
     line-height: 1.6;
     margin-bottom: 10px;
@@ -178,10 +228,16 @@
 
 .expand-button:hover {
     text-decoration: underline;
+=======
+    margin-bottom: 15px;
+    white-space: pre-line;
+    line-height: 1.6;
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
 }
 
 /* 連絡事項アクション */
 .notification-actions {
+<<<<<<< HEAD
     margin-top: 15px;
     display: flex;
     gap: 8px;
@@ -390,10 +446,136 @@
 
 .notification-type.schedule::before {
     content: "⏰";
+=======
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* 連絡事項入力フォーム */
+.notification-form {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.notification-form .form-group {
+    margin-bottom: 15px;
+}
+
+.notification-form textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    resize: vertical;
+}
+
+.notification-form .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* 添付ファイル */
+.attachment-preview {
+    margin-top: 10px;
+    margin-bottom: 15px;
+}
+
+.attachment-item {
+    display: flex;
+    align-items: center;
+    background-color: #f8f9fa;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.attachment-icon {
+    margin-right: 10px;
+    color: #6c757d;
+}
+
+.attachment-name {
+    flex: 1;
+}
+
+.attachment-remove {
+    color: #dc3545;
+    cursor: pointer;
+    padding: 5px;
+}
+
+/* カテゴリータグ */
+.notification-category {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-right: 5px;
+    background-color: #e9ecef;
+    color: #495057;
+}
+
+.notification-category.important {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.notification-category.event {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.notification-category.schedule {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+/* 注意書き */
+.notification-info {
+    font-size: 14px;
+    color: #6c757d;
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+/* フィルタリング */
+.notification-filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.notification-filter-item {
+    padding: 5px 10px;
+    border-radius: 20px;
+    background-color: #e9ecef;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.notification-filter-item:hover {
+    background-color: #dee2e6;
+}
+
+.notification-filter-item.active {
+    background-color: #E8A200;
+    color: white;
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
 }
 
 /* レスポンシブ対応 */
 @media screen and (max-width: 768px) {
+<<<<<<< HEAD
     .controls {
         flex-direction: column;
         align-items: stretch;
@@ -422,10 +604,18 @@
     }
     
     .notification-meta {
+=======
+    .notification-header {
+        flex-direction: column;
+    }
+    
+    .notification-date {
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
         margin-bottom: 5px;
     }
     
     .notification-actions {
+<<<<<<< HEAD
         opacity: 1;
         flex-wrap: wrap;
     }
@@ -471,4 +661,19 @@
     .share-icon {
         font-size: 24px;
     }
+=======
+        flex-wrap: wrap;
+    }
+    
+    .notification-actions button {
+        flex: 1;
+        font-size: 14px;
+        padding: 6px 10px;
+    }
+    
+    .notification-filters {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
 }

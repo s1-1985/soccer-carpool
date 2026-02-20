@@ -1,6 +1,10 @@
 /**
  * FC尾島ジュニア - ストレージ操作
+<<<<<<< HEAD
  * ローカルストレージとセッションストレージの操作機能
+=======
+ * Firestore（優先）＋ローカルストレージ（フォールバック）
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
  */
 
 // 名前空間の確保
@@ -11,6 +15,7 @@ FCOjima.Storage = FCOjima.Storage || {};
 (function() {
     // 名前空間のショートカット
     const Storage = FCOjima.Storage;
+<<<<<<< HEAD
     
     // ストレージキーのプレフィックス
     Storage.PREFIX = 'fc-ojima-';
@@ -126,6 +131,102 @@ FCOjima.Storage = FCOjima.Storage || {};
         
         return members;
     };
+=======
+
+    // ローカルストレージのプレフィックス
+    Storage.PREFIX = 'fcojima_';
+
+    /**
+     * メンバーデータをローカルストレージから読み込む
+     * ※Firestoreデータはページ初期化時に app.Hub.members へ格納済み
+     */
+    Storage.loadMembers = function() {
+        // Firestoreからロード済みのキャッシュを返す
+        if (window.FCOjima && FCOjima.Hub && FCOjima.Hub.members && FCOjima.Hub.members.length > 0) {
+            return FCOjima.Hub.members;
+        }
+        // フォールバック: localStorageから読み込む
+        const saved = localStorage.getItem(this.PREFIX + 'members');
+        let members = saved ? JSON.parse(saved) : [];
+        if (members.length === 0) {
+            members = [
+                { id: 1, name: '田中太郎',   birth: '2016-04-01', gender: 'male',   role: 'player', number: 10, grade: '3', notes: '' },
+                { id: 2, name: '鈴木花子',   birth: '2016-09-15', gender: 'female', role: 'player', number: 7,  grade: '3', notes: '' },
+                { id: 3, name: '佐藤次郎',   birth: '2017-03-20', gender: 'male',   role: 'player', number: 3,  grade: '2', notes: '' },
+                { id: 4, name: '山田美咲',   birth: '2015-11-10', gender: 'female', role: 'mother', number: null, grade: null, notes: '田中太郎の母' }
+            ];
+        }
+        return members;
+    };
+
+    /**
+     * イベント（予定）をローカルストレージから読み込む
+     */
+    Storage.loadEvents = function() {
+        if (window.FCOjima && FCOjima.Hub && FCOjima.Hub.events && FCOjima.Hub.events.length > 0) {
+            return FCOjima.Hub.events;
+        }
+        const saved = localStorage.getItem(this.PREFIX + 'events');
+        return saved ? JSON.parse(saved) : [];
+    };
+
+    /**
+     * イベントデータを保存（Firestore + localStorage）
+     */
+    Storage.saveEvents = function(events) {
+        localStorage.setItem(this.PREFIX + 'events', JSON.stringify(events));
+        if (window.FCOjima && FCOjima.DB) {
+            FCOjima.DB.saveEvents(events).catch(e => console.warn('Firestore saveEvents:', e));
+        }
+    };
+    
+    /**
+     * メンバーデータをローカルストレージから読み込む（続き）
+     */
+    // サンプルデータの続き
+    const sampleMembers = [
+        {
+            id: 5,
+            name: '渡邊悠人',
+            birth: '2017-08-30',
+            gender: 'male',
+            role: 'player',
+            number: 4,
+            grade: '2',
+            notes: ''
+        },
+        {
+            id: 6,
+            name: '飯田友則',
+            birth: '',
+            gender: 'male',
+            role: 'coach',
+            number: null,
+            grade: null,
+            notes: '監督'
+        },
+        {
+            id: 7,
+            name: '大槻智一',
+            birth: '',
+            gender: 'male',
+            role: 'assist',
+            number: null,
+            grade: null,
+            notes: 'コーチ'
+        },
+        {
+            id: 8,
+            name: '田中和人',
+            birth: '',
+            gender: 'male',
+            role: 'father',
+            number: null,
+            grade: null,
+            notes: '田中浩二の父'
+        }
+    ];
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
     
     /**
      * メンバーデータをローカルストレージに保存
@@ -133,6 +234,12 @@ FCOjima.Storage = FCOjima.Storage || {};
      */
     Storage.saveMembers = function(members) {
         localStorage.setItem(this.PREFIX + 'members', JSON.stringify(members));
+<<<<<<< HEAD
+=======
+        if (window.FCOjima && FCOjima.DB) {
+            FCOjima.DB.saveMembers(members).catch(e => console.warn('Firestore saveMembers:', e));
+        }
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
     };
     
     /**
@@ -177,6 +284,12 @@ FCOjima.Storage = FCOjima.Storage || {};
      */
     Storage.saveVenues = function(venues) {
         localStorage.setItem(this.PREFIX + 'venues', JSON.stringify(venues));
+<<<<<<< HEAD
+=======
+        if (window.FCOjima && FCOjima.DB) {
+            FCOjima.DB.saveVenues(venues).catch(e => console.warn('Firestore saveVenues:', e));
+        }
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
     };
     
     /**
@@ -226,14 +339,78 @@ FCOjima.Storage = FCOjima.Storage || {};
         
         const now = new Date();
         const datetime = now.toISOString();
+<<<<<<< HEAD
         const user = 'システム'; // ログイン機能実装までのダミーユーザー
         
         const newLog = {
+=======
+        const user = (window.FCOjima && window.FCOjima.Auth && window.FCOjima.Auth.getDisplayName)
+            ? window.FCOjima.Auth.getDisplayName()
+            : 'システム';
+        
+        // 各ログにユニークIDを付与
+        const logId = Date.now().toString() + Math.floor(Math.random() * 1000);
+        
+        // 削除のログには復元フラグを追加（1週間有効）
+        const canRestore = action.includes('削除');
+        const restoreDeadline = canRestore ? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString() : null;
+        
+        // 削除時のデータバックアップを行う
+        let deletedData = null;
+        if (canRestore) {
+            // 削除されたデータのタイプに応じてバックアップを行う
+            switch (type) {
+                case 'members':
+                    // メンバー削除の場合
+                    const memberMatch = details.match(/「(.+?)」/);
+                    if (memberMatch) {
+                        const memberName = memberMatch[1];
+                        const members = this.loadMembers();
+                        deletedData = members.find(function(m) {
+                            return m.name === memberName;
+                        });
+                    }
+                    break;
+                case 'venues':
+                    // 会場削除の場合
+                    const venueMatch = details.match(/「(.+?)」/);
+                    if (venueMatch) {
+                        const venueName = venueMatch[1];
+                        const venues = this.loadVenues();
+                        deletedData = venues.find(function(v) {
+                            return v.name === venueName;
+                        });
+                    }
+                    break;
+                case 'calendar':
+                    // イベント削除の場合
+                    const eventMatch = details.match(/「(.+?)」/);
+                    if (eventMatch) {
+                        const eventTitle = eventMatch[1];
+                        const events = this.loadEvents();
+                        deletedData = events.find(function(e) {
+                            return e.title === eventTitle;
+                        });
+                    }
+                    break;
+            }
+        }
+        
+        const newLog = {
+            id: logId,
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
             datetime: datetime,
             user: user,
             type: type,
             action: action,
+<<<<<<< HEAD
             details: details
+=======
+            details: details,
+            canRestore: canRestore,
+            restoreDeadline: restoreDeadline,
+            deletedData: deletedData
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
         };
         
         const updatedLogs = logs.concat([newLog]);
@@ -273,6 +450,12 @@ FCOjima.Storage = FCOjima.Storage || {};
      */
     Storage.saveNotifications = function(notifications) {
         localStorage.setItem(this.PREFIX + 'notifications', JSON.stringify(notifications));
+<<<<<<< HEAD
+=======
+        if (window.FCOjima && FCOjima.DB) {
+            FCOjima.DB.saveNotifications(notifications).catch(e => console.warn('Firestore saveNotifications:', e));
+        }
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
     };
     
     /**
@@ -320,4 +503,66 @@ FCOjima.Storage = FCOjima.Storage || {};
         const eventData = sessionStorage.getItem(this.PREFIX + 'selectedEvent');
         return eventData ? JSON.parse(eventData) : null;
     };
+<<<<<<< HEAD
+=======
+    
+    /**
+     * ローカルストレージにデータが存在するか確認
+     * @param {string} key - ストレージキー
+     * @returns {boolean} データが存在するかどうか
+     */
+    Storage.exists = function(key) {
+        return localStorage.getItem(this.PREFIX + key) !== null;
+    };
+    
+    /**
+     * ローカルストレージからデータを取得
+     * @param {string} key - ストレージキー
+     * @param {*} defaultValue - データが存在しない場合のデフォルト値
+     * @returns {*} 取得したデータまたはデフォルト値
+     */
+    Storage.get = function(key, defaultValue = null) {
+        const item = localStorage.getItem(this.PREFIX + key);
+        if (item === null) return defaultValue;
+        
+        try {
+            return JSON.parse(item);
+        } catch (e) {
+            return item;
+        }
+    };
+    
+    /**
+     * ローカルストレージにデータを保存
+     * @param {string} key - ストレージキー
+     * @param {*} value - 保存するデータ
+     */
+    Storage.set = function(key, value) {
+        if (typeof value === 'object') {
+            localStorage.setItem(this.PREFIX + key, JSON.stringify(value));
+        } else {
+            localStorage.setItem(this.PREFIX + key, value);
+        }
+    };
+    
+    /**
+     * ローカルストレージからデータを削除
+     * @param {string} key - ストレージキー
+     */
+    Storage.remove = function(key) {
+        localStorage.removeItem(this.PREFIX + key);
+    };
+    
+    /**
+     * ローカルストレージをクリア（プレフィックスに一致するもののみ）
+     */
+    Storage.clear = function() {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (key.startsWith(this.PREFIX)) {
+                localStorage.removeItem(key);
+            }
+        }
+    };
+>>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
 })();
