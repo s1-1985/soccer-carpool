@@ -1,7 +1,6 @@
-<<<<<<< HEAD
-{
+﻿{
   "hosting": {
-    "public": ".",
+    "public": "public",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -9,42 +8,3 @@
     ]
   }
 }
-=======
-{
-  "hosting": {
-    "site": "fc-ojimajr-hub",
-    "public": ".",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**",
-      "firestore.rules",
-      "firestore.indexes.json"
-    ],
-    "headers": [
-      {
-        "source": "**/*.html",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache"
-          }
-        ]
-      },
-      {
-        "source": "**/*.@(js|css)",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache"
-          }
-        ]
-      }
-    ]
-  },
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  }
-}
->>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
