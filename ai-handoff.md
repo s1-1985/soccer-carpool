@@ -31,3 +31,6 @@ git push origin main
 
 2. **Firebaseデプロイ確認:**
    プッシュ後、Github Actionsが正常に動作し、Firebase Hostingへのデプロイが完了することを確認してください。
+## 次のステップ（再開時にやること）
+1. assignment.js の末尾修復: ブラウザで 1315行目付近に SyntaxError（Unexpected end of input）が出ている。ファイルの末尾が途切れているので、コードを正しく閉じる。
+2. mainブランチへの反映: 修正後、git push origin main を実行し、Firebase Hosting への自動デプロイを走らせる。
