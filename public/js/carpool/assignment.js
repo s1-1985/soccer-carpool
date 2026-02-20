@@ -1,14 +1,12 @@
-/**
- * FC尾島ジュニア - 座席割り当て機能（Firebase版）
- * ドラッグ&ドロップ、座席レイアウト、自動配置機能
+﻿/**
+ * FC蟆ｾ蟲ｶ繧ｸ繝･繝九い - 蠎ｧ蟶ｭ蜑ｲ繧雁ｽ薙※讖溯・・・irebase迚茨ｼ・ * 繝峨Λ繝・げ&繝峨Ο繝・・縲∝ｺｧ蟶ｭ繝ｬ繧､繧｢繧ｦ繝医∬・蜍暮・鄂ｮ讖溯・
  */
 
-// 名前空間の確保
-window.FCOjima = window.FCOjima || {};
+// 蜷榊燕遨ｺ髢薙・遒ｺ菫・window.FCOjima = window.FCOjima || {};
 FCOjima.Carpool = FCOjima.Carpool || {};
 FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
 
-// 座席割り当てモジュール
+// 蠎ｧ蟶ｭ蜑ｲ繧雁ｽ薙※繝｢繧ｸ繝･繝ｼ繝ｫ
 (function() {
     const Assignment = FCOjima.Carpool.Assignment;
     const Firestore = FCOjima.Firestore;
@@ -16,7 +14,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     const UI = FCOjima.UI;
     const Utils = FCOjima.Utils;
     
-    // データ
+    // 繝・・繧ｿ
     let currentEvent = null;
     let attendanceData = {};
     let carsData = [];
@@ -26,78 +24,68 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     let carpoolUnsubscribe = null;
     let membersUnsubscribe = null;
     
-    // ドラッグ&ドロップ関連
+    // 繝峨Λ繝・げ&繝峨Ο繝・・髢｢騾｣
     let draggedElement = null;
     let draggedMemberId = null;
     let draggedFromSeat = null;
     let longPressTimer = null;
     let isDragging = false;
     
-    // 設定
-    const LONG_PRESS_DURATION = 500; // ミリ秒
-    
+    // 險ｭ螳・    const LONG_PRESS_DURATION = 500; // 繝溘Μ遘・    
     /**
-     * 座席割り当て機能の初期化
-     */
+     * 蠎ｧ蟶ｭ蜑ｲ繧雁ｽ薙※讖溯・縺ｮ蛻晄悄蛹・     */
     Assignment.init = async function() {
         try {
-            // 認証チェック
+            // 隱崎ｨｼ繝√ぉ繝・け
             if (!Auth.isLoggedIn()) {
-                console.warn('未ログインユーザーです');
-                UI.showAlert('ログインが必要です', 'warning');
+                console.warn('譛ｪ繝ｭ繧ｰ繧､繝ｳ繝ｦ繝ｼ繧ｶ繝ｼ縺ｧ縺・);
+                UI.showAlert('繝ｭ繧ｰ繧､繝ｳ縺悟ｿ・ｦ√〒縺・, 'warning');
                 window.location.href = '../auth/login.html';
                 return;
             }
             
-            // セッションからイベントIDを取得
-            const selectedEventId = sessionStorage.getItem('fc-ojima-selected-event');
+            // 繧ｻ繝・す繝ｧ繝ｳ縺九ｉ繧､繝吶Φ繝・D繧貞叙蠕・            const selectedEventId = sessionStorage.getItem('fc-ojima-selected-event');
             if (!selectedEventId) {
-                UI.showAlert('イベントが選択されていません', 'warning');
+                UI.showAlert('繧､繝吶Φ繝医′驕ｸ謚槭＆繧後※縺・∪縺帙ｓ', 'warning');
                 window.location.href = 'index.html';
                 return;
             }
             
-            // イベント情報を取得
-            currentEvent = await Firestore.getDocument('events', selectedEventId);
+            // 繧､繝吶Φ繝域ュ蝣ｱ繧貞叙蠕・            currentEvent = await Firestore.getDocument('events', selectedEventId);
             if (!currentEvent) {
-                UI.showAlert('指定されたイベントが見つかりません', 'danger');
+                UI.showAlert('謖・ｮ壹＆繧後◆繧､繝吶Φ繝医′隕九▽縺九ｊ縺ｾ縺帙ｓ', 'danger');
                 window.location.href = 'index.html';
                 return;
             }
             
-            // データをリアルタイム監視で読み込み
+            // 繝・・繧ｿ繧偵Μ繧｢繝ｫ繧ｿ繧､繝逶｣隕悶〒隱ｭ縺ｿ霎ｼ縺ｿ
             setupRealtimeListeners();
             
-            // UI要素の初期化
-            setupEventListeners();
+            // UI隕∫ｴ縺ｮ蛻晄悄蛹・            setupEventListeners();
             updateEventInfo();
             updateDisplay();
             
-            // モーダルの初期化
-            if (UI && UI.initModals) {
+            // 繝｢繝ｼ繝繝ｫ縺ｮ蛻晄悄蛹・            if (UI && UI.initModals) {
                 UI.initModals();
             }
             
-            console.log('座席割り当て機能を初期化しました（Firebase版）');
+            console.log('蠎ｧ蟶ｭ蜑ｲ繧雁ｽ薙※讖溯・繧貞・譛溷喧縺励∪縺励◆・・irebase迚茨ｼ・);
             
         } catch (error) {
-            console.error('座席割り当て初期化エラー:', error);
-            UI.showAlert('座席割り当ての初期化に失敗しました', 'danger');
+            console.error('蠎ｧ蟶ｭ蜑ｲ繧雁ｽ薙※蛻晄悄蛹悶お繝ｩ繝ｼ:', error);
+            UI.showAlert('蠎ｧ蟶ｭ蜑ｲ繧雁ｽ薙※縺ｮ蛻晄悄蛹悶↓螟ｱ謨励＠縺ｾ縺励◆', 'danger');
         }
     };
     
     /**
-     * リアルタイムリスナーの設定
-     */
+     * 繝ｪ繧｢繝ｫ繧ｿ繧､繝繝ｪ繧ｹ繝翫・縺ｮ險ｭ螳・     */
     function setupRealtimeListeners() {
-        // メンバーデータの監視
-        membersUnsubscribe = Firestore.watchMembers((updatedMembers) => {
+        // 繝｡繝ｳ繝舌・繝・・繧ｿ縺ｮ逶｣隕・        membersUnsubscribe = Firestore.watchMembers((updatedMembers) => {
             membersData = updatedMembers.filter(member => member.status === 'active');
             updateDisplay();
         });
         
-        // 配車データのリアルタイム監視
-        carpoolUnsubscribe = Firestore.watchCarpoolData(currentEvent.id, (updatedData) => {
+        // 驟崎ｻ翫ョ繝ｼ繧ｿ縺ｮ繝ｪ繧｢繝ｫ繧ｿ繧､繝逶｣隕・        carpoolUnsubscribe = Firestore.watchCarpoolData(currentEvent.id, (updatedData) => {
             carpoolData = updatedData;
             attendanceData = carpoolData?.attendance || {};
             carsData = carpoolData?.cars || [];
@@ -107,34 +95,33 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     }
     
     /**
-     * イベントリスナーの設定
-     */
+     * 繧､繝吶Φ繝医Μ繧ｹ繝翫・縺ｮ險ｭ螳・     */
     function setupEventListeners() {
-        // 自動配置ボタン
+        // 閾ｪ蜍暮・鄂ｮ繝懊ち繝ｳ
         const autoAssignBtn = document.getElementById('auto-assign');
         if (autoAssignBtn) {
             autoAssignBtn.addEventListener('click', performAutoAssignment);
         }
         
-        // 配置リセットボタン
+        // 驟咲ｽｮ繝ｪ繧ｻ繝・ヨ繝懊ち繝ｳ
         const resetAssignmentBtn = document.getElementById('reset-assignment');
         if (resetAssignmentBtn) {
             resetAssignmentBtn.addEventListener('click', resetAllAssignments);
         }
         
-        // 配置最適化ボタン
+        // 驟咲ｽｮ譛驕ｩ蛹悶・繧ｿ繝ｳ
         const optimizeBtn = document.getElementById('optimize-assignment');
         if (optimizeBtn) {
             optimizeBtn.addEventListener('click', optimizeAssignment);
         }
         
-        // LINE共有ボタン
+        // LINE蜈ｱ譛峨・繧ｿ繝ｳ
         const shareAssignmentBtn = document.getElementById('share-assignment');
         if (shareAssignmentBtn) {
             shareAssignmentBtn.addEventListener('click', shareAssignmentInfo);
         }
         
-        // 次のステップへ
+        // 谺｡縺ｮ繧ｹ繝・ャ繝励∈
         const nextStepBtn = document.getElementById('next-step');
         if (nextStepBtn) {
             nextStepBtn.addEventListener('click', () => {
@@ -142,31 +129,28 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             });
         }
         
-        // 前のステップに戻る
-        const prevStepBtn = document.getElementById('prev-step');
+        // 蜑阪・繧ｹ繝・ャ繝励↓謌ｻ繧・        const prevStepBtn = document.getElementById('prev-step');
         if (prevStepBtn) {
             prevStepBtn.addEventListener('click', () => {
                 window.location.href = 'cars.html';
             });
         }
         
-        // 概要に戻る
-        const backToOverviewBtn = document.getElementById('back-to-overview');
+        // 讎りｦ√↓謌ｻ繧・        const backToOverviewBtn = document.getElementById('back-to-overview');
         if (backToOverviewBtn) {
             backToOverviewBtn.addEventListener('click', () => {
                 window.location.href = 'index.html';
             });
         }
         
-        // 表示切り替え
-        const toggleViewBtn = document.getElementById('toggle-view');
+        // 陦ｨ遉ｺ蛻・ｊ譖ｿ縺・        const toggleViewBtn = document.getElementById('toggle-view');
         if (toggleViewBtn) {
             toggleViewBtn.addEventListener('click', toggleAssignmentView);
         }
     }
     
     /**
-     * イベント情報を更新
+     * 繧､繝吶Φ繝域ュ蝣ｱ繧呈峩譁ｰ
      */
     function updateEventInfo() {
         const eventInfoCard = document.getElementById('event-info');
@@ -197,7 +181,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     }
     
     /**
-     * 表示を更新
+     * 陦ｨ遉ｺ繧呈峩譁ｰ
      */
     function updateDisplay() {
         if (carsData.length === 0) {
@@ -212,7 +196,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     }
     
     /**
-     * 車両なしメッセージを表示
+     * 霆贋ｸ｡縺ｪ縺励Γ繝・そ繝ｼ繧ｸ繧定｡ｨ遉ｺ
      */
     function showNoCarsMessage() {
         const assignmentContainer = document.getElementById('assignment-container');
@@ -220,17 +204,17 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         
         assignmentContainer.innerHTML = `
             <div class="no-cars-message">
-                <h4>車両が登録されていません</h4>
-                <p>座席割り当てを行うには、まず車両提供の登録が必要です。</p>
+                <h4>霆贋ｸ｡縺檎匳骭ｲ縺輔ｌ縺ｦ縺・∪縺帙ｓ</h4>
+                <p>蠎ｧ蟶ｭ蜑ｲ繧雁ｽ薙※繧定｡後≧縺ｫ縺ｯ縲√∪縺夊ｻ贋ｸ｡謠蝉ｾ帙・逋ｻ骭ｲ縺悟ｿ・ｦ√〒縺吶・/p>
                 <button onclick="window.location.href='cars.html'" class="btn btn-primary">
-                    車両提供ページへ
+                    霆贋ｸ｡謠蝉ｾ帙・繝ｼ繧ｸ縺ｸ
                 </button>
             </div>
         `;
     }
     
     /**
-     * メンバー一覧を更新
+     * 繝｡繝ｳ繝舌・荳隕ｧ繧呈峩譁ｰ
      */
     function updateMembersList() {
         const membersList = document.getElementById('unassigned-members');
@@ -242,7 +226,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         if (unassignedMembers.length === 0) {
             membersList.innerHTML = `
                 <div class="no-unassigned">
-                    <p>✅ 全員配置済み</p>
+                    <p>笨・蜈ｨ蜩｡驟咲ｽｮ貂医∩</p>
                 </div>
             `;
             return;
@@ -258,12 +242,11 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         
         membersList.innerHTML = html;
         
-        // ドラッグイベントを設定
-        setupMemberDragEvents();
+        // 繝峨Λ繝・げ繧､繝吶Φ繝医ｒ險ｭ螳・        setupMemberDragEvents();
     }
     
     /**
-     * ドラッグ可能なメンバー要素を作成
+     * 繝峨Λ繝・げ蜿ｯ閭ｽ縺ｪ繝｡繝ｳ繝舌・隕∫ｴ繧剃ｽ懈・
      */
     function createDraggableMember(member) {
         const grade = member.role === 'player' ? (calculateGrade(member.birthDate) || '') : '';
@@ -275,7 +258,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                  draggable="true">
                 <div class="member-info">
                     <div class="member-name">${Utils.escapeHTML(member.name)}</div>
-                    ${grade ? `<div class="member-grade">${grade}年生</div>` : ''}
+                    ${grade ? `<div class="member-grade">${grade}蟷ｴ逕・/div>` : ''}
                     ${member.number ? `<div class="member-number">#${member.number}</div>` : ''}
                 </div>
                 <div class="member-role">${getRoleLabel(member.role)}</div>
@@ -284,7 +267,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     }
     
     /**
-     * 車両別座席割り当てを更新
+     * 霆贋ｸ｡蛻･蠎ｧ蟶ｭ蜑ｲ繧雁ｽ薙※繧呈峩譁ｰ
      */
     function updateCarsAssignment() {
         const carsContainer = document.getElementById('cars-assignment');
@@ -300,12 +283,11 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         
         carsContainer.innerHTML = html;
         
-        // 座席のドロップイベントを設定
-        setupSeatDropEvents();
+        // 蠎ｧ蟶ｭ縺ｮ繝峨Ο繝・・繧､繝吶Φ繝医ｒ險ｭ螳・        setupSeatDropEvents();
     }
     
     /**
-     * 車両割り当てカードを作成
+     * 霆贋ｸ｡蜑ｲ繧雁ｽ薙※繧ｫ繝ｼ繝峨ｒ菴懈・
      */
     function createCarAssignmentCard(car, carIndex) {
         const carAssignment = assignmentData[carIndex] || {};
@@ -314,10 +296,10 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         return `
             <div class="car-assignment-card" data-car-index="${carIndex}">
                 <div class="car-header">
-                    <h4>${Utils.escapeHTML(car.driverName)}の車</h4>
+                    <h4>${Utils.escapeHTML(car.driverName)}縺ｮ霆・/h4>
                     <div class="car-info">
                         <span class="car-model">${Utils.escapeHTML(car.carModel || '')}</span>
-                        <span class="car-seats">${car.availableSeats}席</span>
+                        <span class="car-seats">${car.availableSeats}蟶ｭ</span>
                     </div>
                 </div>
                 
@@ -333,7 +315,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     }
     
     /**
-     * 座席レイアウトを生成
+     * 蠎ｧ蟶ｭ繝ｬ繧､繧｢繧ｦ繝医ｒ逕滓・
      */
     function generateSeatLayout(car, carAssignment, carIndex) {
         const seats = carAssignment.seats || {};
@@ -341,37 +323,35 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         
         let html = '<div class="car-diagram">';
         
-        // 運転席エリア（運転席は常に運転者で固定）
-        html += '<div class="seat-row driver-row">';
+        // 驕玖ｻ｢蟶ｭ繧ｨ繝ｪ繧｢・磯°霆｢蟶ｭ縺ｯ蟶ｸ縺ｫ驕玖ｻ｢閠・〒蝗ｺ螳夲ｼ・        html += '<div class="seat-row driver-row">';
         html += `<div class="seat driver-seat occupied">
-            <div class="seat-label">運転席</div>
+            <div class="seat-label">驕玖ｻ｢蟶ｭ</div>
             <div class="seat-occupant">${Utils.escapeHTML(car.driverName)}</div>
         </div>`;
         
-        // 助手席（利用可能な場合）
-        if (seatConfig.front > 0) {
+        // 蜉ｩ謇句ｸｭ・亥茜逕ｨ蜿ｯ閭ｽ縺ｪ蝣ｴ蜷茨ｼ・        if (seatConfig.front > 0) {
             const frontSeat = seats.front || null;
-            html += createSeatElement('front', 0, frontSeat, carIndex, '助手席');
+            html += createSeatElement('front', 0, frontSeat, carIndex, '蜉ｩ謇句ｸｭ');
         }
         
         html += '</div>';
         
-        // 中列座席
+        // 荳ｭ蛻怜ｺｧ蟶ｭ
         if (seatConfig.middle > 0) {
             html += '<div class="seat-row middle-row">';
             for (let i = 0; i < seatConfig.middle; i++) {
                 const middleSeat = seats[`middle-${i}`] || null;
-                html += createSeatElement('middle', i, middleSeat, carIndex, `中列${i + 1}`);
+                html += createSeatElement('middle', i, middleSeat, carIndex, `荳ｭ蛻・{i + 1}`);
             }
             html += '</div>';
         }
         
-        // 後列座席
+        // 蠕悟・蠎ｧ蟶ｭ
         if (seatConfig.back > 0) {
             html += '<div class="seat-row back-row">';
             for (let i = 0; i < seatConfig.back; i++) {
                 const backSeat = seats[`back-${i}`] || null;
-                html += createSeatElement('back', i, backSeat, carIndex, `後列${i + 1}`);
+                html += createSeatElement('back', i, backSeat, carIndex, `蠕悟・${i + 1}`);
             }
             html += '</div>';
         }
@@ -381,7 +361,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     }
     
     /**
-     * 座席要素を作成
+     * 蠎ｧ蟶ｭ隕∫ｴ繧剃ｽ懈・
      */
     function createSeatElement(row, index, occupant, carIndex, label) {
         const seatId = `${row}-${index}`;
@@ -400,19 +380,17 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                         <div class="occupant-name">${Utils.escapeHTML(occupantInfo.name)}</div>
                         ${occupantInfo.role === 'player' ? `
                             <div class="occupant-details">
-                                ${calculateGrade(occupantInfo.birthDate) || ''}年生
-                                ${occupantInfo.number ? ` #${occupantInfo.number}` : ''}
+                                ${calculateGrade(occupantInfo.birthDate) || ''}蟷ｴ逕・                                ${occupantInfo.number ? ` #${occupantInfo.number}` : ''}
                             </div>
                         ` : `
                             <div class="occupant-details">${getRoleLabel(occupantInfo.role)}</div>
                         `}
                         <button class="remove-occupant" onclick="FCOjima.Carpool.Assignment.removeSeatOccupant(${carIndex}, '${seatId}')">
-                            ×
-                        </button>
+                            ﾃ・                        </button>
                     </div>
                 ` : `
                     <div class="empty-seat-placeholder">
-                        <span>空席</span>
+                        <span>遨ｺ蟶ｭ</span>
                     </div>
                 `}
             </div>
@@ -420,11 +398,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     }
     
     /**
-     * 座席構成を計算
-     */
+     * 蠎ｧ蟶ｭ讒区・繧定ｨ育ｮ・     */
     function calculateSeatConfiguration(totalSeats, availableSeats) {
-        // 運転席は常に運転者なので、利用可能座席から除外して計算
-        const driverSeat = 1;
+        // 驕玖ｻ｢蟶ｭ縺ｯ蟶ｸ縺ｫ驕玖ｻ｢閠・↑縺ｮ縺ｧ縲∝茜逕ｨ蜿ｯ閭ｽ蠎ｧ蟶ｭ縺九ｉ髯､螟悶＠縺ｦ險育ｮ・        const driverSeat = 1;
         const passengerSeats = Math.min(availableSeats, totalSeats - driverSeat);
         
         if (passengerSeats <= 0) {
@@ -443,8 +419,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     }
     
     /**
-     * 車両サマリーを生成
-     */
+     * 霆贋ｸ｡繧ｵ繝槭Μ繝ｼ繧堤函謌・     */
     function generateCarSummary(carAssignment, totalAvailableSeats) {
         const seats = carAssignment.seats || {};
         const occupiedSeats = Object.values(seats).filter(seat => seat !== null).length;
@@ -452,38 +427,33 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         
         return `
             <div class="assignment-summary">
-                <span class="occupied-count">配置済み: ${occupiedSeats}名</span>
-                <span class="empty-count">空席: ${emptySeats}席</span>
+                <span class="occupied-count">驟咲ｽｮ貂医∩: ${occupiedSeats}蜷・/span>
+                <span class="empty-count">遨ｺ蟶ｭ: ${emptySeats}蟶ｭ</span>
             </div>
         `;
     }
     
     /**
-     * メンバーのドラッグイベントを設定
-     */
+     * 繝｡繝ｳ繝舌・縺ｮ繝峨Λ繝・げ繧､繝吶Φ繝医ｒ險ｭ螳・     */
     function setupMemberDragEvents() {
         const draggableMembers = document.querySelectorAll('.draggable-member');
         
         draggableMembers.forEach(member => {
-            // マウスイベント
-            member.addEventListener('dragstart', handleDragStart);
+            // 繝槭え繧ｹ繧､繝吶Φ繝・            member.addEventListener('dragstart', handleDragStart);
             member.addEventListener('dragend', handleDragEnd);
             
-            // タッチイベント（モバイル対応）
-            member.addEventListener('touchstart', handleTouchStart, { passive: false });
+            // 繧ｿ繝・メ繧､繝吶Φ繝茨ｼ医Δ繝舌う繝ｫ蟇ｾ蠢懶ｼ・            member.addEventListener('touchstart', handleTouchStart, { passive: false });
             member.addEventListener('touchmove', handleTouchMove, { passive: false });
             member.addEventListener('touchend', handleTouchEnd);
             
-            // 長押しでの詳細編集
-            member.addEventListener('mousedown', startLongPress);
+            // 髟ｷ謚ｼ縺励〒縺ｮ隧ｳ邏ｰ邱ｨ髮・            member.addEventListener('mousedown', startLongPress);
             member.addEventListener('mouseup', cancelLongPress);
             member.addEventListener('mouseleave', cancelLongPress);
         });
     }
     
     /**
-     * 座席のドロップイベントを設定
-     */
+     * 蠎ｧ蟶ｭ縺ｮ繝峨Ο繝・・繧､繝吶Φ繝医ｒ險ｭ螳・     */
     function setupSeatDropEvents() {
         const droppableSeats = document.querySelectorAll('.droppable-seat');
         
@@ -493,11 +463,11 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             seat.addEventListener('dragenter', handleDragEnter);
             seat.addEventListener('dragleave', handleDragLeave);
             
-            // 直接クリックでの配置
+            // 逶ｴ謗･繧ｯ繝ｪ繝・け縺ｧ縺ｮ驟咲ｽｮ
             seat.addEventListener('click', handleSeatClick);
         });
         
-        // 既に配置済みのメンバーもドラッグ可能にする
+        // 譌｢縺ｫ驟咲ｽｮ貂医∩縺ｮ繝｡繝ｳ繝舌・繧ゅラ繝ｩ繝・げ蜿ｯ閭ｽ縺ｫ縺吶ｋ
         const occupants = document.querySelectorAll('.seat-occupant');
         occupants.forEach(occupant => {
             occupant.draggable = true;
@@ -507,8 +477,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     }
     
     /**
-     * ドラッグ開始処理
-     */
+     * 繝峨Λ繝・げ髢句ｧ句・逅・     */
     function handleDragStart(e) {
         draggedElement = e.target;
         draggedMemberId = e.target.dataset.memberId;
@@ -521,8 +490,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     }
     
     /**
-     * 配置済みメンバーのドラッグ開始処理
-     */
+     * 驟咲ｽｮ貂医∩繝｡繝ｳ繝舌・縺ｮ繝峨Λ繝・げ髢句ｧ句・逅・     */
     function handleOccupantDragStart(e) {
         const seat = e.target.closest('.droppable-seat');
         draggedElement = e.target;
@@ -539,12 +507,11 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     }
     
     /**
-     * ドラッグ終了処理
-     */
+     * 繝峨Λ繝・げ邨ゆｺ・・逅・     */
     function handleDragEnd(e) {
         e.target.classList.remove('dragging');
         
-        // ドロップゾーンのハイライトを削除
+        // 繝峨Ο繝・・繧ｾ繝ｼ繝ｳ縺ｮ繝上う繝ｩ繧､繝医ｒ蜑企勁
         document.querySelectorAll('.drop-target').forEach(element => {
             element.classList.remove('drop-target');
         });
@@ -556,16 +523,14 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     }
     
     /**
-     * ドラッグオーバー処理
-     */
+     * 繝峨Λ繝・げ繧ｪ繝ｼ繝舌・蜃ｦ逅・     */
     function handleDragOver(e) {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
     }
     
     /**
-     * ドラッグエンター処理
-     */
+     * 繝峨Λ繝・げ繧ｨ繝ｳ繧ｿ繝ｼ蜃ｦ逅・     */
     function handleDragEnter(e) {
         if (draggedMemberId) {
             e.target.classList.add('drop-target');
@@ -573,15 +538,13 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     }
     
     /**
-     * ドラッグリーブ処理
-     */
+     * 繝峨Λ繝・げ繝ｪ繝ｼ繝門・逅・     */
     function handleDragLeave(e) {
         e.target.classList.remove('drop-target');
     }
     
     /**
-     * ドロップ処理
-     */
+     * 繝峨Ο繝・・蜃ｦ逅・     */
     function handleDrop(e) {
         e.preventDefault();
         e.target.classList.remove('drop-target');
@@ -594,13 +557,12 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         const carIndex = parseInt(seat.dataset.carIndex);
         const seatId = seat.dataset.seatId;
         
-        // 座席に配置
+        // 蠎ｧ蟶ｭ縺ｫ驟咲ｽｮ
         assignMemberToSeat(draggedMemberId, carIndex, seatId, draggedFromSeat);
     }
     
     /**
-     * 座席クリック処理（直接配置）
-     */
+     * 蠎ｧ蟶ｭ繧ｯ繝ｪ繝・け蜃ｦ逅・ｼ育峩謗･驟咲ｽｮ・・     */
     function handleSeatClick(e) {
         if (isDragging) return;
         
@@ -610,21 +572,19 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         const carIndex = parseInt(seat.dataset.carIndex);
         const seatId = seat.dataset.seatId;
         
-        // 空席の場合、メンバー選択モーダルを開く
-        if (!seat.classList.contains('occupied')) {
+        // 遨ｺ蟶ｭ縺ｮ蝣ｴ蜷医√Γ繝ｳ繝舌・驕ｸ謚槭Δ繝ｼ繝繝ｫ繧帝幕縺・        if (!seat.classList.contains('occupied')) {
             openMemberSelectionModal(carIndex, seatId);
         }
     }
     
     /**
-     * タッチイベント処理（モバイル対応）
-     */
+     * 繧ｿ繝・メ繧､繝吶Φ繝亥・逅・ｼ医Δ繝舌う繝ｫ蟇ｾ蠢懶ｼ・     */
     function handleTouchStart(e) {
         const touch = e.touches[0];
         draggedElement = e.target;
         draggedMemberId = e.target.dataset.memberId;
         
-        // 長押し検出用タイマー
+        // 髟ｷ謚ｼ縺玲､懷・逕ｨ繧ｿ繧､繝槭・
         longPressTimer = setTimeout(() => {
             startDragMode(e.target);
         }, LONG_PRESS_DURATION);
@@ -643,8 +603,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
             const seat = elementBelow?.closest('.droppable-seat');
             
-            // ドロップターゲットのハイライト
-            document.querySelectorAll('.drop-target').forEach(el => {
+            // 繝峨Ο繝・・繧ｿ繝ｼ繧ｲ繝・ヨ縺ｮ繝上う繝ｩ繧､繝・            document.querySelectorAll('.drop-target').forEach(el => {
                 el.classList.remove('drop-target');
             });
             
@@ -676,8 +635,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     }
     
     /**
-     * 長押し開始
-     */
+     * 髟ｷ謚ｼ縺鈴幕蟋・     */
     function startLongPress(e) {
         longPressTimer = setTimeout(() => {
             openMemberEditModal(e.target.dataset.memberId);
@@ -685,7 +643,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     }
     
     /**
-     * 長押しキャンセル
+     * 髟ｷ謚ｼ縺励く繝｣繝ｳ繧ｻ繝ｫ
      */
     function cancelLongPress() {
         if (longPressTimer) {
@@ -695,16 +653,14 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     }
     
     /**
-     * ドラッグモード開始
-     */
+     * 繝峨Λ繝・げ繝｢繝ｼ繝蛾幕蟋・     */
     function startDragMode(element) {
         isDragging = true;
         element.classList.add('dragging');
     }
     
     /**
-     * ドラッグモード終了
-     */
+     * 繝峨Λ繝・げ繝｢繝ｼ繝臥ｵゆｺ・     */
     function endDragMode() {
         isDragging = false;
         document.querySelectorAll('.dragging').forEach(el => {
@@ -716,7 +672,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     }
     
     /**
-     * メンバーを座席に配置
+     * 繝｡繝ｳ繝舌・繧貞ｺｧ蟶ｭ縺ｫ驟咲ｽｮ
      */
     async function assignMemberToSeat(memberId, carIndex, seatId, fromSeat = null) {
         try {
@@ -725,7 +681,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             
             const updatedAssignments = { ...assignmentData };
             
-            // 新しい座席配置
+            // 譁ｰ縺励＞蠎ｧ蟶ｭ驟咲ｽｮ
             if (!updatedAssignments[carIndex]) {
                 updatedAssignments[carIndex] = { seats: {} };
             }
@@ -733,13 +689,13 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                 updatedAssignments[carIndex].seats = {};
             }
             
-            // 既存の配置があれば削除
+            // 譌｢蟄倥・驟咲ｽｮ縺後≠繧後・蜑企勁
             if (fromSeat) {
                 if (updatedAssignments[fromSeat.carIndex]?.seats) {
                     delete updatedAssignments[fromSeat.carIndex].seats[fromSeat.seatId];
                 }
             } else {
-                // 他の座席から同じメンバーを削除
+                // 莉悶・蠎ｧ蟶ｭ縺九ｉ蜷後§繝｡繝ｳ繝舌・繧貞炎髯､
                 Object.keys(updatedAssignments).forEach(carIdx => {
                     if (updatedAssignments[carIdx].seats) {
                         Object.keys(updatedAssignments[carIdx].seats).forEach(sId => {
@@ -751,26 +707,26 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                 });
             }
             
-            // 新しい座席に配置
+            // 譁ｰ縺励＞蠎ｧ蟶ｭ縺ｫ驟咲ｽｮ
             updatedAssignments[carIndex].seats[seatId] = memberId;
             
             await saveCarpoolData({ assignments: updatedAssignments });
             
-            // ログ記録
+            // 繝ｭ繧ｰ險倬鹸
             const car = carsData[carIndex];
             await Firestore.addLog('carpool', 
-                `${member.name}を${car.driverName}の車（${seatId}）に配置しました（${currentEvent.title}）`);
+                `${member.name}繧・{car.driverName}縺ｮ霆奇ｼ・{seatId}・峨↓驟咲ｽｮ縺励∪縺励◆・・{currentEvent.title}・荏);
                 
-            UI.showAlert(`${member.name}を配置しました`, 'success');
+            UI.showAlert(`${member.name}繧帝・鄂ｮ縺励∪縺励◆`, 'success');
             
         } catch (error) {
-            console.error('座席配置エラー:', error);
-            UI.showAlert('座席の配置に失敗しました', 'danger');
+            console.error('蠎ｧ蟶ｭ驟咲ｽｮ繧ｨ繝ｩ繝ｼ:', error);
+            UI.showAlert('蠎ｧ蟶ｭ縺ｮ驟咲ｽｮ縺ｫ螟ｱ謨励＠縺ｾ縺励◆', 'danger');
         }
     }
     
     /**
-     * 座席から人を削除
+     * 蠎ｧ蟶ｭ縺九ｉ莠ｺ繧貞炎髯､
      */
     Assignment.removeSeatOccupant = async function(carIndex, seatId) {
         try {
@@ -785,27 +741,26 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                 await saveCarpoolData({ assignments: updatedAssignments });
                 
                 if (member) {
-                    UI.showAlert(`${member.name}を座席から外しました`, 'success');
+                    UI.showAlert(`${member.name}繧貞ｺｧ蟶ｭ縺九ｉ螟悶＠縺ｾ縺励◆`, 'success');
                     await Firestore.addLog('carpool', 
-                        `${member.name}を座席から外しました（${currentEvent.title}）`);
+                        `${member.name}繧貞ｺｧ蟶ｭ縺九ｉ螟悶＠縺ｾ縺励◆・・{currentEvent.title}・荏);
                 }
             }
             
         } catch (error) {
-            console.error('座席削除エラー:', error);
-            UI.showAlert('座席からの削除に失敗しました', 'danger');
+            console.error('蠎ｧ蟶ｭ蜑企勁繧ｨ繝ｩ繝ｼ:', error);
+            UI.showAlert('蠎ｧ蟶ｭ縺九ｉ縺ｮ蜑企勁縺ｫ螟ｱ謨励＠縺ｾ縺励◆', 'danger');
         }
     };
     
     /**
-     * メンバー選択モーダルを開く
-     */
+     * 繝｡繝ｳ繝舌・驕ｸ謚槭Δ繝ｼ繝繝ｫ繧帝幕縺・     */
     function openMemberSelectionModal(carIndex, seatId) {
         const attendingMembers = getAttendingMembers();
         const unassignedMembers = getUnassignedMembers(attendingMembers);
         
         if (unassignedMembers.length === 0) {
-            UI.showAlert('配置可能なメンバーがいません', 'info');
+            UI.showAlert('驟咲ｽｮ蜿ｯ閭ｽ縺ｪ繝｡繝ｳ繝舌・縺後＞縺ｾ縺帙ｓ', 'info');
             return;
         }
         
@@ -822,7 +777,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                      onclick="FCOjima.Carpool.Assignment.selectMemberForSeat('${member.id}', ${carIndex}, '${seatId}')">
                     <div class="member-info">
                         <div class="member-name">${Utils.escapeHTML(member.name)}</div>
-                        ${grade ? `<div class="member-grade">${grade}年生</div>` : ''}
+                        ${grade ? `<div class="member-grade">${grade}蟷ｴ逕・/div>` : ''}
                     </div>
                     <div class="member-role">${getRoleLabel(member.role)}</div>
                 </div>
@@ -835,7 +790,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     }
     
     /**
-     * モーダルからメンバーを選択して座席に配置
+     * 繝｢繝ｼ繝繝ｫ縺九ｉ繝｡繝ｳ繝舌・繧帝∈謚槭＠縺ｦ蠎ｧ蟶ｭ縺ｫ驟咲ｽｮ
      */
     Assignment.selectMemberForSeat = function(memberId, carIndex, seatId) {
         assignMemberToSeat(memberId, carIndex, seatId);
@@ -843,18 +798,17 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     };
     
     /**
-     * 自動配置実行
-     */
+     * 閾ｪ蜍暮・鄂ｮ螳溯｡・     */
     function performAutoAssignment() {
         const attendingMembers = getAttendingMembers();
         const unassignedMembers = getUnassignedMembers(attendingMembers);
         
         if (unassignedMembers.length === 0) {
-            UI.showAlert('配置対象のメンバーがいません', 'info');
+            UI.showAlert('驟咲ｽｮ蟇ｾ雎｡縺ｮ繝｡繝ｳ繝舌・縺後＞縺ｾ縺帙ｓ', 'info');
             return;
         }
         
-        if (!confirm(`${unassignedMembers.length}名を自動配置しますか？`)) {
+        if (!confirm(`${unassignedMembers.length}蜷阪ｒ閾ｪ蜍暮・鄂ｮ縺励∪縺吶°・歔)) {
             return;
         }
         
@@ -863,26 +817,26 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         if (autoAssignment.success) {
             saveCarpoolData({ assignments: autoAssignment.assignments })
                 .then(() => {
-                    UI.showAlert(`${unassignedMembers.length}名を自動配置しました`, 'success');
-                    Firestore.addLog('carpool', `${unassignedMembers.length}名を自動配置しました（${currentEvent.title}）`);
+                    UI.showAlert(`${unassignedMembers.length}蜷阪ｒ閾ｪ蜍暮・鄂ｮ縺励∪縺励◆`, 'success');
+                    Firestore.addLog('carpool', `${unassignedMembers.length}蜷阪ｒ閾ｪ蜍暮・鄂ｮ縺励∪縺励◆・・{currentEvent.title}・荏);
                 })
                 .catch(error => {
-                    console.error('自動配置保存エラー:', error);
-                    UI.showAlert('自動配置の保存に失敗しました', 'danger');
+                    console.error('閾ｪ蜍暮・鄂ｮ菫晏ｭ倥お繝ｩ繝ｼ:', error);
+                    UI.showAlert('閾ｪ蜍暮・鄂ｮ縺ｮ菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆', 'danger');
                 });
         } else {
-            UI.showAlert('自動配置に失敗しました: ' + autoAssignment.error, 'warning');
+            UI.showAlert('閾ｪ蜍暮・鄂ｮ縺ｫ螟ｱ謨励＠縺ｾ縺励◆: ' + autoAssignment.error, 'warning');
         }
     }
     
     /**
-     * 自動配置アルゴリズム
+     * 閾ｪ蜍暮・鄂ｮ繧｢繝ｫ繧ｴ繝ｪ繧ｺ繝
      */
     function generateAutoAssignment(membersToAssign) {
         const updatedAssignments = { ...assignmentData };
         const membersToPlace = [...membersToAssign];
         
-        // 優先順位: 監督・コーチ → 高学年 → 低学年
+        // 蜆ｪ蜈磯・ｽ・ 逶｣逹｣繝ｻ繧ｳ繝ｼ繝・竊・鬮伜ｭｦ蟷ｴ 竊・菴主ｭｦ蟷ｴ
         membersToPlace.sort((a, b) => {
             if (a.role === 'coach' && b.role !== 'coach') return -1;
             if (b.role === 'coach' && a.role !== 'coach') return 1;
@@ -892,8 +846,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             return gradeB - gradeA;
         });
         
-        // 各車両の空席を取得
-        const availableSeats = [];
+        // 蜷・ｻ贋ｸ｡縺ｮ遨ｺ蟶ｭ繧貞叙蠕・        const availableSeats = [];
         carsData.forEach((car, carIndex) => {
             const carAssignment = updatedAssignments[carIndex] || { seats: {} };
             const occupiedSeats = Object.keys(carAssignment.seats || {}).length;
@@ -907,11 +860,11 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         if (availableSeats.length < membersToPlace.length) {
             return {
                 success: false,
-                error: `座席が${membersToPlace.length - availableSeats.length}席不足しています`
+                error: `蠎ｧ蟶ｭ縺・{membersToPlace.length - availableSeats.length}蟶ｭ荳崎ｶｳ縺励※縺・∪縺兪
             };
         }
         
-        // メンバーを座席に配置
+        // 繝｡繝ｳ繝舌・繧貞ｺｧ蟶ｭ縺ｫ驟咲ｽｮ
         membersToPlace.forEach((member, index) => {
             if (index < availableSeats.length) {
                 const { carIndex } = availableSeats[index];
@@ -920,7 +873,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                     updatedAssignments[carIndex] = { seats: {} };
                 }
                 
-                // 空きシートを見つけて配置
+                // 遨ｺ縺阪す繝ｼ繝医ｒ隕九▽縺代※驟咲ｽｮ
                 const seatId = findNextAvailableSeat(carIndex, updatedAssignments);
                 if (seatId) {
                     updatedAssignments[carIndex].seats[seatId] = member.id;
@@ -935,7 +888,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     }
     
     /**
-     * 次の利用可能座席を見つける
+     * 谺｡縺ｮ蛻ｩ逕ｨ蜿ｯ閭ｽ蠎ｧ蟶ｭ繧定ｦ九▽縺代ｋ
      */
     function findNextAvailableSeat(carIndex, assignments) {
         const car = carsData[carIndex];
@@ -944,7 +897,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         
         const seatConfig = calculateSeatConfiguration(car.totalSeats, car.availableSeats);
         
-        // 助手席 → 後列 → 中列の順で配置
+        // 蜉ｩ謇句ｸｭ 竊・蠕悟・ 竊・荳ｭ蛻励・鬆・〒驟咲ｽｮ
         if (seatConfig.front > 0 && !occupiedSeats['front-0']) {
             return 'front-0';
         }
@@ -967,51 +920,49 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     }
     
     /**
-     * 全配置リセット
+     * 蜈ｨ驟咲ｽｮ繝ｪ繧ｻ繝・ヨ
      */
     function resetAllAssignments() {
-        if (!confirm('すべての座席配置をリセットしますか？')) {
+        if (!confirm('縺吶∋縺ｦ縺ｮ蠎ｧ蟶ｭ驟咲ｽｮ繧偵Μ繧ｻ繝・ヨ縺励∪縺吶°・・)) {
             return;
         }
         
         saveCarpoolData({ assignments: {} })
             .then(() => {
-                UI.showAlert('すべての配置をリセットしました', 'success');
-                Firestore.addLog('carpool', `すべての座席配置をリセットしました（${currentEvent.title}）`);
+                UI.showAlert('縺吶∋縺ｦ縺ｮ驟咲ｽｮ繧偵Μ繧ｻ繝・ヨ縺励∪縺励◆', 'success');
+                Firestore.addLog('carpool', `縺吶∋縺ｦ縺ｮ蠎ｧ蟶ｭ驟咲ｽｮ繧偵Μ繧ｻ繝・ヨ縺励∪縺励◆・・{currentEvent.title}・荏);
             })
             .catch(error => {
-                console.error('リセットエラー:', error);
-                UI.showAlert('リセットに失敗しました', 'danger');
+                console.error('繝ｪ繧ｻ繝・ヨ繧ｨ繝ｩ繝ｼ:', error);
+                UI.showAlert('繝ｪ繧ｻ繝・ヨ縺ｫ螟ｱ謨励＠縺ｾ縺励◆', 'danger');
             });
     }
     
     /**
-     * 配置最適化
-     */
+     * 驟咲ｽｮ譛驕ｩ蛹・     */
     function optimizeAssignment() {
-        UI.showAlert('配置最適化機能は開発中です', 'info');
+        UI.showAlert('驟咲ｽｮ譛驕ｩ蛹匁ｩ溯・縺ｯ髢狗匱荳ｭ縺ｧ縺・, 'info');
     }
     
     /**
-     * 配置情報をLINE共有
-     */
+     * 驟咲ｽｮ諠・ｱ繧鱈INE蜈ｱ譛・     */
     function shareAssignmentInfo() {
         const eventDate = Utils.formatDate(new Date(currentEvent.date));
-        let message = `【座席配置】\n\n`;
+        let message = `縲仙ｺｧ蟶ｭ驟咲ｽｮ縲曾n\n`;
         message += `${currentEvent.title}\n`;
-        message += `📅 ${eventDate} ${currentEvent.time || ''}\n\n`;
+        message += `套 ${eventDate} ${currentEvent.time || ''}\n\n`;
         
         carsData.forEach((car, carIndex) => {
             const carAssignment = assignmentData[carIndex] || { seats: {} };
             const occupiedSeats = carAssignment.seats || {};
             
-            message += `🚗 ${car.driverName}の車\n`;
+            message += `囓 ${car.driverName}縺ｮ霆浬n`;
             
             Object.entries(occupiedSeats).forEach(([seatId, memberId]) => {
                 const member = getMemberById(memberId);
                 if (member) {
                     const seatLabel = getSeatLabel(seatId);
-                    message += `　${seatLabel}: ${member.name}\n`;
+                    message += `縲${seatLabel}: ${member.name}\n`;
                 }
             });
             
@@ -1022,44 +973,42 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             return total + Object.keys(car.seats || {}).length;
         }, 0);
         
-        message += `📊 配置済み: ${totalAssigned}名\n`;
-        message += `\n更新日時: ${new Date().toLocaleString()}`;
+        message += `投 驟咲ｽｮ貂医∩: ${totalAssigned}蜷構n`;
+        message += `\n譖ｴ譁ｰ譌･譎・ ${new Date().toLocaleString()}`;
         
         const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(message)}`;
         window.open(lineUrl, '_blank');
         
-        UI.showAlert('座席配置をLINEで共有しました', 'success');
+        UI.showAlert('蠎ｧ蟶ｭ驟咲ｽｮ繧鱈INE縺ｧ蜈ｱ譛峨＠縺ｾ縺励◆', 'success');
     }
     
     /**
-     * 座席ラベルを取得
-     */
+     * 蠎ｧ蟶ｭ繝ｩ繝吶Ν繧貞叙蠕・     */
     function getSeatLabel(seatId) {
         const [row, index] = seatId.split('-');
         const labels = {
-            'front': '助手席',
-            'middle': `中列${parseInt(index) + 1}`,
-            'back': `後列${parseInt(index) + 1}`
+            'front': '蜉ｩ謇句ｸｭ',
+            'middle': `荳ｭ蛻・{parseInt(index) + 1}`,
+            'back': `蠕悟・${parseInt(index) + 1}`
         };
         return labels[row] || seatId;
     }
     
     /**
-     * 表示切り替え
-     */
+     * 陦ｨ遉ｺ蛻・ｊ譖ｿ縺・     */
     function toggleAssignmentView() {
         const container = document.getElementById('assignment-container');
         if (container.classList.contains('compact-view')) {
             container.classList.remove('compact-view');
-            document.getElementById('toggle-view').textContent = 'コンパクト表示';
+            document.getElementById('toggle-view').textContent = '繧ｳ繝ｳ繝代け繝郁｡ｨ遉ｺ';
         } else {
             container.classList.add('compact-view');
-            document.getElementById('toggle-view').textContent = '詳細表示';
+            document.getElementById('toggle-view').textContent = '隧ｳ邏ｰ陦ｨ遉ｺ';
         }
     }
     
     /**
-     * 統計情報を更新
+     * 邨ｱ險域ュ蝣ｱ繧呈峩譁ｰ
      */
     function updateStats() {
         const statsCard = document.getElementById('assignment-stats');
@@ -1077,29 +1026,29 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             <div class="stats-grid">
                 <div class="stat-item">
                     <div class="stat-number">${assignedCount}</div>
-                    <div class="stat-label">配置済み</div>
+                    <div class="stat-label">驟咲ｽｮ貂医∩</div>
                 </div>
                 
                 <div class="stat-item">
                     <div class="stat-number">${unassignedCount}</div>
-                    <div class="stat-label">未配置</div>
+                    <div class="stat-label">譛ｪ驟咲ｽｮ</div>
                 </div>
                 
                 <div class="stat-item">
                     <div class="stat-number">${emptySeats}</div>
-                    <div class="stat-label">空席</div>
+                    <div class="stat-label">遨ｺ蟶ｭ</div>
                 </div>
                 
                 <div class="stat-item">
                     <div class="stat-number">${carsData.length}</div>
-                    <div class="stat-label">車両数</div>
+                    <div class="stat-label">霆贋ｸ｡謨ｰ</div>
                 </div>
             </div>
         `;
     }
     
     /**
-     * 進捗を更新
+     * 騾ｲ謐励ｒ譖ｴ譁ｰ
      */
     function updateProgress() {
         const progressCard = document.getElementById('assignment-progress');
@@ -1114,22 +1063,21 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             Math.round((assignedCount / attendingMembers.length) * 100) : 0;
         
         progressCard.innerHTML = `
-            <h4>配置進捗</h4>
+            <h4>驟咲ｽｮ騾ｲ謐・/h4>
             <div class="progress-bar-container">
                 <div class="progress-bar" style="width: ${progress}%"></div>
             </div>
-            <div class="progress-text">${progress}% 完了 (${assignedCount}/${attendingMembers.length}名)</div>
+            <div class="progress-text">${progress}% 螳御ｺ・(${assignedCount}/${attendingMembers.length}蜷・</div>
             
             ${progress === 100 ? `
                 <div class="completion-message">
-                    ✅ すべての配置が完了しました！
-                </div>
+                    笨・縺吶∋縺ｦ縺ｮ驟咲ｽｮ縺悟ｮ御ｺ・＠縺ｾ縺励◆・・                </div>
             ` : ''}
         `;
     }
     
     /**
-     * ヘルパー関数
+     * 繝倥Ν繝代・髢｢謨ｰ
      */
     function getAttendingMembers() {
         return membersData.filter(member => {
@@ -1167,27 +1115,26 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         const elementarySchoolEntryYear = birth.getFullYear() + (birth.getMonth() >= 3 && birth.getDate() >= 2 ? 7 : 6);
         const gradeOffset = schoolYearStart.getFullYear() - elementarySchoolEntryYear;
         
-        if (gradeOffset === -3) return "年少";
-        if (gradeOffset === -2) return "年中"; 
-        if (gradeOffset === -1) return "年長";
+        if (gradeOffset === -3) return "蟷ｴ蟆・;
+        if (gradeOffset === -2) return "蟷ｴ荳ｭ"; 
+        if (gradeOffset === -1) return "蟷ｴ髟ｷ";
         if (gradeOffset >= 0 && gradeOffset <= 5) return String(gradeOffset + 1);
         
         return null;
     }
     
     function getEventTypeLabel(type) {
-        const labels = { match: '試合', practice: '練習', other: 'その他' };
+        const labels = { match: '隧ｦ蜷・, practice: '邱ｴ鄙・, other: '縺昴・莉・ };
         return labels[type] || type;
     }
     
     function getRoleLabel(role) {
-        const labels = { coach: '監督・コーチ', player: '選手', parent: '保護者' };
+        const labels = { coach: '逶｣逹｣繝ｻ繧ｳ繝ｼ繝・, player: '驕ｸ謇・, parent: '菫晁ｭｷ閠・ };
         return labels[role] || role;
     }
     
     /**
-     * 配車データを保存
-     */
+     * 驟崎ｻ翫ョ繝ｼ繧ｿ繧剃ｿ晏ｭ・     */
     async function saveCarpoolData(dataToUpdate) {
         const updatedCarpoolData = {
             ...carpoolData,
@@ -1199,12 +1146,11 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     }
     
     /**
-     * 表示の更新（外部から呼び出し可能）
-     */
+     * 陦ｨ遉ｺ縺ｮ譖ｴ譁ｰ・亥､夜Κ縺九ｉ蜻ｼ縺ｳ蜃ｺ縺怜庄閭ｽ・・     */
     Assignment.updateDisplay = updateDisplay;
     
     /**
-     * クリーンアップ
+     * 繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・
      */
     Assignment.destroy = function() {
         if (membersUnsubscribe) {
@@ -1217,21 +1163,24 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             carpoolUnsubscribe = null;
         }
         
-        // タイマーのクリーンアップ
+        // 繧ｿ繧､繝槭・縺ｮ繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・
         if (longPressTimer) {
             clearTimeout(longPressTimer);
             longPressTimer = null;
         }
     };
     
-    // ページから離れる時のクリーンアップ
+    // 繝壹・繧ｸ縺九ｉ髮｢繧後ｋ譎ゅ・繧ｯ繝ｪ繝ｼ繝ｳ繧｢繝・・
     window.addEventListener('beforeunload', Assignment.destroy);
     
 })();
 
-// ページ読み込み時に初期化
-document.addEventListener('DOMContentLoaded', function() {
+// 繝壹・繧ｸ隱ｭ縺ｿ霎ｼ縺ｿ譎ゅ↓蛻晄悄蛹・document.addEventListener('DOMContentLoaded', function() {
     if (typeof FCOjima !== 'undefined' && FCOjima.Carpool && FCOjima.Carpool.Assignment) {
         FCOjima.Carpool.Assignment.init();
     }
 });
+
+    Assignment.updateDisplay = updateDisplay;
+
+})(window.FCOjima = window.FCOjima || {});
