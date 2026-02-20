@@ -1188,3 +1188,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     Assignment.updateDisplay = updateDisplay;
 
 })(window.FCOjima = window.FCOjima || {});
+
+    Assignment.updateDisplay = updateDisplay;
+
+})(window.FCOjima = window.FCOjima || {});
