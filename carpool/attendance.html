@@ -1,0 +1,316 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>蜃ｺ谺遒ｺ隱・- FC蟆ｾ蟲ｶ繧ｸ繝･繝九い</title>
+    <link rel="stylesheet" href="../css/common.css">
+    <link rel="stylesheet" href="../css/carpool/attendance.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="../js/carpool/attendance.js"></script>
+    <script src="../js/carpool/main.js"></script>
+<style>
+
+/* 強制CSS修正スクリプト完全版 - 自動追加 */
+/* 実行日時: 2025-07-07T05:56:30.184Z */
+
+/* ナビゲーション強制修正 */
+.main-nav ul {
+    list-style: none !important;
+    display: flex !important;
+    flex-direction: row !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    flex-wrap: wrap !important;
+}
+
+.main-nav {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-radius: 12px !important;
+    margin-bottom: 30px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 2px solid rgba(255, 215, 0, 0.3) !important;
+}
+
+.main-nav li {
+    flex: 1 !important;
+    min-width: 120px !important;
+}
+
+.main-nav a {
+    display: block !important;
+    padding: 15px 20px !important;
+    text-decoration: none !important;
+    color: #333 !important;
+    font-weight: 500 !important;
+    text-align: center !important;
+    transition: all 0.3s ease !important;
+    border-radius: 8px !important;
+    margin: 5px !important;
+}
+
+.main-nav a:hover {
+    background: linear-gradient(135deg, #FFD700, #FFA500) !important;
+    color: #1a1a1a !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3) !important;
+}
+
+.main-nav a.active {
+    background: linear-gradient(135deg, #FFD700, #FFA500) !important;
+    color: #1a1a1a !important;
+    font-weight: 600 !important;
+}
+
+/* レスポンシブ対応 */
+@media screen and (max-width: 768px) {
+    .main-nav ul {
+        flex-direction: column !important;
+    }
+    
+    .main-nav {
+        flex-direction: column !important;
+    }
+    
+    .main-nav li {
+        min-width: auto !important;
+    }
+}
+
+@media screen and (max-width: 414px) {
+    .main-nav ul {
+        flex-direction: column !important;
+        gap: 2px !important;
+    }
+    
+    .main-nav a {
+        padding: 12px 16px !important;
+        margin: 2px !important;
+        font-size: 14px !important;
+        border-radius: 6px !important;
+    }
+    
+    .main-nav li {
+        min-width: auto !important;
+        flex: none !important;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .main-nav ul {
+        flex-direction: column !important;
+        gap: 1px !important;
+    }
+    
+    .main-nav a {
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+        margin: 1px !important;
+        min-height: 40px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+}
+
+/* 強制CSS修正スクリプト完全版 - 終了 */
+
+</style>
+</head>
+<body>
+    <header>
+        <h1>FC蟆ｾ蟲ｶ繧ｸ繝･繝九い 蜃ｺ谺遒ｺ隱・/h1>
+    </header>
+
+    <nav class="main-nav">
+        <ul>
+            <li><a href="index.html">讎りｦ・/a></li>
+            <li><a href="attendance.html" class="active">蜃ｺ谺遒ｺ隱・/a></li>
+            <li><a href="cars.html">霆頑署萓・/a></li>
+            <li><a href="assignments.html">蠎ｧ蟶ｭ蜑ｲ繧雁ｽ薙※</a></li>
+            <li><a href="notifications.html">驟崎ｻ企｣邨｡</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <!-- 繧､繝吶Φ繝域ュ蝣ｱ繧ｫ繝ｼ繝・-->
+        <div class="card event-summary" id="event-summary">
+            <div class="loading">繧､繝吶Φ繝域ュ蝣ｱ繧定ｪｭ縺ｿ霎ｼ縺ｿ荳ｭ...</div>
+        </div>
+
+        <!-- 蜃ｺ谺譛滄剞隴ｦ蜻・-->
+        <div id="deadline-warning" class="deadline-warning hidden">
+            <!-- 譛滄剞隴ｦ蜻翫′JS縺ｧ蜍慕噪縺ｫ逕滓・縺輔ｌ繧・-->
+        </div>
+
+        <!-- 邨ｱ險域ュ蝣ｱ -->
+        <div class="card">
+            <h2>蜃ｺ谺迥ｶ豕・/h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">則</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="total-members">0</div>
+                        <div class="stat-label">蟇ｾ雎｡閠・/div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">笨・/div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="responded-count">0</div>
+                        <div class="stat-label">蝗樒ｭ疲ｸ医∩</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">刹</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="present-count">0</div>
+                        <div class="stat-label">蜿ょ刈</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">笶・/div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="absent-count">0</div>
+                        <div class="stat-label">荳榊盾蜉</div>
+                    </div>
+                </div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="response-progress"></div>
+            </div>
+            <div class="progress-text">
+                <span id="response-percentage">0%</span> 蝗樒ｭ疲ｸ医∩
+            </div>
+        </div>
+
+        <!-- 蜃ｺ谺邂｡逅・ユ繝ｼ繝悶Ν -->
+        <div class="card">
+            <div class="table-header">
+                <h2>蜃ｺ谺邂｡逅・/h2>
+                <div class="table-controls">
+                    <select id="filter-status">
+                        <option value="">縺吶∋縺ｦ</option>
+                        <option value="present">蜿ょ刈</option>
+                        <option value="absent">荳榊盾蜉</option>
+                        <option value="unknown">譛ｪ蝗樒ｭ・/option>
+                    </select>
+                    <select id="filter-role">
+                        <option value="">縺吶∋縺ｦ縺ｮ蠖ｹ蜑ｲ</option>
+                        <option value="player">驕ｸ謇・/option>
+                        <option value="coach">逶｣逹｣繝ｻ繧ｳ繝ｼ繝・/option>
+                        <option value="parent">菫晁ｭｷ閠・/option>
+                    </select>
+                    <button id="auto-fill-all" class="secondary-button">荳諡ｬ險ｭ螳・/button>
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <table id="attendance-table">
+                    <thead>
+                        <tr>
+                            <th>蜷榊燕</th>
+                            <th>蠖ｹ蜑ｲ</th>
+                            <th>蟄ｦ蟷ｴ</th>
+                            <th>蜃ｺ谺</th>
+                            <th>蛯呵・/th>
+                            <th>謫堺ｽ・/th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendance-tbody">
+                        <tr>
+                            <td colspan="6" class="loading">隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button id="save-attendance">蜃ｺ谺繧剃ｿ晏ｭ・/button>
+            <button id="send-reminder" class="secondary-button">譛ｪ蝗樒ｭ碑・↓蛯ｬ菫・/button>
+            <button id="export-attendance" class="secondary-button">荳隕ｧ繧貞・蜉・/button>
+            <button id="next-step" class="next-button" disabled>谺｡縺ｮ繧ｹ繝・ャ繝励∈</button>
+        </div>
+    </div>
+
+    <!-- 荳諡ｬ險ｭ螳壹Δ繝ｼ繝繝ｫ -->
+    <div id="bulk-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>荳諡ｬ險ｭ螳・/h2>
+            <form id="bulk-form">
+                <div class="form-group">
+                    <label for="bulk-status">蜃ｺ谺迥ｶ豕・/label>
+                    <select id="bulk-status" required>
+                        <option value="">驕ｸ謚槭＠縺ｦ縺上□縺輔＞</option>
+                        <option value="present">蜿ょ刈</option>
+                        <option value="absent">荳榊盾蜉</option>
+                        <option value="unknown">譛ｪ蝗樒ｭ・/option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="bulk-target">蟇ｾ雎｡</label>
+                    <select id="bulk-target" required>
+                        <option value="all">縺吶∋縺ｦ縺ｮ繝｡繝ｳ繝舌・</option>
+                        <option value="players">驕ｸ謇九・縺ｿ</option>
+                        <option value="staff">逶｣逹｣繝ｻ繧ｳ繝ｼ繝√・縺ｿ</option>
+                        <option value="unanswered">譛ｪ蝗樒ｭ碑・・縺ｿ</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="bulk-notes">荳諡ｬ蛯呵・/label>
+                    <input type="text" id="bulk-notes" placeholder="蠢・ｦ√↓蠢懊§縺ｦ蜈･蜉・>
+                </div>
+                <div class="form-actions">
+                    <button type="submit">驕ｩ逕ｨ</button>
+                    <button type="button" id="cancel-bulk">繧ｭ繝｣繝ｳ繧ｻ繝ｫ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 蛯ｬ菫・Γ繝・そ繝ｼ繧ｸ繝｢繝ｼ繝繝ｫ -->
+    <div id="reminder-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>蛯ｬ菫・Γ繝・そ繝ｼ繧ｸ</h2>
+            <div class="reminder-preview">
+                <h4>騾∽ｿ｡蟇ｾ雎｡:</h4>
+                <div id="reminder-targets">
+                    <!-- 譛ｪ蝗樒ｭ碑・Μ繧ｹ繝医′JS縺ｧ逕滓・縺輔ｌ繧・-->
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="reminder-message">繝｡繝・そ繝ｼ繧ｸ蜀・ｮｹ</label>
+                <textarea id="reminder-message" placeholder="蛯ｬ菫・Γ繝・そ繝ｼ繧ｸ繧貞・蜉帙＠縺ｦ縺上□縺輔＞">
+蜃ｺ谺遒ｺ隱阪・縺企｡倥＞
+
+FC蟆ｾ蟲ｶ繧ｸ繝･繝九い縺ｮ豢ｻ蜍輔↓縺泌鵠蜉帙＞縺溘□縺阪√≠繧翫′縺ｨ縺・＃縺悶＞縺ｾ縺吶・
+荳玖ｨ倥・繧､繝吶Φ繝医↓縺､縺・※縲∝・谺縺ｮ縺泌屓遲斐ｒ縺企｡倥＞縺・◆縺励∪縺吶・
+縲舌う繝吶Φ繝郁ｩｳ邏ｰ縲・{eventDetails}
+
+縺雁ｿ吶＠縺・ｸｭ諱舌ｌ蜈･繧翫∪縺吶′縲√＃遒ｺ隱阪・縺ｻ縺ｩ繧医ｍ縺励￥縺企｡倥＞縺・◆縺励∪縺吶・                </textarea>
+            </div>
+            <div class="modal-actions">
+                <button id="send-line-reminder">LINE縺ｧ騾∽ｿ｡</button>
+                <button id="copy-reminder">繝｡繝・そ繝ｼ繧ｸ繧偵さ繝斐・</button>
+                <button id="cancel-reminder" class="secondary-button">繧ｭ繝｣繝ｳ繧ｻ繝ｫ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 蜈ｱ騾壹Δ繧ｸ繝･繝ｼ繝ｫ -->
+    <script src="../js/common/global.js"></script>
+    <script src="../js/common/utils.js"></script>
+    <script src="../js/common/storage.js"></script>
+    <script src="../js/common/ui.js"></script>
+    
+    <!-- 蜃ｺ谺遒ｺ隱咲畑繝｢繧ｸ繝･繝ｼ繝ｫ -->
+    <script src="../js/carpool/attendance.js"></script>
+</body>
+</html>

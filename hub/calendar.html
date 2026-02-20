@@ -1,0 +1,278 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カレンダー管理 - FC尾島Jr HUB</title>
+    
+    <!-- CSS読み込み -->
+    <link rel="stylesheet" href="../css/common.css">
+    <link rel="stylesheet" href="../css/hub/calendar.css">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
+<style>
+
+/* 強制CSS修正スクリプト完全版 - 自動追加 */
+/* 実行日時: 2025-07-07T05:56:30.184Z */
+
+/* ナビゲーション強制修正 */
+.main-nav ul {
+    list-style: none !important;
+    display: flex !important;
+    flex-direction: row !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    flex-wrap: wrap !important;
+}
+
+.main-nav {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-radius: 12px !important;
+    margin-bottom: 30px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 2px solid rgba(255, 215, 0, 0.3) !important;
+}
+
+.main-nav li {
+    flex: 1 !important;
+    min-width: 120px !important;
+}
+
+.main-nav a {
+    display: block !important;
+    padding: 15px 20px !important;
+    text-decoration: none !important;
+    color: #333 !important;
+    font-weight: 500 !important;
+    text-align: center !important;
+    transition: all 0.3s ease !important;
+    border-radius: 8px !important;
+    margin: 5px !important;
+}
+
+.main-nav a:hover {
+    background: linear-gradient(135deg, #FFD700, #FFA500) !important;
+    color: #1a1a1a !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3) !important;
+}
+
+.main-nav a.active {
+    background: linear-gradient(135deg, #FFD700, #FFA500) !important;
+    color: #1a1a1a !important;
+    font-weight: 600 !important;
+}
+
+/* レスポンシブ対応 */
+@media screen and (max-width: 768px) {
+    .main-nav ul {
+        flex-direction: column !important;
+    }
+    
+    .main-nav {
+        flex-direction: column !important;
+    }
+    
+    .main-nav li {
+        min-width: auto !important;
+    }
+}
+
+@media screen and (max-width: 414px) {
+    .main-nav ul {
+        flex-direction: column !important;
+        gap: 2px !important;
+    }
+    
+    .main-nav a {
+        padding: 12px 16px !important;
+        margin: 2px !important;
+        font-size: 14px !important;
+        border-radius: 6px !important;
+    }
+    
+    .main-nav li {
+        min-width: auto !important;
+        flex: none !important;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .main-nav ul {
+        flex-direction: column !important;
+        gap: 1px !important;
+    }
+    
+    .main-nav a {
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+        margin: 1px !important;
+        min-height: 40px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+}
+
+/* 強制CSS修正スクリプト完全版 - 終了 */
+
+</style>
+</head>
+<body>
+    <!-- メインコンテナ -->
+    <div class="main-container">
+        <!-- ヘッダー -->
+        <header class="app-header">
+            <div class="header-content">
+                <h1>FC尾島Jr HUB カレンダー管理</h1>
+                <div class="user-info">
+                    <span class="online-indicator">● オンライン</span>
+                    <span id="user-name">s1 Yasu</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- ナビゲーション -->
+        <nav class="main-nav">
+            <a href="calendar.html" class="nav-item active">カレンダー</a>
+            <a href="members.html" class="nav-item">メンバー</a>
+            <a href="notifications.html" class="nav-item">連絡事項</a>
+            <a href="venues.html" class="nav-item">会場登録</a>
+        </nav>
+
+        <!-- メインコンテンツ -->
+        <main class="main-content">
+            <!-- カレンダーコントロール -->
+            <div class="calendar-controls">
+                <!-- 表示切り替えボタン -->
+                <div class="view-buttons">
+                    <button id="calendar-view-btn" class="btn active">カレンダー表示</button>
+                    <button id="list-view-btn" class="btn">リスト表示</button>
+                </div>
+
+                <!-- 月ナビゲーション -->
+                <div class="month-navigation">
+                    <button id="prev-month" title="前月">◀</button>
+                    <div id="current-month-year" class="current-month">2025年 6月</div>
+                    <button id="next-month" title="次月">▶</button>
+                </div>
+
+                <!-- イベント追加ボタン -->
+                <div class="add-event-button">
+                    <button id="add-event-btn">+ イベント追加</button>
+                </div>
+            </div>
+
+            <!-- カレンダーコンテンツ -->
+            <div id="calendar-content">
+                <!-- カレンダービュー -->
+                <div id="calendar-container" class="calendar-container">
+                    <div class="calendar-grid">
+                        <div class="calendar-header">
+                            <div class="day-header">日</div>
+                            <div class="day-header">月</div>
+                            <div class="day-header">火</div>
+                            <div class="day-header">水</div>
+                            <div class="day-header">木</div>
+                            <div class="day-header">金</div>
+                            <div class="day-header">土</div>
+                        </div>
+                        <div id="calendar-body" class="calendar-body">
+                            <!-- カレンダーの日付セルがJavaScriptで動的生成される -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- イベント追加・編集モーダル -->
+    <div id="event-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">イベント追加</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            
+            <form id="event-form">
+                <div class="form-group">
+                    <label for="event-title">イベント名 *</label>
+                    <input type="text" id="event-title" name="title" required placeholder="例: 練習試合 vs 〇〇チーム">
+                </div>
+
+                <div class="form-group">
+                    <label for="event-date">日付 *</label>
+                    <input type="date" id="event-date" name="date" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="event-time">時間</label>
+                    <input type="time" id="event-time" name="time" placeholder="例: 09:00">
+                </div>
+
+                <div class="form-group">
+                    <label for="event-venue">会場</label>
+                    <input type="text" id="event-venue" name="venue" placeholder="例: 尾島総合運動場">
+                </div>
+
+                <div class="form-group">
+                    <label>対象学年</label>
+                    <div class="grades-container">
+                        <label class="grade-checkbox">
+                            <input type="checkbox" name="target-grades" value="1">
+                            1年生
+                        </label>
+                        <label class="grade-checkbox">
+                            <input type="checkbox" name="target-grades" value="2">
+                            2年生
+                        </label>
+                        <label class="grade-checkbox">
+                            <input type="checkbox" name="target-grades" value="3">
+                            3年生
+                        </label>
+                        <label class="grade-checkbox">
+                            <input type="checkbox" name="target-grades" value="4">
+                            4年生
+                        </label>
+                        <label class="grade-checkbox">
+                            <input type="checkbox" name="target-grades" value="5">
+                            5年生
+                        </label>
+                        <label class="grade-checkbox">
+                            <input type="checkbox" name="target-grades" value="6">
+                            6年生
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="event-description">説明・備考</label>
+                    <textarea id="event-description" name="description" placeholder="持ち物、注意事項など"></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn close-modal">キャンセル</button>
+                    <button type="button" id="save-event" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript読み込み -->
+    <script src="../js/common/firebase-config.js"></script>
+    <script src="../js/common/auth.js"></script>
+    <script src="../js/common/firestore.js"></script>
+    <script src="../js/common/global.js"></script>
+    <script src="../js/common/ui.js"></script>
+    <script src="../js/common/utils.js"></script>
+    <script src="../js/hub/calendar.js"></script>
+    <script src="../js/hub/main.js"></script>
+</body>
+</html>

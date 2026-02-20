@@ -1,0 +1,272 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>驟崎ｻ顔ｮ｡逅・- FC蟆ｾ蟲ｶ繧ｸ繝･繝九い</title>
+    <link rel="stylesheet" href="../css/common.css">
+    <link rel="stylesheet" href="../css/carpool/overview.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="../js/carpool/overview.js"></script>
+    <script src="../js/carpool/main.js"></script>
+<style>
+
+/* 強制CSS修正スクリプト完全版 - 自動追加 */
+/* 実行日時: 2025-07-07T05:56:30.184Z */
+
+/* ナビゲーション強制修正 */
+.main-nav ul {
+    list-style: none !important;
+    display: flex !important;
+    flex-direction: row !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    flex-wrap: wrap !important;
+}
+
+.main-nav {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-radius: 12px !important;
+    margin-bottom: 30px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 2px solid rgba(255, 215, 0, 0.3) !important;
+}
+
+.main-nav li {
+    flex: 1 !important;
+    min-width: 120px !important;
+}
+
+.main-nav a {
+    display: block !important;
+    padding: 15px 20px !important;
+    text-decoration: none !important;
+    color: #333 !important;
+    font-weight: 500 !important;
+    text-align: center !important;
+    transition: all 0.3s ease !important;
+    border-radius: 8px !important;
+    margin: 5px !important;
+}
+
+.main-nav a:hover {
+    background: linear-gradient(135deg, #FFD700, #FFA500) !important;
+    color: #1a1a1a !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3) !important;
+}
+
+.main-nav a.active {
+    background: linear-gradient(135deg, #FFD700, #FFA500) !important;
+    color: #1a1a1a !important;
+    font-weight: 600 !important;
+}
+
+/* レスポンシブ対応 */
+@media screen and (max-width: 768px) {
+    .main-nav ul {
+        flex-direction: column !important;
+    }
+    
+    .main-nav {
+        flex-direction: column !important;
+    }
+    
+    .main-nav li {
+        min-width: auto !important;
+    }
+}
+
+@media screen and (max-width: 414px) {
+    .main-nav ul {
+        flex-direction: column !important;
+        gap: 2px !important;
+    }
+    
+    .main-nav a {
+        padding: 12px 16px !important;
+        margin: 2px !important;
+        font-size: 14px !important;
+        border-radius: 6px !important;
+    }
+    
+    .main-nav li {
+        min-width: auto !important;
+        flex: none !important;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .main-nav ul {
+        flex-direction: column !important;
+        gap: 1px !important;
+    }
+    
+    .main-nav a {
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+        margin: 1px !important;
+        min-height: 40px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+}
+
+/* 強制CSS修正スクリプト完全版 - 終了 */
+
+</style>
+</head>
+<body>
+    <header>
+        <h1>FC蟆ｾ蟲ｶ繧ｸ繝･繝九い 驟崎ｻ顔ｮ｡逅・/h1>
+    </header>
+
+    <nav class="main-nav">
+        <ul>
+            <li><a href="index.html" class="active">讎りｦ・/a></li>
+            <li><a href="attendance.html">蜃ｺ谺遒ｺ隱・/a></li>
+            <li><a href="cars.html">霆頑署萓・/a></li>
+            <li><a href="assignments.html">蠎ｧ蟶ｭ蜑ｲ繧雁ｽ薙※</a></li>
+            <li><a href="notifications.html">驟崎ｻ企｣邨｡</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <!-- 繧､繝吶Φ繝域ュ蝣ｱ繧ｫ繝ｼ繝・-->
+        <div class="card event-info-card" id="event-info">
+            <div class="loading">繧､繝吶Φ繝域ュ蝣ｱ繧定ｪｭ縺ｿ霎ｼ縺ｿ荳ｭ...</div>
+        </div>
+
+        <!-- 騾ｲ謐励メ繧ｧ繝・け繝ｪ繧ｹ繝・-->
+        <div class="card">
+            <h2>驟崎ｻ顔ｮ｡逅・焔鬆・/h2>
+            <div class="progress-checklist">
+                <div class="progress-item" id="progress-attendance">
+                    <div class="progress-icon">1</div>
+                    <div class="progress-content">
+                        <h3>蜃ｺ谺遒ｺ隱・/h3>
+                        <p>蜿ょ刈閠・・蜃ｺ谺繧堤｢ｺ隱阪＠縺ｾ縺・/p>
+                        <div class="progress-status incomplete">譛ｪ螳御ｺ・/div>
+                    </div>
+                    <div class="progress-action">
+                        <a href="attendance.html" class="progress-button">蜃ｺ谺遒ｺ隱阪∈</a>
+                    </div>
+                </div>
+
+                <div class="progress-item" id="progress-cars">
+                    <div class="progress-icon">2</div>
+                    <div class="progress-content">
+                        <h3>霆贋ｸ｡謠蝉ｾ・/h3>
+                        <p>菫晁ｭｷ閠・・霆贋ｸ｡謠蝉ｾ帙ｒ逋ｻ骭ｲ縺励∪縺・/p>
+                        <div class="progress-status incomplete">譛ｪ螳御ｺ・/div>
+                    </div>
+                    <div class="progress-action">
+                        <a href="cars.html" class="progress-button">霆頑署萓帙∈</a>
+                    </div>
+                </div>
+
+                <div class="progress-item" id="progress-assignments">
+                    <div class="progress-icon">3</div>
+                    <div class="progress-content">
+                        <h3>蠎ｧ蟶ｭ蜑ｲ繧雁ｽ薙※</h3>
+                        <p>蜿ょ刈閠・ｒ霆贋ｸ｡縺ｫ蜑ｲ繧雁ｽ薙※縺ｾ縺・/p>
+                        <div class="progress-status incomplete">譛ｪ螳御ｺ・/div>
+                    </div>
+                    <div class="progress-action">
+                        <a href="assignments.html" class="progress-button">蜑ｲ繧雁ｽ薙※縺ｸ</a>
+                    </div>
+                </div>
+
+                <div class="progress-item" id="progress-notifications">
+                    <div class="progress-icon">4</div>
+                    <div class="progress-content">
+                        <h3>驟崎ｻ企｣邨｡</h3>
+                        <p>驟崎ｻ頑ュ蝣ｱ繧帝未菫り・↓蜈ｱ譛峨＠縺ｾ縺・/p>
+                        <div class="progress-status incomplete">譛ｪ螳御ｺ・/div>
+                    </div>
+                    <div class="progress-action">
+                        <a href="notifications.html" class="progress-button">騾｣邨｡縺ｸ</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 迥ｶ豕√し繝槭Μ繝ｼ -->
+        <div class="card">
+            <h2>迴ｾ蝨ｨ縺ｮ迥ｶ豕・/h2>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="summary-icon">則</div>
+                    <div class="summary-content">
+                        <div class="summary-label">蜃ｺ谺蝗樒ｭ・/div>
+                        <div class="summary-value" id="attendance-summary">-/-</div>
+                        <div class="summary-detail">蝗樒ｭ疲ｸ・蟇ｾ雎｡閠・/div>
+                    </div>
+                </div>
+
+                <div class="summary-item">
+                    <div class="summary-icon">囓</div>
+                    <div class="summary-content">
+                        <div class="summary-label">霆贋ｸ｡謠蝉ｾ・/div>
+                        <div class="summary-value" id="cars-summary">-蜿ｰ</div>
+                        <div class="summary-detail">謠蝉ｾ帛庄閭ｽ</div>
+                    </div>
+                </div>
+
+                <div class="summary-item">
+                    <div class="summary-icon">勅</div>
+                    <div class="summary-content">
+                        <div class="summary-label">蠎ｧ蟶ｭ謨ｰ</div>
+                        <div class="summary-value" id="seats-summary">-蟶ｭ</div>
+                        <div class="summary-detail">蛻ｩ逕ｨ蜿ｯ閭ｽ</div>
+                    </div>
+                </div>
+
+                <div class="summary-item">
+                    <div class="summary-icon">笨・/div>
+                    <div class="summary-content">
+                        <div class="summary-label">蜑ｲ繧雁ｽ薙※</div>
+                        <div class="summary-value" id="assignment-summary">-/-</div>
+                        <div class="summary-detail">驟咲ｽｮ貂・蜿ょ刈閠・/div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 繧｢繧ｯ繧ｷ繝ｧ繝ｳ繝懊ち繝ｳ -->
+        <div class="action-buttons">
+            <button id="refresh-data" class="secondary-button">繝・・繧ｿ繧呈峩譁ｰ</button>
+            <button id="back-to-hub">HUB縺ｫ謌ｻ繧・/button>
+        </div>
+    </div>
+
+    <!-- 繝・・繧ｿ荳崎ｶｳ隴ｦ蜻翫Δ繝ｼ繝繝ｫ -->
+    <div id="warning-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>笞・・豕ｨ諢・/h2>
+            <div id="warning-content">
+                <!-- 隴ｦ蜻雁・螳ｹ縺繰S縺ｧ蜍慕噪縺ｫ逕滓・縺輔ｌ繧・-->
+            </div>
+            <div class="modal-actions">
+                <button id="continue-anyway" class="secondary-button">邯夊｡・/button>
+                <button id="fix-issues">蝠城｡後ｒ隗｣豎ｺ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 蜈ｱ騾壹Δ繧ｸ繝･繝ｼ繝ｫ -->
+    <script src="../js/common/global.js"></script>
+    <script src="../js/common/utils.js"></script>
+    <script src="../js/common/storage.js"></script>
+    <script src="../js/common/ui.js"></script>
+    
+    <!-- 驟崎ｻ顔ｮ｡逅・ｦりｦ∫畑繝｢繧ｸ繝･繝ｼ繝ｫ -->
+    <script src="../js/carpool/overview.js"></script>
+</body>
+</html>

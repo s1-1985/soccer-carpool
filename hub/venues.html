@@ -1,0 +1,366 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>会場登録 - FC尾島Jr HUB</title>
+    
+    <!-- CSS読み込み -->
+    <link rel="stylesheet" href="../css/common.css">
+    <link rel="stylesheet" href="../css/hub/venues.css">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
+<style>
+
+/* 強制CSS修正スクリプト完全版 - 自動追加 */
+/* 実行日時: 2025-07-07T05:56:30.184Z */
+
+/* ナビゲーション強制修正 */
+.main-nav ul {
+    list-style: none !important;
+    display: flex !important;
+    flex-direction: row !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    flex-wrap: wrap !important;
+}
+
+.main-nav {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-radius: 12px !important;
+    margin-bottom: 30px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 2px solid rgba(255, 215, 0, 0.3) !important;
+}
+
+.main-nav li {
+    flex: 1 !important;
+    min-width: 120px !important;
+}
+
+.main-nav a {
+    display: block !important;
+    padding: 15px 20px !important;
+    text-decoration: none !important;
+    color: #333 !important;
+    font-weight: 500 !important;
+    text-align: center !important;
+    transition: all 0.3s ease !important;
+    border-radius: 8px !important;
+    margin: 5px !important;
+}
+
+.main-nav a:hover {
+    background: linear-gradient(135deg, #FFD700, #FFA500) !important;
+    color: #1a1a1a !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3) !important;
+}
+
+.main-nav a.active {
+    background: linear-gradient(135deg, #FFD700, #FFA500) !important;
+    color: #1a1a1a !important;
+    font-weight: 600 !important;
+}
+
+/* レスポンシブ対応 */
+@media screen and (max-width: 768px) {
+    .main-nav ul {
+        flex-direction: column !important;
+    }
+    
+    .main-nav {
+        flex-direction: column !important;
+    }
+    
+    .main-nav li {
+        min-width: auto !important;
+    }
+}
+
+@media screen and (max-width: 414px) {
+    .main-nav ul {
+        flex-direction: column !important;
+        gap: 2px !important;
+    }
+    
+    .main-nav a {
+        padding: 12px 16px !important;
+        margin: 2px !important;
+        font-size: 14px !important;
+        border-radius: 6px !important;
+    }
+    
+    .main-nav li {
+        min-width: auto !important;
+        flex: none !important;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .main-nav ul {
+        flex-direction: column !important;
+        gap: 1px !important;
+    }
+    
+    .main-nav a {
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+        margin: 1px !important;
+        min-height: 40px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+}
+
+/* 強制CSS修正スクリプト完全版 - 終了 */
+
+</style>
+</head>
+<body>
+    <!-- メインコンテナ -->
+    <div class="main-container">
+        <!-- ヘッダー -->
+        <header class="app-header">
+            <div class="header-content">
+                <h1>FC尾島Jr HUB 会場登録</h1>
+                <div class="user-info">
+                    <span class="online-indicator">● オンライン</span>
+                    <span id="user-name">s1 Yasu</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- ナビゲーション -->
+        <nav class="main-nav">
+            <a href="calendar.html" class="nav-item">カレンダー</a>
+            <a href="members.html" class="nav-item">メンバー</a>
+            <a href="notifications.html" class="nav-item">連絡事項</a>
+            <a href="venues.html" class="nav-item active">会場登録</a>
+        </nav>
+
+        <!-- メインコンテンツ -->
+        <main class="main-content">
+            <div style="background: red; color: white; padding: 10px;">
+🔥 TEST: この赤いバーが見えればファイルは更新されています
+</div>
+            <!-- 会場管理コントロール -->
+            <div class="venues-controls">
+                <!-- 検索・フィルター -->
+                <div class="search-filters">
+                    <div class="search-box">
+                        <input type="text" id="venue-search" placeholder="会場名で検索...">
+                    </div>
+                    <div class="filter-buttons">
+                        <select id="venue-type-filter">
+                            <option value="">全ての種類</option>
+                            <option value="outdoor">屋外</option>
+                            <option value="indoor">屋内</option>
+                            <option value="school">学校</option>
+                        </select>
+                        <select id="area-filter">
+                            <option value="">全てのエリア</option>
+                            <option value="ojima">尾島</option>
+                            <option value="ota">太田</option>
+                            <option value="other">その他</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 会場追加ボタン -->
+                <div class="add-venue-button">
+                    <button id="add-venue-btn">+ 会場追加</button>
+                </div>
+            </div>
+
+            <!-- 会場リスト -->
+            <div id="venues-content">
+                <div class="venues-list">
+                    <div class="venue-card">
+                        <div class="venue-info">
+                            <div class="venue-name">尾島総合運動場</div>
+                            <div class="venue-details">
+                                <span class="venue-type">屋外</span>
+                                <span class="venue-area">尾島</span>
+                            </div>
+                            <div class="venue-address">群馬県太田市尾島町123-456</div>
+                            <div class="venue-contact">
+                                <span class="phone">0276-12-3456</span>
+                            </div>
+                            <div class="venue-notes">駐車場：あり（50台）、更衣室：あり</div>
+                        </div>
+                        <div class="venue-actions">
+                            <button class="btn btn-sm">編集</button>
+                            <button class="btn btn-sm btn-primary">地図</button>
+                            <button class="btn btn-sm btn-danger">削除</button>
+                        </div>
+                    </div>
+
+                    <div class="venue-card">
+                        <div class="venue-info">
+                            <div class="venue-name">尾島小学校体育館</div>
+                            <div class="venue-details">
+                                <span class="venue-type">屋内</span>
+                                <span class="venue-area">尾島</span>
+                            </div>
+                            <div class="venue-address">群馬県太田市尾島町789-012</div>
+                            <div class="venue-contact">
+                                <span class="phone">0276-23-4567</span>
+                            </div>
+                            <div class="venue-notes">雨天練習時使用、土足禁止</div>
+                        </div>
+                        <div class="venue-actions">
+                            <button class="btn btn-sm">編集</button>
+                            <button class="btn btn-sm btn-primary">地図</button>
+                            <button class="btn btn-sm btn-danger">削除</button>
+                        </div>
+                    </div>
+
+                    <div class="venue-card">
+                        <div class="venue-info">
+                            <div class="venue-name">太田市民体育館</div>
+                            <div class="venue-details">
+                                <span class="venue-type">屋内</span>
+                                <span class="venue-area">太田</span>
+                            </div>
+                            <div class="venue-address">群馬県太田市本町345-678</div>
+                            <div class="venue-contact">
+                                <span class="phone">0276-34-5678</span>
+                            </div>
+                            <div class="venue-notes">大会会場、要予約</div>
+                        </div>
+                        <div class="venue-actions">
+                            <button class="btn btn-sm">編集</button>
+                            <button class="btn btn-sm btn-primary">地図</button>
+                            <button class="btn btn-sm btn-danger">削除</button>
+                        </div>
+                    </div>
+
+                    <div class="venue-card">
+                        <div class="venue-info">
+                            <div class="venue-name">桐生運動公園</div>
+                            <div class="venue-details">
+                                <span class="venue-type">屋外</span>
+                                <span class="venue-area">その他</span>
+                            </div>
+                            <div class="venue-address">群馬県桐生市相生町456-789</div>
+                            <div class="venue-contact">
+                                <span class="phone">0277-45-6789</span>
+                            </div>
+                            <div class="venue-notes">他チームとの試合で使用、駐車場：100台</div>
+                        </div>
+                        <div class="venue-actions">
+                            <button class="btn btn-sm">編集</button>
+                            <button class="btn btn-sm btn-primary">地図</button>
+                            <button class="btn btn-sm btn-danger">削除</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 会場追加・編集モーダル -->
+    <div id="venue-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">会場追加</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            
+            <form id="venue-form">
+                <div class="form-group">
+                    <label for="venue-name">会場名 *</label>
+                    <input type="text" id="venue-name" name="name" required placeholder="例: 尾島総合運動場">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="venue-type">種類 *</label>
+                        <select id="venue-type" name="type" required>
+                            <option value="">選択してください</option>
+                            <option value="outdoor">屋外</option>
+                            <option value="indoor">屋内</option>
+                            <option value="school">学校</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="venue-area">エリア *</label>
+                        <select id="venue-area" name="area" required>
+                            <option value="">選択してください</option>
+                            <option value="ojima">尾島</option>
+                            <option value="ota">太田</option>
+                            <option value="other">その他</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="venue-address">住所 *</label>
+                    <input type="text" id="venue-address" name="address" required placeholder="例: 群馬県太田市尾島町123-456">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="venue-phone">電話番号</label>
+                        <input type="tel" id="venue-phone" name="phone" placeholder="例: 0276-12-3456">
+                    </div>
+                    <div class="form-group">
+                        <label for="venue-capacity">収容人数</label>
+                        <input type="number" id="venue-capacity" name="capacity" placeholder="例: 100">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="venue-facilities">設備・施設</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="facilities" value="parking"> 駐車場
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="facilities" value="changing-room"> 更衣室
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="facilities" value="shower"> シャワー
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="facilities" value="toilet"> トイレ
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="facilities" value="air-conditioning"> 空調
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="venue-notes">備考・注意事項</label>
+                    <textarea id="venue-notes" name="notes" placeholder="利用時間、料金、その他注意事項など"></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn close-modal">キャンセル</button>
+                    <button type="button" id="save-venue" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript読み込み -->
+    <script src="../js/common/firebase-config.js"></script>
+    <script src="../js/common/auth.js"></script>
+    <script src="../js/common/firestore.js"></script>
+    <script src="../js/common/global.js"></script>
+    <script src="../js/common/ui.js"></script>
+    <script src="../js/common/utils.js"></script>
+    <script src="../js/hub/venues.js"></script>
+    <script src="../js/hub/main.js"></script>
+</body>
+</html>

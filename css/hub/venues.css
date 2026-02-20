@@ -1,0 +1,389 @@
+/* FC尾島ジュニア - 会場管理スタイル */
+
+/* コントロール */
+.controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.search-filters {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.search-filters input,
+.search-filters select {
+    min-width: 150px;
+}
+
+/* 統計表示 */
+.stats {
+    display: flex;
+    justify-content: space-around;
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.stat-item {
+    text-align: center;
+    min-width: 120px;
+}
+
+.stat-label {
+    display: block;
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.stat-value {
+    display: block;
+    font-size: 24px;
+    font-weight: bold;
+    color: #3498db;
+}
+
+/* 会場リスト */
+.venues-list {
+    margin-bottom: 20px;
+}
+
+.venue-item {
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 15px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    position: relative;
+}
+
+.venue-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.venue-item.highlight {
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+/* 会場情報 */
+.venue-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.venue-name {
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.venue-type {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: white;
+}
+
+.venue-type.ground {
+    background-color: #28a745;
+}
+
+.venue-type.gym {
+    background-color: #6f42c1;
+}
+
+.venue-type.park {
+    background-color: #20c997;
+}
+
+.venue-type.other {
+    background-color: #6c757d;
+}
+
+.venue-address {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.venue-address::before {
+    content: "📍";
+    font-size: 12px;
+}
+
+.venue-notes {
+    font-size: 12px;
+    color: #888;
+    font-style: italic;
+    margin-top: 8px;
+    line-height: 1.4;
+}
+
+.venue-actions {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    display: flex;
+    gap: 8px;
+}
+
+.venue-actions button {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.venue-item:hover .venue-actions button {
+    opacity: 1;
+}
+
+/* 空の状態 */
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.empty-state h3 {
+    color: #999;
+    margin-bottom: 10px;
+}
+
+.empty-state p {
+    margin-bottom: 20px;
+}
+
+/* 詳細モーダル */
+.venue-detail-card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.venue-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.venue-detail-name {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.venue-detail-type {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: white;
+}
+
+.detail-row {
+    display: flex;
+    margin-bottom: 12px;
+}
+
+.detail-label {
+    font-weight: 500;
+    width: 80px;
+    color: #555;
+    flex-shrink: 0;
+}
+
+.detail-value {
+    flex: 1;
+    color: #333;
+}
+
+.map-link {
+    color: #3498db;
+    text-decoration: none;
+    margin-left: 8px;
+    font-size: 12px;
+}
+
+.map-link:hover {
+    text-decoration: underline;
+}
+
+/* マップボタン */
+.map-button {
+    background-color: #4285f4;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    margin-left: 8px;
+}
+
+.map-button:hover {
+    background-color: #3367d6;
+}
+
+/* エクスポート機能 */
+.export-options {
+    display: none;
+    position: absolute;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    min-width: 200px;
+}
+
+.export-options.show {
+    display: block;
+}
+
+.export-option {
+    padding: 10px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+
+.export-option:last-child {
+    border-bottom: none;
+}
+
+.export-option:hover {
+    background-color: #f8f9fa;
+}
+
+/* ログ表示 */
+.log-item {
+    border-bottom: 1px solid #eee;
+    padding: 15px 0;
+}
+
+.log-item:last-child {
+    border-bottom: none;
+}
+
+.log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.log-date {
+    font-size: 12px;
+    color: #666;
+}
+
+.log-user {
+    font-size: 12px;
+    color: #888;
+}
+
+.log-content {
+    color: #333;
+}
+
+/* レスポンシブ対応 */
+@media screen and (max-width: 768px) {
+    .controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .search-filters {
+        flex-direction: column;
+    }
+    
+    .search-filters input,
+    .search-filters select {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    .stats {
+        flex-direction: column;
+    }
+    
+    .stat-item {
+        min-width: auto;
+    }
+    
+    .venue-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .venue-actions {
+        position: static;
+        margin-top: 10px;
+    }
+    
+    .venue-actions button {
+        opacity: 1;
+    }
+    
+    .venue-detail-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .detail-row {
+        flex-direction: column;
+    }
+    
+    .detail-label {
+        width: 100%;
+        margin-bottom: 5px;
+        font-weight: 600;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .venue-item {
+        padding: 15px;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 10px auto;
+        padding: 15px;
+    }
+    
+    .venue-actions {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .venue-actions button {
+        width: 100%;
+    }
+}

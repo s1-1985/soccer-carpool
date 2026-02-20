@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ログイン - FC尾島Jr HUB</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    
+<style>
+
+/* 強制CSS修正スクリプト完全版 - 自動追加 */
+/* 実行日時: 2025-07-07T05:56:30.184Z */
+
+/* ナビゲーション強制修正 */
+.main-nav ul {
+    list-style: none !important;
+    display: flex !important;
+    flex-direction: row !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    flex-wrap: wrap !important;
+}
+
+.main-nav {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-radius: 12px !important;
+    margin-bottom: 30px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 2px solid rgba(255, 215, 0, 0.3) !important;
+}
+
+.main-nav li {
+    flex: 1 !important;
+    min-width: 120px !important;
+}
+
+.main-nav a {
+    display: block !important;
+    padding: 15px 20px !important;
+    text-decoration: none !important;
+    color: #333 !important;
+    font-weight: 500 !important;
+    text-align: center !important;
+    transition: all 0.3s ease !important;
+    border-radius: 8px !important;
+    margin: 5px !important;
+}
+
+.main-nav a:hover {
+    background: linear-gradient(135deg, #FFD700, #FFA500) !important;
+    color: #1a1a1a !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3) !important;
+}
+
+.main-nav a.active {
+    background: linear-gradient(135deg, #FFD700, #FFA500) !important;
+    color: #1a1a1a !important;
+    font-weight: 600 !important;
+}
+
+/* レスポンシブ対応 */
+@media screen and (max-width: 768px) {
+    .main-nav ul {
+        flex-direction: column !important;
+    }
+    
+    .main-nav {
+        flex-direction: column !important;
+    }
+    
+    .main-nav li {
+        min-width: auto !important;
+    }
+}
+
+@media screen and (max-width: 414px) {
+    .main-nav ul {
+        flex-direction: column !important;
+        gap: 2px !important;
+    }
+    
+    .main-nav a {
+        padding: 12px 16px !important;
+        margin: 2px !important;
+        font-size: 14px !important;
+        border-radius: 6px !important;
+    }
+    
+    .main-nav li {
+        min-width: auto !important;
+        flex: none !important;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .main-nav ul {
+        flex-direction: column !important;
+        gap: 1px !important;
+    }
+    
+    .main-nav a {
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+        margin: 1px !important;
+        min-height: 40px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+}
+
+/* 強制CSS修正スクリプト完全版 - 終了 */
+
+</style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>FC尾島ジュニア</h1>
+            <p>チーム管理システム</p>
+        </div>
+        
+        <div class="login-content">
+            <!-- タブボタン -->
+            <div class="tab-buttons">
+                <button class="tab-button active" onclick="switchTab('login')">ログイン</button>
+                <button class="tab-button" onclick="switchTab('register')">新規登録</button>
+            </div>
+            
+            <!-- アラート表示エリア -->
+            <div id="alert-container"></div>
+            
+            <!-- ローディング表示 -->
+            <div id="loading" class="loading">
+                <div class="loading-spinner"></div>
+                <p>処理中...</p>
+            </div>
+            
+            <!-- ログインタブ -->
+            <div id="login-tab" class="tab-content active">
+                <button id="google-login" class="google-login-button">
+                    <div class="google-icon"></div>
+                    Googleでログイン
+                </button>
+                
+                <div class="divider">
+                    <span>または</span>
+                </div>
+                
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="login-email">メールアドレス</label>
+                        <input type="email" id="login-email" name="email" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="login-password">パスワード</label>
+                        <input type="password" id="login-password" name="password" required>
+                    </div>
+                    
+                    <button type="submit" class="login-button">ログイン</button>
+                </form>
+                
+                <div class="forgot-password">
+                    <a href="#" onclick="resetPassword()">パスワードを忘れた方</a>
+                </div>
+            </div>
+            
+            <!-- 新規登録タブ -->
+            <div id="register-tab" class="tab-content">
+                <form id="register-form">
+                    <div class="form-group">
+                        <label for="register-name">お名前</label>
+                        <input type="text" id="register-name" name="name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="register-email">メールアドレス</label>
+                        <input type="email" id="register-email" name="email" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="register-password">パスワード（6文字以上）</label>
+                        <input type="password" id="register-password" name="password" required minlength="6">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="register-phone">電話番号（任意）</label>
+                        <input type="tel" id="register-phone" name="phone">
+                    </div>
+                    
+                    <button type="submit" class="login-button">新規登録</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase JavaScript -->
+    <script src="../js/common/firebase-config.js"></script>
+    <script src="../js/common/auth.js"></script>
+    <script src="../js/common/firestore.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            
+            // 既にログイン済みの場合はリダイレクト
+            firebase.auth().onAuthStateChanged((user) => {
+                if (user) {
+                    redirectToHub();
+                }
+            });
+        });
+        
+        function setupEventListeners() {
+            // Googleログイン
+            document.getElementById('google-login').addEventListener('click', handleGoogleLogin);
+            
+            // ログインフォーム
+            document.getElementById('login-form').addEventListener('submit', handleEmailLogin);
+            
+            // 新規登録フォーム
+            document.getElementById('register-form').addEventListener('submit', handleEmailRegister);
+        }
+        
+        function switchTab(tab) {
+            // タブボタンの状態を更新
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // タブコンテンツの表示を切り替え
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tab + '-tab').classList.add('active');
+            
+            // アラートをクリア
+            clearAlert();
+        }
+        
+        async function handleGoogleLogin() {
+            try {
+                showLoading(true);
+                const result = await FCOjima.Auth.signInWithGoogle();
+                
+                if (result.success) {
+                    showAlert('success', 'ログインしました');
+                    setTimeout(redirectToHub, 1000);
+                } else {
+                    showAlert('error', result.error);
+                }
+            } catch (error) {
+                showAlert('error', 'ログインに失敗しました');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        async function handleEmailLogin(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const email = formData.get('email');
+            const password = formData.get('password');
+            
+            try {
+                showLoading(true);
+                const result = await FCOjima.Auth.signInWithEmail(email, password);
+                
+                if (result.success) {
+                    showAlert('success', 'ログインしました');
+                    setTimeout(redirectToHub, 1000);
+                } else {
+                    showAlert('error', result.error);
+                }
+            } catch (error) {
+                showAlert('error', 'ログインに失敗しました');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        async function handleEmailRegister(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const profileData = {
+                name: formData.get('name'),
+                phone: formData.get('phone')
+            };
+            
+            try {
+                showLoading(true);
+                const result = await FCOjima.Auth.registerWithEmail(
+                    formData.get('email'),
+                    formData.get('password'),
+                    profileData
+                );
+                
+                if (result.success) {
+                    showAlert('success', 'アカウントを作成しました');
+                    setTimeout(redirectToHub, 1000);
+                } else {
+                    showAlert('error', result.error);
+                }
+            } catch (error) {
+                showAlert('error', 'アカウント作成に失敗しました');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        async function resetPassword() {
+            const email = prompt('パスワードリセット用のメールアドレスを入力してください:');
+            if (!email) return;
+            
+            try {
+                showLoading(true);
+                const result = await FCOjima.Auth.resetPassword(email);
+                
+                if (result.success) {
+                    showAlert('success', 'パスワードリセットメールを送信しました');
+                } else {
+                    showAlert('error', result.error);
+                }
+            } catch (error) {
+                showAlert('error', 'メール送信に失敗しました');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        function showAlert(type, message) {
+            const container = document.getElementById('alert-container');
+            container.innerHTML = `
+                <div class="alert ${type}">
+                    ${message}
+                </div>
+            `;
+            
+            // 5秒後に自動で消去
+            setTimeout(clearAlert, 5000);
+        }
+        
+        function clearAlert() {
+            document.getElementById('alert-container').innerHTML = '';
+        }
+        
+        function showLoading(show) {
+            const loading = document.getElementById('loading');
+            const buttons = document.querySelectorAll('button');
+            
+            if (show) {
+                loading.style.display = 'block';
+                buttons.forEach(btn => btn.disabled = true);
+            } else {
+                loading.style.display = 'none';
+                buttons.forEach(btn => btn.disabled = false);
+            }
+        }
+        
+        function redirectToHub() {
+            window.location.href = '../hub/calendar.html';
+        }
+    </script>
+</body>
+</html>

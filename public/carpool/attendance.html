@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>出欠確認 - FC尾島Jr HUB</title>
+    <link rel="stylesheet" href="../css/common.css">
+    <link rel="stylesheet" href="../css/carpool/attendance.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+
+/* 強制CSS修正スクリプト完全版 - 自動追加 */
+/* 実行日時: 2025-07-07T05:56:30.184Z */
+
+/* ナビゲーション強制修正 */
+.main-nav ul {
+    list-style: none !important;
+    display: flex !important;
+    flex-direction: row !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    flex-wrap: wrap !important;
+}
+
+.main-nav {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-radius: 12px !important;
+    margin-bottom: 30px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 2px solid rgba(255, 215, 0, 0.3) !important;
+}
+
+.main-nav li {
+    flex: 1 !important;
+    min-width: 120px !important;
+}
+
+.main-nav a {
+    display: block !important;
+    padding: 15px 20px !important;
+    text-decoration: none !important;
+    color: #333 !important;
+    font-weight: 500 !important;
+    text-align: center !important;
+    transition: all 0.3s ease !important;
+    border-radius: 8px !important;
+    margin: 5px !important;
+}
+
+.main-nav a:hover {
+    background: linear-gradient(135deg, #FFD700, #FFA500) !important;
+    color: #1a1a1a !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3) !important;
+}
+
+.main-nav a.active {
+    background: linear-gradient(135deg, #FFD700, #FFA500) !important;
+    color: #1a1a1a !important;
+    font-weight: 600 !important;
+}
+
+/* レスポンシブ対応 */
+@media screen and (max-width: 768px) {
+    .main-nav ul {
+        flex-direction: column !important;
+    }
+    
+    .main-nav {
+        flex-direction: column !important;
+    }
+    
+    .main-nav li {
+        min-width: auto !important;
+    }
+}
+
+@media screen and (max-width: 414px) {
+    .main-nav ul {
+        flex-direction: column !important;
+        gap: 2px !important;
+    }
+    
+    .main-nav a {
+        padding: 12px 16px !important;
+        margin: 2px !important;
+        font-size: 14px !important;
+        border-radius: 6px !important;
+    }
+    
+    .main-nav li {
+        min-width: auto !important;
+        flex: none !important;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .main-nav ul {
+        flex-direction: column !important;
+        gap: 1px !important;
+    }
+    
+    .main-nav a {
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+        margin: 1px !important;
+        min-height: 40px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+}
+
+/* 強制CSS修正スクリプト完全版 - 終了 */
+
+</style>
+</head>
+<body>
+    <header>
+        <h1>FC尾島Jr HUB 出欠確認</h1>
+    </header>
+
+    <nav class="main-nav">
+        <ul>
+            <li><a href="index.html">概要</a></li>
+            <li><a href="attendance.html" class="active">出欠確認</a></li>
+            <li><a href="cars.html">車提供</a></li>
+            <li><a href="assignments.html">座席割り当て</a></li>
+            <li><a href="notifications.html">配車連絡</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <!-- イベント情報カード -->
+        <div class="card event-summary" id="event-summary">
+            <div class="loading">イベント情報を読み込み中...</div>
+        </div>
+
+        <!-- 出欠期限警告 -->
+        <div id="deadline-warning" class="deadline-warning hidden">
+            <!-- 期限警告がJSで動的に生成される -->
+        </div>
+
+        <!-- 統計情報 -->
+        <div class="card">
+            <h2>出欠状況</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="total-members">0</div>
+                        <div class="stat-label">対象者</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="responded-count">0</div>
+                        <div class="stat-label">回答済み</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🙋</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="present-count">0</div>
+                        <div class="stat-label">参加</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">❌</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="absent-count">0</div>
+                        <div class="stat-label">不参加</div>
+                    </div>
+                </div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="response-progress"></div>
+            </div>
+            <div class="progress-text">
+                <span id="response-percentage">0%</span> 回答済み
+            </div>
+        </div>
+
+        <!-- 出欠管理テーブル -->
+        <div class="card">
+            <div class="table-header">
+                <h2>出欠管理</h2>
+                <div class="table-controls">
+                    <select id="filter-status">
+                        <option value="">すべて</option>
+                        <option value="present">参加</option>
+                        <option value="absent">不参加</option>
+                        <option value="unknown">未回答</option>
+                    </select>
+                    <select id="filter-role">
+                        <option value="">すべての役割</option>
+                        <option value="player">選手</option>
+                        <option value="coach">監督・コーチ</option>
+                        <option value="parent">保護者</option>
+                    </select>
+                    <button id="auto-fill-all" class="secondary-button">一括設定</button>
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <table id="attendance-table">
+                    <thead>
+                        <tr>
+                            <th>名前</th>
+                            <th>役割</th>
+                            <th>学年</th>
+                            <th>出欠</th>
+                            <th>備考</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendance-tbody">
+                        <tr>
+                            <td colspan="6" class="loading">読み込み中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button id="save-attendance">出欠を保存</button>
+            <button id="send-reminder" class="secondary-button">未回答者に催促</button>
+            <button id="export-attendance" class="secondary-button">一覧を出力</button>
+            <button id="next-step" class="next-button" disabled>次のステップへ</button>
+        </div>
+    </div>
+
+    <!-- 一括設定モーダル -->
+    <div id="bulk-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>一括設定</h2>
+            <form id="bulk-form">
+                <div class="form-group">
+                    <label for="bulk-status">出欠状況</label>
+                    <select id="bulk-status" required>
+                        <option value="">選択してください</option>
+                        <option value="present">参加</option>
+                        <option value="absent">不参加</option>
+                        <option value="unknown">未回答</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="bulk-target">対象</label>
+                    <select id="bulk-target" required>
+                        <option value="all">すべてのメンバー</option>
+                        <option value="players">選手のみ</option>
+                        <option value="staff">監督・コーチのみ</option>
+                        <option value="unanswered">未回答者のみ</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="bulk-notes">一括備考</label>
+                    <input type="text" id="bulk-notes" placeholder="必要に応じて入力">
+                </div>
+                <div class="form-actions">
+                    <button type="submit">適用</button>
+                    <button type="button" id="cancel-bulk">キャンセル</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 催促メッセージモーダル -->
+    <div id="reminder-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>催促メッセージ</h2>
+            <div class="reminder-preview">
+                <h4>送信対象:</h4>
+                <div id="reminder-targets">
+                    <!-- 未回答者リストがJSで生成される -->
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="reminder-message">メッセージ内容</label>
+                <textarea id="reminder-message" placeholder="催促メッセージを入力してください">
+出欠確認のお願い
+
+FC尾島Jr HUBの活動にご協力いただき、ありがとうございます。
+
+下記のイベントについて、出欠のご回答をお願いいたします。
+
+【イベント詳細】
+{eventDetails}
+
+お忙しい中恐れ入りますが、ご確認のほどよろしくお願いいたします。
+                </textarea>
+            </div>
+            <div class="modal-actions">
+                <button id="send-line-reminder">LINEで送信</button>
+                <button id="copy-reminder">メッセージをコピー</button>
+                <button id="cancel-reminder" class="secondary-button">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 共通モジュール -->
+    <script src="../js/common/global.js"></script>
+    <script src="../js/common/utils.js"></script>
+    <script src="../js/common/storage.js"></script>
+    <script src="../js/common/ui.js"></script>
+    
+    <!-- 出欠確認用モジュール -->
+    <script src="../js/carpool/attendance.js"></script>
+</body>
+</html>

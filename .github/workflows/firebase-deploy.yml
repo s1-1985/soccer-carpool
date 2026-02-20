@@ -1,0 +1,21 @@
+name: Firebase Hosting へ手動デプロイ
+
+on:
+  # GitHub上のボタンで手動実行できます
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: コードを取得
+        uses: actions/checkout@v4
+
+      - name: Firebase Hosting へデプロイ
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_FC_OJIMA_HUB }}'
+          projectId: fc-ojima-hub
+          channelId: live

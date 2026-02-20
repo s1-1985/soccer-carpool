@@ -1,0 +1,54 @@
+=== FC尾島ジュニア - 強制CSS修正スクリプト完全版 実行ログ ===
+実行開始: 2025-07-07T05:56:29.858Z
+実行終了: 2025-07-07T05:56:31.678Z
+=================================================
+
+[2025-07-07T05:56:29.858Z] INFO: === FC尾島ジュニア - 強制CSS修正スクリプト完全版 開始 ===
+[2025-07-07T05:56:29.862Z] INFO: バックアップ作成を開始...
+[2025-07-07T05:56:29.888Z] SUCCESS: バックアップを作成しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/css/common.css.backup
+[2025-07-07T05:56:29.917Z] SUCCESS: バックアップを作成しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/css/hub/calendar.css.backup
+[2025-07-07T05:56:29.936Z] SUCCESS: バックアップを作成しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/css/hub/members.css.backup
+[2025-07-07T05:56:29.955Z] SUCCESS: バックアップを作成しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/css/hub/notifications.css.backup
+[2025-07-07T05:56:29.974Z] SUCCESS: バックアップを作成しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/css/hub/venues.css.backup
+[2025-07-07T05:56:29.999Z] SUCCESS: バックアップを作成しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/css/carpool/attendance.css.backup
+[2025-07-07T05:56:30.016Z] SUCCESS: バックアップを作成しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/css/carpool/overview.css.backup
+[2025-07-07T05:56:30.017Z] SUCCESS: バックアップ作成完了
+[2025-07-07T05:56:30.017Z] INFO: CSS修正処理を開始...
+[2025-07-07T05:56:30.024Z] INFO: ファイルを読み取りました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/css/common.css
+[2025-07-07T05:56:30.033Z] SUCCESS: ファイルを書き込みました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/css/common.css
+[2025-07-07T05:56:30.033Z] SUCCESS: CSS修正完了: 0 件のプロパティを修正
+[2025-07-07T05:56:30.033Z] INFO: public フォルダへの同期を開始...
+[2025-07-07T05:56:30.052Z] SUCCESS: ファイルをコピーしました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/css/common.css → /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/public/css/common.css
+[2025-07-07T05:56:30.079Z] SUCCESS: ファイルをコピーしました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/css/hub/calendar.css → /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/public/css/hub/calendar.css
+[2025-07-07T05:56:30.097Z] SUCCESS: ファイルをコピーしました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/css/hub/members.css → /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/public/css/hub/members.css
+[2025-07-07T05:56:30.116Z] SUCCESS: ファイルをコピーしました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/css/hub/notifications.css → /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/public/css/hub/notifications.css
+[2025-07-07T05:56:30.135Z] SUCCESS: ファイルをコピーしました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/css/hub/venues.css → /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/public/css/hub/venues.css
+[2025-07-07T05:56:30.166Z] SUCCESS: ファイルをコピーしました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/css/carpool/attendance.css → /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/public/css/carpool/attendance.css
+[2025-07-07T05:56:30.184Z] SUCCESS: ファイルをコピーしました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/css/carpool/overview.css → /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/public/css/carpool/overview.css
+[2025-07-07T05:56:30.184Z] SUCCESS: public フォルダへの同期完了
+[2025-07-07T05:56:30.184Z] INFO: HTML への <style> タグ挿入を開始...
+[2025-07-07T05:56:30.221Z] SUCCESS: HTMLファイルを処理しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/index.html
+[2025-07-07T05:56:30.265Z] SUCCESS: HTMLファイルを処理しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/auth/login.html
+[2025-07-07T05:56:30.305Z] SUCCESS: HTMLファイルを処理しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/hub/calendar.html
+[2025-07-07T05:56:30.340Z] SUCCESS: HTMLファイルを処理しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/hub/members.html
+[2025-07-07T05:56:30.374Z] SUCCESS: HTMLファイルを処理しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/hub/notifications.html
+[2025-07-07T05:56:30.411Z] SUCCESS: HTMLファイルを処理しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/hub/venues.html
+[2025-07-07T05:56:30.453Z] SUCCESS: HTMLファイルを処理しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/carpool/attendance.html
+[2025-07-07T05:56:30.484Z] SUCCESS: HTMLファイルを処理しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/carpool/index.html
+[2025-07-07T05:56:30.610Z] SUCCESS: HTMLファイルを処理しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/public/404.html
+[2025-07-07T05:56:30.645Z] SUCCESS: HTMLファイルを処理しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/public/index.html
+[2025-07-07T05:56:30.686Z] SUCCESS: HTMLファイルを処理しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/public/auth/login.html
+[2025-07-07T05:56:30.729Z] SUCCESS: HTMLファイルを処理しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/public/hub/calendar.html
+[2025-07-07T05:56:30.767Z] SUCCESS: HTMLファイルを処理しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/public/hub/members.html
+[2025-07-07T05:56:30.810Z] SUCCESS: HTMLファイルを処理しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/public/hub/notifications.html
+[2025-07-07T05:56:30.845Z] SUCCESS: HTMLファイルを処理しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/public/hub/venues.html
+[2025-07-07T05:56:31.608Z] SUCCESS: HTMLファイルを処理しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/public/carpool/attendance.html
+[2025-07-07T05:56:31.678Z] SUCCESS: HTMLファイルを処理しました: /mnt/c/Users/yasuhiro-sone/Desktop/carpool/fc-ojima-hub/public/carpool/index.html
+[2025-07-07T05:56:31.678Z] SUCCESS: HTML への <style> タグ挿入完了: 17 ファイル処理
+[2025-07-07T05:56:31.678Z] INFO: === 実行レポート ===
+[2025-07-07T05:56:31.678Z] INFO: 実行時間: 1820ms
+[2025-07-07T05:56:31.678Z] INFO: CSS修正数: 0
+[2025-07-07T05:56:31.678Z] INFO: 処理されたログ数: 45
+[2025-07-07T05:56:31.678Z] INFO: =================
+
+=== 実行完了 ===
