@@ -373,6 +373,20 @@ FCOjima.Firestore = FCOjima.Firestore || {};
         }
     };
 
+    /**
+     * 配車情報をリアルタイム監視
+     */
+    Firestore.watchCarpoolData = function (eventId, callback) {
+        return getTeamCollection(COLLECTIONS.CARPOOL).doc(eventId)
+            .onSnapshot((doc) => {
+                if (doc.exists) {
+                    callback(doc.data());
+                } else {
+                    callback(null);
+                }
+            });
+    };
+
     // ==================== ユーティリティ ====================
 
     /**

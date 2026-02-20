@@ -1,10 +1,6 @@
 /**
  * FC尾島ジュニア - ストレージ操作
-<<<<<<< HEAD
- * ローカルストレージとセッションストレージの操作機能
-=======
  * Firestore（優先）＋ローカルストレージ（フォールバック）
->>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
  */
 
 // 名前空間の確保
@@ -12,126 +8,9 @@ window.FCOjima = window.FCOjima || {};
 FCOjima.Storage = FCOjima.Storage || {};
 
 // ストレージ操作モジュール
-(function() {
+(function () {
     // 名前空間のショートカット
     const Storage = FCOjima.Storage;
-<<<<<<< HEAD
-    
-    // ストレージキーのプレフィックス
-    Storage.PREFIX = 'fc-ojima-';
-    
-    /**
-     * イベントデータをローカルストレージから読み込む
-     * @returns {Array} イベントデータの配列
-     */
-    Storage.loadEvents = function() {
-        const savedEvents = localStorage.getItem(this.PREFIX + 'events');
-        let events = savedEvents ? JSON.parse(savedEvents) : [];
-        
-        // サンプルデータ（ローカルストレージにデータがない場合のみ）
-        if (events.length === 0) {
-            const sampleEvents = [
-                {
-                    id: 1,
-                    date: "2025-01-25",
-                    type: "practice",
-                    title: "通常練習",
-                    target: ["3", "4", "5", "6"],
-                    venue: "市民グラウンド",
-                    meetingPlace: "学校正門",
-                    startTime: "09:00",
-                    endTime: "11:00",
-                    departureTime: "08:30",
-                    attendanceDeadline: "2025-01-23T18:00:00",
-                    notes: "雨天中止"
-                },
-                {
-                    id: 2,
-                    date: "2025-02-01",
-                    type: "game",
-                    title: "vs青葉FC",
-                    target: ["5", "6"],
-                    venue: "第二運動公園",
-                    meetingPlace: "学校正門",
-                    startTime: "10:00",
-                    endTime: "12:00",
-                    departureTime: "09:00",
-                    attendanceDeadline: "2025-01-30T18:00:00",
-                    notes: "ユニフォーム持参"
-                }
-            ];
-            return sampleEvents;
-        }
-        
-        return events;
-    };
-    
-    /**
-     * イベントデータをローカルストレージに保存
-     * @param {Array} events - イベントデータの配列
-     */
-    Storage.saveEvents = function(events) {
-        localStorage.setItem(this.PREFIX + 'events', JSON.stringify(events));
-    };
-    
-    /**
-     * メンバーデータをローカルストレージから読み込む
-     * @returns {Array} メンバーデータの配列
-     */
-    Storage.loadMembers = function() {
-        const savedMembers = localStorage.getItem(this.PREFIX + 'members');
-        let members = savedMembers ? JSON.parse(savedMembers) : [];
-        
-        // サンプルデータ（ローカルストレージにデータがない場合のみ）
-        if (members.length === 0) {
-            const sampleMembers = [
-                {
-                    id: 1,
-                    name: '田中浩二',
-                    birth: '2014-08-15',
-                    gender: 'male',
-                    role: 'player',
-                    number: 5,
-                    grade: '5',
-                    notes: 'ポジション: MF'
-                },
-                {
-                    id: 2,
-                    name: '佐藤勝',
-                    birth: '2013-04-22',
-                    gender: 'male',
-                    role: 'player',
-                    number: 10,
-                    grade: '6',
-                    notes: 'キャプテン'
-                },
-                {
-                    id: 3,
-                    name: '山田隆',
-                    birth: '2013-11-08',
-                    gender: 'male',
-                    role: 'player',
-                    number: 7,
-                    grade: '6',
-                    notes: ''
-                },
-                {
-                    id: 4,
-                    name: '鈴木大輔',
-                    birth: '2015-03-12',
-                    gender: 'male',
-                    role: 'player',
-                    number: 3,
-                    grade: '4',
-                    notes: ''
-                }
-            ];
-            return sampleMembers;
-        }
-        
-        return members;
-    };
-=======
 
     // ローカルストレージのプレフィックス
     Storage.PREFIX = 'fcojima_';
@@ -140,7 +19,7 @@ FCOjima.Storage = FCOjima.Storage || {};
      * メンバーデータをローカルストレージから読み込む
      * ※Firestoreデータはページ初期化時に app.Hub.members へ格納済み
      */
-    Storage.loadMembers = function() {
+    Storage.loadMembers = function () {
         // Firestoreからロード済みのキャッシュを返す
         if (window.FCOjima && FCOjima.Hub && FCOjima.Hub.members && FCOjima.Hub.members.length > 0) {
             return FCOjima.Hub.members;
@@ -150,10 +29,10 @@ FCOjima.Storage = FCOjima.Storage || {};
         let members = saved ? JSON.parse(saved) : [];
         if (members.length === 0) {
             members = [
-                { id: 1, name: '田中太郎',   birth: '2016-04-01', gender: 'male',   role: 'player', number: 10, grade: '3', notes: '' },
-                { id: 2, name: '鈴木花子',   birth: '2016-09-15', gender: 'female', role: 'player', number: 7,  grade: '3', notes: '' },
-                { id: 3, name: '佐藤次郎',   birth: '2017-03-20', gender: 'male',   role: 'player', number: 3,  grade: '2', notes: '' },
-                { id: 4, name: '山田美咲',   birth: '2015-11-10', gender: 'female', role: 'mother', number: null, grade: null, notes: '田中太郎の母' }
+                { id: 1, name: '田中太郎', birth: '2016-04-01', gender: 'male', role: 'player', number: 10, grade: '3', notes: '' },
+                { id: 2, name: '鈴木花子', birth: '2016-09-15', gender: 'female', role: 'player', number: 7, grade: '3', notes: '' },
+                { id: 3, name: '佐藤次郎', birth: '2017-03-20', gender: 'male', role: 'player', number: 3, grade: '2', notes: '' },
+                { id: 4, name: '山田美咲', birth: '2015-11-10', gender: 'female', role: 'mother', number: null, grade: null, notes: '田中太郎の母' }
             ];
         }
         return members;
@@ -162,7 +41,7 @@ FCOjima.Storage = FCOjima.Storage || {};
     /**
      * イベント（予定）をローカルストレージから読み込む
      */
-    Storage.loadEvents = function() {
+    Storage.loadEvents = function () {
         if (window.FCOjima && FCOjima.Hub && FCOjima.Hub.events && FCOjima.Hub.events.length > 0) {
             return FCOjima.Hub.events;
         }
@@ -173,13 +52,13 @@ FCOjima.Storage = FCOjima.Storage || {};
     /**
      * イベントデータを保存（Firestore + localStorage）
      */
-    Storage.saveEvents = function(events) {
+    Storage.saveEvents = function (events) {
         localStorage.setItem(this.PREFIX + 'events', JSON.stringify(events));
         if (window.FCOjima && FCOjima.DB) {
             FCOjima.DB.saveEvents(events).catch(e => console.warn('Firestore saveEvents:', e));
         }
     };
-    
+
     /**
      * メンバーデータをローカルストレージから読み込む（続き）
      */
@@ -226,30 +105,26 @@ FCOjima.Storage = FCOjima.Storage || {};
             notes: '田中浩二の父'
         }
     ];
->>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
-    
+
     /**
      * メンバーデータをローカルストレージに保存
      * @param {Array} members - メンバーデータの配列
      */
-    Storage.saveMembers = function(members) {
+    Storage.saveMembers = function (members) {
         localStorage.setItem(this.PREFIX + 'members', JSON.stringify(members));
-<<<<<<< HEAD
-=======
         if (window.FCOjima && FCOjima.DB) {
             FCOjima.DB.saveMembers(members).catch(e => console.warn('Firestore saveMembers:', e));
         }
->>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
     };
-    
+
     /**
      * 会場データをローカルストレージから読み込む
      * @returns {Array} 会場データの配列
      */
-    Storage.loadVenues = function() {
+    Storage.loadVenues = function () {
         const savedVenues = localStorage.getItem(this.PREFIX + 'venues');
         let venues = savedVenues ? JSON.parse(savedVenues) : [];
-        
+
         // サンプルデータ（ローカルストレージにデータがない場合のみ）
         if (venues.length === 0) {
             const sampleVenues = [
@@ -274,57 +149,54 @@ FCOjima.Storage = FCOjima.Storage || {};
             ];
             return sampleVenues;
         }
-        
+
         return venues;
     };
-    
+
     /**
      * 会場データをローカルストレージに保存
      * @param {Array} venues - 会場データの配列
      */
-    Storage.saveVenues = function(venues) {
+    Storage.saveVenues = function (venues) {
         localStorage.setItem(this.PREFIX + 'venues', JSON.stringify(venues));
-<<<<<<< HEAD
-=======
         if (window.FCOjima && FCOjima.DB) {
             FCOjima.DB.saveVenues(venues).catch(e => console.warn('Firestore saveVenues:', e));
         }
->>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
     };
-    
+
     /**
      * ログデータをローカルストレージから読み込む
      * @returns {Array} ログデータの配列
      */
-    Storage.loadLogs = function() {
+    Storage.loadLogs = function () {
         const savedLogs = localStorage.getItem(this.PREFIX + 'logs');
         let logs = savedLogs ? JSON.parse(savedLogs) : [];
-        
+
         // 3ヶ月より古いログを削除
         const threeMonthsAgo = new Date();
         threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-        
-        const filteredLogs = logs.filter(function(log) {
+
+        const filteredLogs = logs.filter(function (log) {
             return new Date(log.datetime) > threeMonthsAgo;
         });
-        
+
         // 古いログが削除された場合は保存し直す
         if (filteredLogs.length < logs.length) {
             this.saveLogs(filteredLogs);
             console.log((logs.length - filteredLogs.length) + '件の古いログを削除しました');
         }
-        
+
         return filteredLogs;
     };
-    
+
     /**
      * ログデータをローカルストレージに保存
      * @param {Array} logs - ログデータの配列
      */
-    Storage.saveLogs = function(logs) {
+    Storage.saveLogs = function (logs) {
         localStorage.setItem(this.PREFIX + 'logs', JSON.stringify(logs));
     };
-    
+
     /**
      * 新しいログエントリを追加
      * @param {string} type - ログのタイプ（calendar, members, venues など）
@@ -333,28 +205,28 @@ FCOjima.Storage = FCOjima.Storage || {};
      * @param {Array} logs - 既存のログ配列
      * @returns {Array} 更新されたログ配列
      */
-    Storage.addLog = function(type, action, details, logs) {
+    Storage.addLog = function (type, action, details, logs) {
         details = details || '';
         logs = logs || [];
-        
+
         const now = new Date();
         const datetime = now.toISOString();
 <<<<<<< HEAD
         const user = 'システム'; // ログイン機能実装までのダミーユーザー
-        
+
         const newLog = {
 =======
         const user = (window.FCOjima && window.FCOjima.Auth && window.FCOjima.Auth.getDisplayName)
             ? window.FCOjima.Auth.getDisplayName()
             : 'システム';
-        
+
         // 各ログにユニークIDを付与
         const logId = Date.now().toString() + Math.floor(Math.random() * 1000);
-        
+
         // 削除のログには復元フラグを追加（1週間有効）
         const canRestore = action.includes('削除');
         const restoreDeadline = canRestore ? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString() : null;
-        
+
         // 削除時のデータバックアップを行う
         let deletedData = null;
         if (canRestore) {
@@ -395,7 +267,7 @@ FCOjima.Storage = FCOjima.Storage || {};
                     break;
             }
         }
-        
+
         const newLog = {
             id: logId,
 >>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
@@ -403,72 +275,65 @@ FCOjima.Storage = FCOjima.Storage || {};
             user: user,
             type: type,
             action: action,
-<<<<<<< HEAD
-            details: details
-=======
             details: details,
             canRestore: canRestore,
             restoreDeadline: restoreDeadline,
             deletedData: deletedData
->>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
         };
-        
+
         const updatedLogs = logs.concat([newLog]);
         this.saveLogs(updatedLogs);
         return updatedLogs;
     };
-    
+
     /**
      * 連絡事項をローカルストレージから読み込む
      * @returns {Array} 連絡事項データの配列
      */
-    Storage.loadNotifications = function() {
+    Storage.loadNotifications = function () {
         const savedNotifications = localStorage.getItem(this.PREFIX + 'notifications');
         let notifications = savedNotifications ? JSON.parse(savedNotifications) : [];
-        
+
         // 3ヶ月より古い連絡事項を削除
         const threeMonthsAgo = new Date();
         threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-        
-        const filteredNotifications = notifications.filter(function(notification) {
+
+        const filteredNotifications = notifications.filter(function (notification) {
             const notificationDate = new Date(notification.date);
             return notificationDate > threeMonthsAgo;
         });
-        
+
         // 古い連絡事項が削除された場合は保存し直す
         if (filteredNotifications.length < notifications.length) {
             this.saveNotifications(filteredNotifications);
             console.log((notifications.length - filteredNotifications.length) + '件の古い連絡事項を削除しました');
         }
-        
+
         return filteredNotifications;
     };
-    
+
     /**
      * 連絡事項をローカルストレージに保存
      * @param {Array} notifications - 連絡事項データの配列
      */
-    Storage.saveNotifications = function(notifications) {
+    Storage.saveNotifications = function (notifications) {
         localStorage.setItem(this.PREFIX + 'notifications', JSON.stringify(notifications));
-<<<<<<< HEAD
-=======
         if (window.FCOjima && FCOjima.DB) {
             FCOjima.DB.saveNotifications(notifications).catch(e => console.warn('Firestore saveNotifications:', e));
         }
->>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
     };
-    
+
     /**
      * イベント固有のデータをローカルストレージから読み込む
      * @param {number} eventId - イベントID
      * @returns {Object} イベント固有のデータ
      */
-    Storage.loadEventData = function(eventId) {
+    Storage.loadEventData = function (eventId) {
         const savedData = localStorage.getItem(this.PREFIX + 'event_' + eventId);
         if (savedData) {
             return JSON.parse(savedData);
         }
-        
+
         // データがない場合は空のオブジェクトを返す
         return {
             carRegistrations: [],
@@ -477,86 +342,84 @@ FCOjima.Storage = FCOjima.Storage || {};
             notifications: []
         };
     };
-    
+
     /**
      * イベント固有のデータをローカルストレージに保存
      * @param {number} eventId - イベントID
      * @param {Object} data - イベント固有のデータ
      */
-    Storage.saveEventData = function(eventId, data) {
+    Storage.saveEventData = function (eventId, data) {
         localStorage.setItem(this.PREFIX + 'event_' + eventId, JSON.stringify(data));
     };
-    
+
     /**
      * 選択されたイベントをセッションストレージに保存
      * @param {Object} event - イベントオブジェクト
      */
-    Storage.setSelectedEvent = function(event) {
+    Storage.setSelectedEvent = function (event) {
         sessionStorage.setItem(this.PREFIX + 'selectedEvent', JSON.stringify(event));
     };
-    
+
     /**
      * 選択されたイベントをセッションストレージから取得
      * @returns {Object|null} 選択されたイベントオブジェクトまたはnull
      */
-    Storage.getSelectedEvent = function() {
+    Storage.getSelectedEvent = function () {
         const eventData = sessionStorage.getItem(this.PREFIX + 'selectedEvent');
         return eventData ? JSON.parse(eventData) : null;
     };
-<<<<<<< HEAD
-=======
-    
+
     /**
      * ローカルストレージにデータが存在するか確認
      * @param {string} key - ストレージキー
      * @returns {boolean} データが存在するかどうか
      */
-    Storage.exists = function(key) {
+    Storage.exists = function (key) {
         return localStorage.getItem(this.PREFIX + key) !== null;
     };
-    
+
     /**
      * ローカルストレージからデータを取得
      * @param {string} key - ストレージキー
      * @param {*} defaultValue - データが存在しない場合のデフォルト値
      * @returns {*} 取得したデータまたはデフォルト値
      */
-    Storage.get = function(key, defaultValue = null) {
+    Storage.get = function (key, defaultValue = null) {
         const item = localStorage.getItem(this.PREFIX + key);
         if (item === null) return defaultValue;
-        
+
         try {
             return JSON.parse(item);
         } catch (e) {
             return item;
         }
     };
-    
+
     /**
      * ローカルストレージにデータを保存
      * @param {string} key - ストレージキー
      * @param {*} value - 保存するデータ
      */
-    Storage.set = function(key, value) {
+    Storage.set = function (key, value) {
         if (typeof value === 'object') {
             localStorage.setItem(this.PREFIX + key, JSON.stringify(value));
         } else {
             localStorage.setItem(this.PREFIX + key, value);
         }
     };
-    
+
     /**
      * ローカルストレージからデータを削除
      * @param {string} key - ストレージキー
      */
-    Storage.remove = function(key) {
+    Storage.remove = function (key) {
         localStorage.removeItem(this.PREFIX + key);
     };
-    
+
     /**
      * ローカルストレージをクリア（プレフィックスに一致するもののみ）
      */
-    Storage.clear = function() {
+    Storage.clear = function () {
         for (let i = localStorage.length - 1; i >= 0; i--) {
             const key = localStorage.key(i);
             if (key.startsWith(this.PREFIX)) {
@@ -564,5 +427,4 @@ FCOjima.Storage = FCOjima.Storage || {};
             }
         }
     };
->>>>>>> 3f29fdc53b2c8f871d428ea6715327a2f2c4429e
 })();
