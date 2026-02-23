@@ -4,24 +4,45 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FC 尾島ジュニア HUB</title>
-    <link rel="stylesheet" href="../css/common.css?v=20260223">
-    <link rel="stylesheet" href="../css/hub/calendar.css?v=20260223">
-    <link rel="stylesheet" href="../css/hub/members.css?v=20260223">
-    <link rel="stylesheet" href="../css/hub/notifications.css?v=20260223">
-    <link rel="stylesheet" href="../css/hub/venues.css?v=20260223">
+    <link rel="stylesheet" href="../css/common.css?v=20260223b">
+    <link rel="stylesheet" href="../css/hub/calendar.css?v=20260223b">
+    <link rel="stylesheet" href="../css/hub/members.css?v=20260223b">
+    <link rel="stylesheet" href="../css/hub/notifications.css?v=20260223b">
+    <link rel="stylesheet" href="../css/hub/venues.css?v=20260223b">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* ヘッダー＋タブを上部固定 */
+        .hub-sticky-top {
+            position: sticky;
+            top: 0;
+            z-index: 200;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+        }
+        /* アクションボタンを下部固定 */
+        .tabcontent .action-buttons {
+            position: sticky;
+            bottom: 0;
+            background: #f8f9fa;
+            border-top: 2px solid #E8A200;
+            padding: 10px 0;
+            margin-top: 16px;
+            z-index: 100;
+        }
+    </style>
 </head>
 <body>
-    <header>
-        <h1>FC 尾島ジュニア HUB</h1>
-    </header>
+    <div class="hub-sticky-top">
+        <header>
+            <h1>FC 尾島ジュニア HUB</h1>
+        </header>
 
-    <!-- タブナビゲーション -->
-    <div class="tab">
-        <button class="tablinks active" onclick="FCOjima.UI.openTab(event, 'calendar')" id="defaultTab">カレンダー</button>
-        <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'members')">メンバー</button>
-        <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'notifications')">連絡事項</button>
-        <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'venues')">会場登録</button>
+        <!-- タブナビゲーション -->
+        <div class="tab">
+            <button class="tablinks active" onclick="FCOjima.UI.openTab(event, 'calendar')" id="defaultTab">カレンダー</button>
+            <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'members')">メンバー</button>
+            <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'notifications')">連絡事項</button>
+            <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'venues')">会場登録</button>
+        </div>
     </div>
 
     <div class="container">
