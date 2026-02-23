@@ -125,9 +125,10 @@ FCOjima.Storage = FCOjima.Storage || {};
      * @param {Array} logs - 既存のログ配列
      * @returns {Array} 更新されたログ配列
      */
-    Storage.addLog = function(type, action, details, logs) {
+    Storage.addLog = function(type, action, details, logs, extra) {
         details = details || '';
         logs = logs || [];
+        extra = extra || {};
         
         const now = new Date();
         const datetime = now.toISOString();
@@ -183,7 +184,7 @@ FCOjima.Storage = FCOjima.Storage || {};
             }
         }
         
-        const newLog = {
+        const newLog = Object.assign({
             id: logId,
             datetime: datetime,
             user: user,
@@ -193,7 +194,7 @@ FCOjima.Storage = FCOjima.Storage || {};
             canRestore: canRestore,
             restoreDeadline: restoreDeadline,
             deletedData: deletedData
-        };
+        }, extra);
         
         const updatedLogs = logs.concat([newLog]);
         this.saveLogs(updatedLogs);

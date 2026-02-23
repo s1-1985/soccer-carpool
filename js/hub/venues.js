@@ -22,9 +22,119 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
     };
 
     /**
+     * 地図ピンボタン・現在地ボタンのリスナーを設定
+     */
+    Venues.setupMapListeners = function() {
+        // 地図でピンを指定ボタン
+        var mapPinBtn = document.getElementById('venue-map-pin');
+        if (mapPinBtn) {
+            mapPinBtn.addEventListener('click', function() {
+                // Google Mapsを開く（座標はURLから取得可能）
+                var addr = (document.getElementById('venue-address') || {}).value || '';
+                var mapsUrl = addr
+                    ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(addr)
+                    : 'https://www.google.com/maps/';
+                window.open(mapsUrl, '_blank');
+
+                // 座標手入力エリアを表示
+                Venues.showLatLngInput();
+                UI.showAlert('Google Mapsで場所を長押しするとURL・座標が表示されます。\n緯度・経度をコピーして下の入力欄に貼り付けてください。', 'info');
+            });
+        }
+
+        // 現在地ボタン
+        var currentLocBtn = document.getElementById('venue-current-location');
+        if (currentLocBtn) {
+            currentLocBtn.addEventListener('click', function() {
+                if (!navigator.geolocation) {
+                    UI.showAlert('このブラウザは位置情報に対応していません', 'warning');
+                    return;
+                }
+                currentLocBtn.textContent = '取得中...';
+                currentLocBtn.disabled = true;
+                navigator.geolocation.getCurrentPosition(
+                    function(pos) {
+                        var lat = pos.coords.latitude.toFixed(6);
+                        var lng = pos.coords.longitude.toFixed(6);
+                        document.getElementById('venue-lat').value = lat;
+                        document.getElementById('venue-lng').value = lng;
+                        Venues.showMapPreview(lat, lng);
+                        currentLocBtn.textContent = '📡 現在地を使用';
+                        currentLocBtn.disabled = false;
+                        UI.showAlert('現在地を取得しました（緯度: ' + lat + '、経度: ' + lng + '）', 'success');
+                    },
+                    function(err) {
+                        currentLocBtn.textContent = '📡 現在地を使用';
+                        currentLocBtn.disabled = false;
+                        UI.showAlert('位置情報の取得に失敗しました: ' + err.message, 'error');
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            });
+        }
+    };
+
+    /**
+     * 緯度経度の手入力エリアを表示
+     */
+    Venues.showLatLngInput = function() {
+        var preview = document.getElementById('venue-map-preview');
+        if (!preview) return;
+        if (document.getElementById('venue-latlng-input')) return; // 既に表示済み
+
+        var inputArea = document.createElement('div');
+        inputArea.id = 'venue-latlng-input';
+        inputArea.style.marginTop = '8px';
+        inputArea.innerHTML =
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+                '<div style="flex:1;min-width:120px;">' +
+                    '<label style="font-size:12px;color:#666;">緯度（Latitude）</label>' +
+                    '<input type="number" step="0.000001" id="venue-lat-input" placeholder="例: 36.289553" class="form-control" style="margin-top:2px;">' +
+                '</div>' +
+                '<div style="flex:1;min-width:120px;">' +
+                    '<label style="font-size:12px;color:#666;">経度（Longitude）</label>' +
+                    '<input type="number" step="0.000001" id="venue-lng-input" placeholder="例: 139.365439" class="form-control" style="margin-top:2px;">' +
+                '</div>' +
+            '</div>' +
+            '<button type="button" id="venue-apply-latlng" class="secondary-button" style="margin-top:6px;font-size:13px;">座標を適用</button>';
+        preview.parentElement.insertBefore(inputArea, preview);
+        preview.style.display = 'block';
+
+        document.getElementById('venue-apply-latlng').addEventListener('click', function() {
+            var latVal = document.getElementById('venue-lat-input').value;
+            var lngVal = document.getElementById('venue-lng-input').value;
+            if (!latVal || !lngVal) {
+                UI.showAlert('緯度と経度を両方入力してください', 'warning');
+                return;
+            }
+            document.getElementById('venue-lat').value = latVal;
+            document.getElementById('venue-lng').value = lngVal;
+            Venues.showMapPreview(latVal, lngVal);
+        });
+    };
+
+    /**
+     * 地図プレビューを表示
+     */
+    Venues.showMapPreview = function(lat, lng) {
+        var preview = document.getElementById('venue-map-preview');
+        if (!preview) return;
+        preview.style.display = 'block';
+        preview.innerHTML =
+            '<a href="https://www.google.com/maps/search/?api=1&query=' + lat + ',' + lng + '" target="_blank" ' +
+            'style="display:block;background:#e8f4fd;border:1px solid #bee5f5;border-radius:6px;padding:8px;font-size:13px;text-decoration:none;color:#0066cc;">' +
+            '📍 緯度: ' + lat + '  経度: ' + lng + '<br>' +
+            '<span style="font-size:11px;color:#888;">↑ タップしてGoogle Mapsで確認</span>' +
+            '</a>';
+    };
+
+    /**
      * イベントリスナーを設定
      */
     Venues.setupEventListeners = function() {
+        // 地図関連ボタン
+        Venues.setupMapListeners();
+
         // 会場追加ボタン
         var addBtn = document.getElementById('add-venue');
         if (addBtn) {
@@ -105,17 +215,32 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
 
             var typeLabel = typeLabels[venue.type] || venue.type || '';
 
+            // 地図リンクを生成（lat/lng優先、なければ住所）
+            var mapsQuery = (venue.lat && venue.lng)
+                ? venue.lat + ',' + venue.lng
+                : (venue.address ? encodeURIComponent(venue.address) : '');
+            var mapsUrl = mapsQuery
+                ? 'https://www.google.com/maps/search/?api=1&query=' + mapsQuery
+                : '';
+            var locationHtml = '';
+            if (venue.lat && venue.lng) {
+                locationHtml = '<div class="venue-address">📍 緯度: ' + venue.lat + ' 経度: ' + venue.lng + '</div>';
+                if (venue.address) locationHtml += '<div style="font-size:12px;color:#888;">' + UI.escapeHTML(venue.address) + '</div>';
+            } else if (venue.address) {
+                locationHtml = '<div class="venue-address">📍 ' + UI.escapeHTML(venue.address) + '</div>';
+            }
+
             card.innerHTML =
                 '<div class="venue-card-header">' +
                     '<h3 class="venue-name">' + UI.escapeHTML(venue.name || '') + '</h3>' +
                     (typeLabel ? '<span class="venue-type-badge">' + UI.escapeHTML(typeLabel) + '</span>' : '') +
                 '</div>' +
                 '<div class="venue-card-body">' +
-                    (venue.address ? '<div class="venue-address">📍 ' + UI.escapeHTML(venue.address) + '</div>' : '') +
+                    locationHtml +
                     (venue.notes ? '<div class="venue-notes">' + UI.escapeHTML(venue.notes) + '</div>' : '') +
                 '</div>' +
                 '<div class="venue-card-actions">' +
-                    (venue.address ? '<button type="button" class="secondary-button" onclick="window.open(\'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(venue.address) + '\',\'_blank\')">地図を開く</button>' : '') +
+                    (mapsUrl ? '<button type="button" class="secondary-button" onclick="window.open(\'' + mapsUrl + '\',\'_blank\')">地図を開く</button>' : '') +
                     '<button type="button" class="secondary-button" onclick="FCOjima.Hub.Venues.editVenue(\'' + venue.id + '\')">編集</button>' +
                     '<button type="button" class="delete-button" onclick="FCOjima.Hub.Venues.deleteVenue(\'' + venue.id + '\')">削除</button>' +
                 '</div>';
@@ -156,6 +281,16 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
         var form = document.getElementById('venue-form');
         if (form) form.reset();
 
+        // lat/lng の手入力エリアと古いプレビューをリセット
+        var oldInputArea = document.getElementById('venue-latlng-input');
+        if (oldInputArea) oldInputArea.remove();
+        var mapPreview = document.getElementById('venue-map-preview');
+        if (mapPreview) { mapPreview.style.display = 'none'; mapPreview.innerHTML = ''; }
+        var latEl = document.getElementById('venue-lat');
+        var lngEl = document.getElementById('venue-lng');
+        if (latEl) latEl.value = '';
+        if (lngEl) lngEl.value = '';
+
         if (venueId) {
             var venue = venues.find(function(v) { return String(v.id) === String(venueId); });
             if (venue) {
@@ -165,6 +300,9 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
                 if (typeEl) typeEl.value = venue.type || 'ground';
                 document.getElementById('venue-address').value = venue.address || '';
                 document.getElementById('venue-notes').value = venue.notes || '';
+                if (venue.lat && latEl) latEl.value = venue.lat;
+                if (venue.lng && lngEl) lngEl.value = venue.lng;
+                if (venue.lat && venue.lng) Venues.showMapPreview(venue.lat, venue.lng);
             }
         } else {
             if (form) form.removeAttribute('data-venue-id');
@@ -185,9 +323,17 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
         var type = typeEl ? typeEl.value : 'other';
         var address = document.getElementById('venue-address').value.trim();
         var notes = document.getElementById('venue-notes').value.trim();
+        var latEl = document.getElementById('venue-lat');
+        var lngEl = document.getElementById('venue-lng');
+        var lat = latEl && latEl.value ? parseFloat(latEl.value) : null;
+        var lng = lngEl && lngEl.value ? parseFloat(lngEl.value) : null;
 
-        if (!name || !address) {
-            UI.showAlert('会場名と住所は必須です', 'warning');
+        if (!name) {
+            UI.showAlert('会場名は必須です', 'warning');
+            return;
+        }
+        if (!address && (!lat || !lng)) {
+            UI.showAlert('住所か地図座標のいずれかを入力してください', 'warning');
             return;
         }
 
@@ -199,12 +345,12 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
         if (venueFormId) {
             var index = venues.findIndex(function(v) { return String(v.id) === String(venueFormId); });
             if (index !== -1) {
-                venues[index] = { id: venues[index].id, name: name, type: type, address: address, notes: notes };
+                venues[index] = { id: venues[index].id, name: name, type: type, address: address, lat: lat, lng: lng, notes: notes };
                 app.Hub.logs = Storage.addLog('venues', '会場更新', '「' + name + '」', logs);
             }
         } else {
             var newId = venues.length > 0 ? Math.max.apply(null, venues.map(function(v) { return parseInt(v.id) || 0; })) + 1 : 1;
-            venues.push({ id: newId, name: name, type: type, address: address, notes: notes });
+            venues.push({ id: newId, name: name, type: type, address: address, lat: lat, lng: lng, notes: notes });
             app.Hub.venues = venues;
             app.Hub.logs = Storage.addLog('venues', '会場追加', '「' + name + '」', logs);
         }

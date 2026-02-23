@@ -48,7 +48,8 @@ FCOjima.Utils = FCOjima.Utils || {};
         const types = {
             'game': '試合',
             'practice': '練習',
-            'other': 'その他'
+            'event': 'イベント',
+            'other': 'その他'  // 後方互換
         };
         return types[type] || type;
     };

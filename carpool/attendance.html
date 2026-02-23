@@ -39,22 +39,21 @@
         </div>
 
         <div class="card">
-            <h2>選手の出欠確認</h2>
+            <h2>参加者の出欠確認</h2>
             <div class="table-container">
                 <table id="attendance-table" class="attendance-table">
                     <thead>
                         <tr>
-                            <th>選手名</th>
+                            <th>名前</th>
                             <th>学年</th>
                             <th>出欠</th>
                             <th>備考</th>
-                            <th>操作</th>
                         </tr>
                     </thead>
                     <tbody>
                         <!-- データがJSで動的に生成される -->
                         <tr>
-                            <td colspan="5" class="empty-row">読み込み中...</td>
+                            <td colspan="4" class="empty-row">読み込み中...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -62,7 +61,8 @@
             <div class="action-buttons">
                 <button type="button" id="save-attendance">出欠を保存</button>
                 <button type="button" id="reminder-attendance" class="reminder-button">未回答者にリマインド</button>
-                <button type="button" id="add-attendee">メンバーを追加</button>
+                <button type="button" id="add-attendee">参加者を追加</button>
+                <button type="button" id="remove-attendee" class="delete-button">参加者を削除</button>
             </div>
         </div>
     </div>
@@ -75,6 +75,18 @@
             <div id="member-select-list" class="select-list">
                 <!-- メンバーリストがJSで動的に生成される -->
                 <div class="loading">読み込み中...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 参加者削除モーダル -->
+    <div id="remove-attendee-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>参加者を削除</h2>
+            <p style="font-size:13px;color:#666;">リストから削除する参加者を選択してください</p>
+            <div id="remove-attendee-list" class="select-list">
+                <!-- 削除対象リストがJSで動的に生成される -->
             </div>
         </div>
     </div>
@@ -138,12 +150,22 @@
                 });
             }
             
-            // メンバー追加ボタン
+            // 参加者追加ボタン
             var addAttendeeButton = document.getElementById('add-attendee');
             if (addAttendeeButton) {
                 addAttendeeButton.addEventListener('click', function() {
                     if (FCOjima.Carpool.Attendance && FCOjima.Carpool.Attendance.openMemberSelectModal) {
                         FCOjima.Carpool.Attendance.openMemberSelectModal();
+                    }
+                });
+            }
+
+            // 参加者削除ボタン
+            var removeAttendeeButton = document.getElementById('remove-attendee');
+            if (removeAttendeeButton) {
+                removeAttendeeButton.addEventListener('click', function() {
+                    if (FCOjima.Carpool.Attendance && FCOjima.Carpool.Attendance.openRemoveAttendeeModal) {
+                        FCOjima.Carpool.Attendance.openRemoveAttendeeModal();
                     }
                 });
             }

@@ -285,54 +285,83 @@ gh run list --repo s1-1985/soccer-carpool --limit 3
 | #11 | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | hub二重ナビ削除・carpool-navデザイン修正 | 8e7ac8c |
 | #12 | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | hub/index.htmlに不足CSSを追加（カレンダー崩れ修正） | 948c5b5 |
 | #13 | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | タブ1行固定・上部スティッキー・ボタン下部スティッキー対応 | 1d4890d |
+| #15 | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | メンバー管理・カレンダー・認証・登録フロー改善 | 228787a |
+| #16 | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | カレンダーUI・出欠確認・登録フロー・会場地図対応 | (予定) |
 
 ---
 
 ## 🔄 最新の作業状況
 
-**最終更新:** 2026-02-23 (Session 2 PR#13)
+**最終更新:** 2026-02-23 (Session 3 PR#15, PR#16予定)
 **更新者:** Claude (branch: claude/fix-calendar-seating-bugs-fjK5Z)
-**最終正常コミット:** 1d4890d
+**最終正常コミット:** 228787a (PR#15)
 
-### 今回行った変更（レイアウト・デザイン修正）
+### PR #15 (228787a) で行った変更
+1. **storage.js**: ダミーデータ削除・Firestore優先ロードに変更
+2. **members.js**: 略称フィールド追加・役員(officer)ロール追加・ソート順更新
+3. **calendar.js**: イベント重複チェック・「自分の子供のみ」フィルター実装
+4. **auth.js / db.js**: Firestoreユーザー管理・承認状態チェック（pending/active/rejected）
+5. **firestore.rules**: 役割別アクセス制御
+6. **hub/register.html**: 新規登録ページ作成
+7. **hub/pending.html**: 承認待ちページ作成
+8. **js/hub/admin.js**: 管理者用承認画面モジュール作成
+9. **hub/index.html**: 管理タブ追加
 
-#### PR #11 (8e7ac8c)
-1. **hub/index.html**
-   - `<nav class="main-nav">` を削除（タブと二重ナビになっていた）
-   - `<div class="tab">` を `.container` の外に移動（全幅表示のため）
-2. **css/carpool/common.css**
-   - `.carpool-nav` スタイル改善：白背景、金ボーダー（`border-bottom: 2px solid #E8A200`）
-   - `.container { padding-bottom: 90px }` 追加（固定フッターで隠れないよう）
-   - モバイルの `carpool-nav` を縦並びから折り返し表示に変更
-
-#### PR #12 (948c5b5)
-1. **hub/index.html**
-   - 不足していた CSS を追加：calendar.css, members.css, notifications.css, venues.css
-   - **原因**: hub/index.htmlはSPA（タブ方式）なのに、タブ内コンテンツ用のCSSを読み込んでいなかった
-
-#### PR #13 (1d4890d)
-1. **css/common.css**
-   - `.tab { flex-wrap: nowrap }` でタブ折り返し禁止
-   - `.tablinks { flex: 1; text-align: center }` でタブを均等幅1行表示
-   - モバイルのタブ文字サイズ縮小（font-size: 12px / padding: 12px 6px）
-   - `.action-buttons` をモバイルでも横並び（flex-wrap: wrap）に変更
-2. **hub/index.html**
-   - `<header>` + `<div class="tab">` を `<div class="hub-sticky-top">` で囲んで上部 sticky 固定
-   - `.tabcontent .action-buttons { position: sticky; bottom: 0 }` でボタンを下部 sticky 固定
-   - インラインスタイルとして記述（別CSSファイル作成を避けるため）
+### PR #16 (現在コミット予定) で行った変更
+1. **css/hub/calendar.css**:
+   - カレンダー月曜始まり（月火水木金土日の列順）
+   - 土日列を平日の1.6倍幅広に
+   - セル最小高さを100pxに増加（スマホ80px）
+   - イベントを2行表示（`-webkit-line-clamp: 2`）
+   - イベント種別 `event`（イベント）のスタイル追加
+2. **hub/index.html**:
+   - 曜日ヘッダーを月火水木金土日に変更
+   - イベント種別に「イベント（保護者も出欠対象）」追加（`event`）
+   - 会場フォームに地図ピン指定・現在地ボタン追加（lat/lng対応）
+3. **js/hub/calendar.js**:
+   - `renderCalendar`: 月曜始まりに修正（`(firstDay.getDay() + 6) % 7`）
+   - イベント詳細モーダルのログ: `eventId`で固有ログ絞り込み
+   - `saveEvent`/`deleteEvent`: ログに`eventId`を記録するよう更新
+4. **js/common/utils.js**: `getEventTypeLabel`に`event`(イベント)を追加
+5. **js/common/storage.js**: `addLog`に`extra`引数を追加（追加フィールドをログに混入可能に）
+6. **js/carpool/attendance.js**:
+   - テーブル行の削除ボタンを除去
+   - 「参加者を削除」ボタン追加・削除モーダル（`openRemoveAttendeeModal`）実装
+   - イベント種別が`event`のとき、保護者（mother/father/officer）も出欠自動追加
+   - `reminderAttendance`: 日付・イベント名・対象学年・期限・未回答人数・直リンクURLを含むメッセージに強化
+   - `openMemberSelectModal`: `event`種別のとき保護者も追加候補に表示
+7. **carpool/attendance.html**:
+   - テーブルヘッダー「操作」列を削除（colspan=5→4）
+   - 「参加者を追加」「参加者を削除」ボタンを下部action-buttonsに配置
+   - 削除モーダル（`remove-attendee-modal`）HTML追加
+8. **hub/register.html**:
+   - 子供選択UIを順次ドロップダウン方式に変更
+   - 1人目を選択すると自動的に2人目の選択欄が追加される（兄弟対応）
+   - コーチ・監督も同フォームから登録可能（子供選択あり）
+   - 役員（officer）は登録時には選べない（hardcodedで`role: 'parent'`のまま、後から権限者が付与）
+9. **js/hub/venues.js**:
+   - 地図関連ボタンのイベントリスナー追加（`setupMapListeners`）
+   - `showLatLngInput`: 緯度・経度の手入力エリアを動的生成
+   - `showMapPreview`: 座標でGoogle Mapsリンクを表示
+   - 現在地取得（`navigator.geolocation`）対応
+   - 会場オブジェクトに`lat`/`lng`フィールドを保存
+   - `renderVenueList`: lat/lng優先で地図リンクを生成
+   - `openAddVenueModal`: 編集時にlat/lngを復元
 
 ### ユーザーからの方針指示（重要）
 - **座席割り当ては最終目標**：まずレイアウト・デザイン・その他機能を完成させる
 - **作業の都度 AI_HANDOFF.md を更新すること**（必須）
 - **ファイル構造の詳細・デプロイ日時・旧ファイル情報を引継ぎに明記すること**（必須）
+- **トークン切れに備え、作業中断前に必ずMDを更新してコミット**（重要）
 
-### 次のAIがすべきこと
-1. ユーザーが指示するレイアウト・機能修正に対応する
-2. carpool 各ページ（attendance.html, cars.html 等）も同様に上部ナビと下部ボタンのスティッキー化が必要かユーザーに確認
-3. 座席割り当て（assignments.html）は最後に対応
-4. 車提供（cars.html / carprovision.js）の Firestore 非同期ロードは後で対応
+### 次のAIがすべきこと（優先順）
+1. **役員ロール付与フロー**: admin.jsで管理者・監督・コーチ・既存役員が他ユーザーのroleを「officer」に変更できるUIを追加
+2. **carpool各ページのスティッキー化**: attendance.html, cars.html 等も上部ナビ・下部ボタンをsticky固定
+3. **座席割り当て（assignments.html）**: Firestoreからのロード確認と修正
+4. **車提供（cars.html / carprovision.js）**: Firestore非同期ロード対応
 
 ### 既知の問題
 - 座席割り当て画面（assignments.html）：Firestoreからのロードが動作しているか未確認
 - 車提供ページ（cars.html）：localStorageのみ読み込みの可能性
-- 旧ファイル（carpool/assignment.html, carprovision.html 等）が git 上に残存しているが、削除するかどうかユーザーに確認が必要
+- 旧ファイル（carpool/assignment.html, carprovision.html 等）が git 上に残存（削除はユーザー確認後）
+- イベント種別`event`（保護者出欠）は新規イベントにのみ適用。既存の`other`種別のイベントは保護者自動追加されない（後方互換のため）
