@@ -226,22 +226,30 @@ gh run list --repo s1-1985/soccer-carpool --limit 3
 
 ## 🔄 最新の作業状況
 
-**最終更新:** 2026-02-23
-**更新者:** Claude
-**最終正常コミット:** a1f8964（Gemini破壊修復完了）
+**最終更新:** 2026-02-23 (Session 2)
+**更新者:** Claude (branch: claude/fix-calendar-seating-bugs-fjK5Z)
+**最終正常コミット:** a1f8964（前回：Gemini破壊修復完了）
 
-### 今回行った変更
-- Geminiによる破壊（15ファイルのコンフリクトマーカー、assignment.js破壊、firebase.json誤設定）を完全修復
-- 全コアファイルを正常コミット936f74cから復元
-- `public/`ディレクトリ（Gemini作成の文字化けファイル群）を完全削除
-- 座席割り当てのFirestore連携修正（assignment.js async化、saveData Firestore保存追加）
+### 今回行った変更（レイアウト・デザイン修正）
+1. **hub/index.html**
+   - `<nav class="main-nav">` を削除（タブと二重ナビになっていた）
+   - `<div class="tab">` を `.container` の外に移動（全幅表示のため）
+2. **css/carpool/common.css**
+   - `.carpool-nav` スタイル改善：白背景、金ボーダー（`border-bottom: 2px solid #E8A200`）、左右パディング統一
+   - `.container { padding-bottom: 90px }` 追加（固定フッターで隠れないよう）
+   - モバイルの `carpool-nav` を縦並びから折り返し表示に変更
+
+### ユーザーからの方針指示（重要）
+- **座席割り当ては最終目標**：まずレイアウト・デザイン・その他機能を完成させる
+- **作業の都度 AI_HANDOFF.md を更新すること**（必須）
 
 ### 次のAIがすべきこと
-1. **座席割り当て動作確認** - assignments.html でメンバーと車両が表示されるか確認
-2. もし表示されない場合 → `js/carpool/assignment.js` の `init()` 関数を確認
-3. 車提供（cars.html）の `carprovision.js` も Firestore 非同期ロード対応が必要
-4. その他ユーザーから指示された機能追加・バグ修正
+1. ユーザーが指示するレイアウト・機能修正に対応する
+2. 各HTMLページのデザイン整合性を確認（carpool vs hub）
+3. 座席割り当て（assignments.html）は最後に対応
+4. 車提供（cars.html）の Firestore 非同期ロードは後で対応
 
 ### 既知の問題
-- 座席割り当て画面の「読込中のまま」問題：コードは修正済みだが、ユーザーがまだ確認中
-- 車提供ページ（cars.html）もlocalStorageのみ読み込みのため、Firestoreデータが表示されない可能性
+- 座席割り当て画面（assignments.html）：Firestoreからのロードが動作しているか未確認
+- 車提供ページ（cars.html）：localStorageのみ読み込みの可能性
+- hub サブページ（calendar.html, members.html等）は単体でも存在するが、メインは hub/index.html のタブ方式

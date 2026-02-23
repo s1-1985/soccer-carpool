@@ -51,10 +51,11 @@
 .carpool-nav {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 20px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #ddd;
+    gap: 6px;
+    padding: 10px 20px;
+    background-color: #fff;
+    border-bottom: 2px solid #E8A200;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
 }
 
 .carpool-nav a {
@@ -108,6 +109,11 @@
     padding-bottom: 10px;
 }
 
+/* global-navigation（固定フッター）分のパディング */
+.container {
+    padding-bottom: 90px;
+}
+
 /* 配車管理フッター */
 .carpool-footer {
     background-color: white;
@@ -141,9 +147,15 @@
 /* レスポンシブ対応 */
 @media screen and (max-width: 768px) {
     .carpool-nav {
-        flex-direction: column;
+        padding: 8px 12px;
+        gap: 4px;
     }
-    
+
+    .carpool-nav a {
+        padding: 6px 10px;
+        font-size: 14px;
+    }
+
     .tab-header {
         flex-direction: column;
         align-items: flex-start;

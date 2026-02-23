@@ -12,24 +12,15 @@
         <h1>FC 尾島ジュニア HUB</h1>
     </header>
 
-    <nav class="main-nav">
-        <ul>
-            <li><a href="calendar.html">カレンダー</a></li>
-            <li><a href="members.html">メンバー</a></li>
-            <li><a href="notifications.html">連絡事項</a></li>
-            <li><a href="venues.html">会場登録</a></li>
-        </ul>
-    </nav>
+    <!-- タブナビゲーション -->
+    <div class="tab">
+        <button class="tablinks active" onclick="FCOjima.UI.openTab(event, 'calendar')" id="defaultTab">カレンダー</button>
+        <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'members')">メンバー</button>
+        <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'notifications')">連絡事項</button>
+        <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'venues')">会場登録</button>
+    </div>
 
     <div class="container">
-        <!-- タブナビゲーション -->
-        <div class="tab">
-            <button class="tablinks active" onclick="FCOjima.UI.openTab(event, 'calendar')" id="defaultTab">カレンダー</button>
-            <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'members')">メンバー</button>
-            <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'notifications')">連絡事項</button>
-            <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'venues')">会場登録</button>
-        </div>
-
         <!-- カレンダータブ -->
         <div id="calendar" class="tabcontent" style="display: block;">
             <div class="controls">
