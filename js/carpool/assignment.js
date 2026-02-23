@@ -1043,9 +1043,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         
         // 対象学年の選手を追加
         if (targetGrades.length > 0) {
-            const targetPlayers = members.filter(m => 
-                m.role === 'player' && 
-                m.grade && 
+            const targetPlayers = members.filter(m =>
+                m.role === 'player' &&
+                m.grade &&
                 targetGrades.includes(m.grade)
             );
             filteredMembers = [...filteredMembers, ...targetPlayers];
@@ -1054,7 +1054,21 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             const allPlayers = members.filter(m => m.role === 'player');
             filteredMembers = [...filteredMembers, ...allPlayers];
         }
-        
+
+        // 学年外追加選手を追加（重複を除く）
+        if (event && event.extraPlayers && event.extraPlayers.length > 0) {
+            const existingNames = new Set(filteredMembers.map(m => m.name));
+            event.extraPlayers.forEach(name => {
+                if (!existingNames.has(name)) {
+                    const m = members.find(m => m.name === name);
+                    if (m) {
+                        filteredMembers.push(m);
+                        existingNames.add(name);
+                    }
+                }
+            });
+        }
+
         // 出欠で参加確定している選手の保護者を追加
         const attendance = app.Carpool.appData.attendance;
         if (attendance && attendance.length > 0) {

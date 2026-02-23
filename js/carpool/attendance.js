@@ -134,6 +134,20 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
             });
         });
 
+        // 学年外追加選手を追加（重複を除く）
+        const extraPlayers = (event && event.extraPlayers) ? event.extraPlayers : [];
+        const alreadyAdded = new Set(players.map(function(p) { return p.name; }));
+        extraPlayers.forEach(function(name) {
+            if (!alreadyAdded.has(name)) {
+                FCOjima.Carpool.appData.attendance.push({
+                    name: name,
+                    status: 'unknown',
+                    notes: ''
+                });
+                alreadyAdded.add(name);
+            }
+        });
+
         // イベント種別が「イベント」の場合は保護者も追加
         if (isEventType) {
             const parents = members.filter(function(m) {
@@ -151,7 +165,8 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
             }
         }
 
-        const added = players.length + (isEventType ? members.filter(function(m) {
+        const extraAdded = extraPlayers.filter(function(n) { return !players.find(function(p) { return p.name === n; }); }).length;
+        const added = players.length + extraAdded + (isEventType ? members.filter(function(m) {
             return m.role === 'mother' || m.role === 'father' || m.role === 'officer';
         }).length : 0);
         if (added > 0) {
