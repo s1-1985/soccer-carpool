@@ -475,7 +475,6 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         
         if (assignments && assignments.length > 0) {
             assignments.forEach((assignment, index) => {
-                const car = carRegistrations[assignment.carIndex];
                 message += `■ ${assignment.driver}の車\n`;
                 
                 // 各座席タイプごとに乗車メンバーを表示
