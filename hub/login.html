@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ログイン - FC尾島ジュニア</title>
-    <link rel="stylesheet" href="../css/common.css?v=20260219">
+    <link rel="stylesheet" href="../css/common.css?v=20260223d">
     <style>
         .login-container {
             max-width: 400px;
@@ -68,6 +68,47 @@
             font-size: 12px;
             color: #999;
         }
+        .browser-warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .browser-warning h3 {
+            margin: 0 0 8px 0;
+            font-size: 15px;
+            color: #856404;
+        }
+        .browser-warning p {
+            margin: 0 0 10px 0;
+            font-size: 13px;
+            color: #533f03;
+            line-height: 1.5;
+        }
+        .browser-warning .url-box {
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 8px 10px;
+            font-size: 12px;
+            word-break: break-all;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .copy-url-btn {
+            width: 100%;
+            padding: 10px;
+            background: #ffc107;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #533f03;
+            cursor: pointer;
+        }
+        .copy-url-btn:active { opacity: 0.8; }
     </style>
 </head>
 <body style="background: #f0f4f8;">
@@ -75,6 +116,15 @@
         <div class="login-logo">⚽</div>
         <div class="login-title">FC尾島ジュニア</div>
         <div class="login-subtitle">チーム管理システム</div>
+
+        <!-- LINEブラウザ警告（JSで表示/非表示） -->
+        <div class="browser-warning" id="browser-warning" style="display:none;">
+            <h3>⚠️ このブラウザではログインできません</h3>
+            <p>LINEなどのアプリ内ブラウザでは、GoogleのセキュリティポリシーによりGoogleログインがブロックされます。</p>
+            <p>以下のURLをコピーして、<strong>Safari</strong>または<strong>Chrome</strong>で開いてください。</p>
+            <div class="url-box" id="current-url"></div>
+            <button class="copy-url-btn" id="copy-url-btn">URLをコピー</button>
+        </div>
 
         <button class="google-signin-btn" id="google-signin-btn">
             <svg class="google-icon" viewBox="0 0 24 24">
@@ -99,6 +149,47 @@
     <script src="../js/common/firebase-config.js?v=20260219"></script>
 
     <script>
+        // LINEなどのアプリ内ブラウザを検出（Google OAuthが使えない）
+        var ua = navigator.userAgent;
+        var isInAppBrowser = /Line\/|FBAN|FBAV|Instagram|Twitter|Snapchat|MicroMessenger/i.test(ua)
+            || (/Android/.test(ua) && /Version\/[\d.]+.*Chrome\/[\d.]+ Mobile/.test(ua) === false && /wv/.test(ua));
+
+        if (isInAppBrowser) {
+            var warning = document.getElementById('browser-warning');
+            var urlBox = document.getElementById('current-url');
+            var signinBtn = document.getElementById('google-signin-btn');
+            var loginUrl = window.location.href;
+
+            warning.style.display = 'block';
+            urlBox.textContent = loginUrl;
+            signinBtn.disabled = true;
+            signinBtn.style.opacity = '0.4';
+            signinBtn.style.cursor = 'not-allowed';
+
+            document.getElementById('copy-url-btn').addEventListener('click', function() {
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(loginUrl).then(function() {
+                        document.getElementById('copy-url-btn').textContent = 'コピーしました!';
+                        setTimeout(function() {
+                            document.getElementById('copy-url-btn').textContent = 'URLをコピー';
+                        }, 2000);
+                    });
+                } else {
+                    // フォールバック: テキスト選択
+                    var el = document.getElementById('current-url');
+                    var range = document.createRange();
+                    range.selectNode(el);
+                    window.getSelection().removeAllRanges();
+                    window.getSelection().addRange(range);
+                    document.execCommand('copy');
+                    document.getElementById('copy-url-btn').textContent = 'コピーしました!';
+                    setTimeout(function() {
+                        document.getElementById('copy-url-btn').textContent = 'URLをコピー';
+                    }, 2000);
+                }
+            });
+        }
+
         const loginAuth = window.FCOjimaFirebase.auth;
 
         // 既にログイン済みなら HUB へ
@@ -109,6 +200,7 @@
         });
 
         document.getElementById('google-signin-btn').addEventListener('click', function() {
+            if (isInAppBrowser) return;
             const provider = new firebase.auth.GoogleAuthProvider();
             loginAuth.signInWithPopup(provider)
                 .then(function(result) {
