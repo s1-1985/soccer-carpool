@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新規登録 - FC尾島ジュニア</title>
+    <link rel="stylesheet" href="../css/common.css?v=20260223b">
+    <style>
+        .register-container {
+            max-width: 500px;
+            margin: 40px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        }
+        .register-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #1C1600;
+            margin-bottom: 6px;
+            text-align: center;
+        }
+        .register-subtitle {
+            color: #666;
+            font-size: 13px;
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        .email-display {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 4px;
+        }
+        .child-select-list {
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 8px;
+        }
+        .child-select-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 4px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .child-select-item:last-child { border-bottom: none; }
+        .form-note {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+        }
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 24px;
+        }
+    </style>
+</head>
+<body style="background: #f0f4f8; padding: 16px;">
+    <div class="register-container">
+        <div class="register-title">⚽ FC尾島ジュニア</div>
+        <div class="register-subtitle">利用者登録申請<br>送信後、管理者の承認をお待ちください</div>
+
+        <form id="register-form">
+            <div class="form-group">
+                <label>メールアドレス（Googleアカウント）</label>
+                <div class="email-display" id="email-display">読み込み中...</div>
+                <p class="form-note">※ログインに使用したGoogleアカウントのメールアドレス</p>
+            </div>
+
+            <div class="form-group">
+                <label for="reg-name">氏名 <span style="color:red">*</span></label>
+                <input type="text" id="reg-name" placeholder="例: 田中 和人" required class="form-control">
+            </div>
+
+            <div class="form-group">
+                <label for="reg-gender">性別 <span style="color:red">*</span></label>
+                <select id="reg-gender" required class="form-control">
+                    <option value="male">男性</option>
+                    <option value="female">女性</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="reg-birth">生年月日</label>
+                <input type="date" id="reg-birth" class="form-control">
+            </div>
+
+            <div class="form-group">
+                <label>自分の子供（選手）を選択</label>
+                <div class="child-select-list" id="child-select-list">
+                    <p style="color:#999;padding:8px;">読み込み中...</p>
+                </div>
+                <p class="form-note">※複数選択可。まだリストに子供がいない場合は空欄でも申請できます。承認後に追加可能です。</p>
+            </div>
+
+            <div id="register-error" style="display:none;background:#fdecea;border-radius:6px;padding:12px;color:#c62828;font-size:14px;margin-top:12px;"></div>
+
+            <button type="submit" class="submit-btn">承認申請を送信</button>
+        </form>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="../js/common/firebase-config.js?v=20260223b"></script>
+
+    <script>
+        const regAuth = window.FCOjimaFirebase.auth;
+        const regDb   = window.FCOjimaFirebase.db;
+        const TEAM_ID = window.FCOjimaFirebase.TEAM_ID;
+
+        let currentUser = null;
+
+        regAuth.onAuthStateChanged(async function(user) {
+            if (!user) {
+                window.location.href = '/hub/login.html';
+                return;
+            }
+            currentUser = user;
+            document.getElementById('email-display').textContent = user.email || user.displayName;
+
+            // 既にプロフィールが存在する場合はリダイレクト
+            try {
+                const doc = await regDb.collection('teams').doc(TEAM_ID)
+                    .collection('users').doc(user.uid).get();
+                if (doc.exists) {
+                    const status = doc.data().status;
+                    if (status === 'pending') {
+                        window.location.href = '/hub/pending.html';
+                    } else if (status === 'approved') {
+                        window.location.href = '/hub/index.html';
+                    }
+                    return;
+                }
+            } catch(e) { console.warn(e); }
+
+            // 選手リストを読み込む
+            loadPlayers();
+        });
+
+        async function loadPlayers() {
+            try {
+                const snap = await regDb.collection('teams').doc(TEAM_ID)
+                    .collection('members').where('role', '==', 'player').get();
+                const players = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                const list = document.getElementById('child-select-list');
+                if (players.length === 0) {
+                    list.innerHTML = '<p style="color:#999;padding:8px;">選手が登録されていません。管理者に連絡してください。</p>';
+                    return;
+                }
+                players.sort(function(a, b) {
+                    return (a.name || '').localeCompare(b.name || '', 'ja');
+                });
+                list.innerHTML = players.map(function(p) {
+                    return '<label class="child-select-item">' +
+                        '<input type="checkbox" name="child" value="' + p.id + '"> ' +
+                        (p.name || '') + (p.grade ? '（' + p.grade + '年）' : '') +
+                    '</label>';
+                }).join('');
+            } catch(e) {
+                document.getElementById('child-select-list').innerHTML =
+                    '<p style="color:#c00;padding:8px;">選手リストの読み込みに失敗しました。</p>';
+            }
+        }
+
+        document.getElementById('register-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const errEl = document.getElementById('register-error');
+            errEl.style.display = 'none';
+
+            const name = document.getElementById('reg-name').value.trim();
+            const gender = document.getElementById('reg-gender').value;
+            const birth = document.getElementById('reg-birth').value;
+
+            if (!name) {
+                errEl.textContent = '氏名を入力してください。';
+                errEl.style.display = 'block';
+                return;
+            }
+
+            const childrenIds = Array.from(
+                document.querySelectorAll('input[name="child"]:checked')
+            ).map(cb => cb.value);
+
+            const btn = this.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.textContent = '送信中...';
+
+            try {
+                await regDb.collection('teams').doc(TEAM_ID)
+                    .collection('users').doc(currentUser.uid).set({
+                        name,
+                        gender,
+                        birth: birth || null,
+                        email: currentUser.email || null,
+                        role: 'parent',
+                        childrenIds,
+                        status: 'pending',
+                        registeredAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                window.location.href = '/hub/pending.html';
+            } catch(err) {
+                errEl.textContent = '送信に失敗しました: ' + err.message;
+                errEl.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = '承認申請を送信';
+            }
+        });
+    </script>
+</body>
+</html>

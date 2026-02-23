@@ -189,14 +189,16 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
             return;
         }
 
-        var rolePriority = { 'coach': 1, 'assist': 2, 'player': 3, 'mother': 4, 'father': 5, 'other': 6 };
+        var rolePriority = { 'coach': 1, 'assist': 2, 'officer': 3, 'player': 4, 'mother': 5, 'father': 6, 'other': 7 };
         var sorted = members.slice().sort(function(a, b) {
-            if (rolePriority[a.role] !== rolePriority[b.role]) return rolePriority[a.role] - rolePriority[b.role];
+            var pa = rolePriority[a.role] || 99;
+            var pb = rolePriority[b.role] || 99;
+            if (pa !== pb) return pa - pb;
             if (a.role === 'player' && b.role === 'player') return (a.number || 999) - (b.number || 999);
             return (a.name || '').localeCompare(b.name || '', 'ja');
         });
 
-        var roleLabels = { 'coach': '監督', 'assist': 'コーチ', 'player': '選手', 'father': '父', 'mother': '母', 'other': '部員外' };
+        var roleLabels = { 'coach': '監督', 'assist': 'コーチ', 'officer': '役員', 'player': '選手', 'father': '父', 'mother': '母', 'other': '部員外' };
 
         sorted.forEach(function(member) {
             var card = document.createElement('div');
@@ -206,6 +208,8 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
             card.dataset.grade = member.grade || '';
             card.style.cursor = 'pointer';
 
+            var abbrHtml = member.abbr ?
+                ' <span style="font-size:0.8em;color:#888;font-weight:normal;">（' + UI.escapeHTML(member.abbr) + '）</span>' : '';
             var gradeHtml = (member.role === 'player' && member.grade) ?
                 '<div class="detail-row"><span class="detail-label">学年:</span><span class="detail-value">' + Utils.getGradeLabel(member.grade) + '</span></div>' : '';
             var numberHtml = (member.role === 'player' && member.number) ?
@@ -214,7 +218,7 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
                 '<div class="detail-row"><span class="detail-label">備考:</span><span class="detail-value">' + UI.escapeHTML(member.notes) + '</span></div>' : '';
 
             card.innerHTML =
-                '<h3>' + UI.escapeHTML(member.name) + '</h3>' +
+                '<h3>' + UI.escapeHTML(member.name) + abbrHtml + '</h3>' +
                 '<div class="detail-row"><span class="detail-label">所属:</span><span class="detail-value">' + (roleLabels[member.role] || member.role) + '</span></div>' +
                 gradeHtml + numberHtml + notesHtml;
 
@@ -256,6 +260,9 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
         if (member.number) {
             html += '<tr><td style="padding:6px;font-weight:bold;">背番号</td><td style="padding:6px;">' + member.number + '</td></tr>';
         }
+        if (member.abbr) {
+            html += '<tr><td style="padding:6px;font-weight:bold;">略称</td><td style="padding:6px;">' + UI.escapeHTML(member.abbr) + '</td></tr>';
+        }
         if (member.notes) {
             html += '<tr><td style="padding:6px;font-weight:bold;">備考</td><td style="padding:6px;">' + UI.escapeHTML(member.notes) + '</td></tr>';
         }
@@ -293,6 +300,8 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
                 document.getElementById('member-gender').value = member.gender || 'male';
                 document.getElementById('member-role').value = member.role || 'player';
                 document.getElementById('member-number').value = member.number || '';
+                var abbrEl = document.getElementById('member-abbr');
+                if (abbrEl) abbrEl.value = member.abbr || '';
                 document.getElementById('member-notes').value = member.notes || '';
                 var ng = document.getElementById('number-group');
                 if (ng) ng.style.display = (member.role === 'player') ? 'block' : 'none';
@@ -322,12 +331,17 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
         var gender = document.getElementById('member-gender').value;
         var role = document.getElementById('member-role').value;
         var number = (role === 'player') ? document.getElementById('member-number').value : null;
+        var abbrEl = document.getElementById('member-abbr');
+        var abbr = abbrEl ? abbrEl.value.trim() : '';
         var notes = document.getElementById('member-notes').value.trim();
 
         if (!name) {
             UI.showAlert('名前は必須です', 'warning');
             return;
         }
+
+        // 略称が未設定の場合は氏名の先頭2文字をデフォルトに
+        if (!abbr) abbr = name.length > 4 ? name.substring(0, 4) : name;
 
         var grade = null;
         if (role === 'player' && birth) {
@@ -341,13 +355,13 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
             var index = members.findIndex(function(m) { return String(m.id) === String(memberFormId); });
             if (index !== -1) {
                 var origId = members[index].id;
-                members[index] = { id: origId, name: name, birth: birth, gender: gender, role: role, number: number ? parseInt(number) : null, grade: grade, notes: notes };
+                members[index] = { id: origId, name: name, abbr: abbr, birth: birth, gender: gender, role: role, number: number ? parseInt(number) : null, grade: grade, notes: notes };
                 app.Hub.logs = Storage.addLog('members', 'メンバー更新', '「' + name + '」', logs);
             }
         } else {
             var ids = members.map(function(m) { return parseInt(m.id) || 0; });
             var newId = ids.length > 0 ? Math.max.apply(null, ids) + 1 : 1;
-            members.push({ id: newId, name: name, birth: birth, gender: gender, role: role, number: number ? parseInt(number) : null, grade: grade, notes: notes });
+            members.push({ id: newId, name: name, abbr: abbr, birth: birth, gender: gender, role: role, number: number ? parseInt(number) : null, grade: grade, notes: notes });
             app.Hub.logs = Storage.addLog('members', 'メンバー追加', '「' + name + '」', logs);
         }
 

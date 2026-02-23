@@ -178,4 +178,55 @@ FCOjima.DB = FCOjima.DB || {};
         return { members, venues, events, notifications, logs };
     };
 
+    // ========== ユーザー管理（保護者承認・役割管理） ==========
+
+    DB.loadUserProfile = async function(uid) {
+        const doc = await db.collection('teams').doc(TEAM_ID)
+            .collection('users').doc(uid).get();
+        return doc.exists ? { uid, ...doc.data() } : null;
+    };
+
+    DB.createUserProfile = async function(uid, data) {
+        await db.collection('teams').doc(TEAM_ID)
+            .collection('users').doc(uid).set({
+                ...data,
+                status: 'pending',
+                registeredAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+    };
+
+    DB.loadPendingUsers = async function() {
+        const snap = await db.collection('teams').doc(TEAM_ID)
+            .collection('users').where('status', '==', 'pending')
+            .orderBy('registeredAt', 'asc').get();
+        return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+    };
+
+    DB.loadAllUsers = async function() {
+        const snap = await db.collection('teams').doc(TEAM_ID)
+            .collection('users').orderBy('registeredAt', 'asc').get();
+        return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+    };
+
+    DB.approveUser = async function(uid, approvedByUid) {
+        await db.collection('teams').doc(TEAM_ID)
+            .collection('users').doc(uid).update({
+                status: 'approved',
+                approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                approvedBy: approvedByUid
+            });
+    };
+
+    DB.rejectUser = async function(uid) {
+        await db.collection('teams').doc(TEAM_ID)
+            .collection('users').doc(uid).update({
+                status: 'rejected'
+            });
+    };
+
+    DB.updateUserRole = async function(uid, role) {
+        await db.collection('teams').doc(TEAM_ID)
+            .collection('users').doc(uid).update({ role });
+    };
+
 })(FCOjima.DB);

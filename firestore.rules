@@ -1,9 +1,108 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 認証済みユーザーのみアクセス可能
-    match /teams/{teamId}/{document=**} {
-      allow read, write: if request.auth != null;
+
+    // ========== ヘルパー関数 ==========
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function userDoc(teamId) {
+      return get(/databases/$(database)/documents/teams/$(teamId)/users/$(request.auth.uid));
+    }
+
+    function isApproved(teamId) {
+      let u = userDoc(teamId);
+      return u.exists && u.data.status == 'approved';
+    }
+
+    function userRole(teamId) {
+      let u = userDoc(teamId);
+      return u.exists ? u.data.role : 'none';
+    }
+
+    function isManager(teamId) {
+      return isApproved(teamId) && userRole(teamId) in ['admin', 'coach', 'assist', 'officer'];
+    }
+
+    function isAdmin(teamId) {
+      return isApproved(teamId) && userRole(teamId) == 'admin';
+    }
+
+    // ========== チームデータ ==========
+
+    match /teams/{teamId} {
+
+      // ----- 管理者設定（アプリからは読み取り専用・Firebase Consoleのみ変更可）-----
+      // ※ このドキュメントは Firebase Console から手動で初期設定してください
+      match /config/{configId} {
+        allow read:  if isAuth() && isManager(teamId);
+        allow write: if false;  // アプリからは変更不可。Firebase Console/Admin SDK のみ
+      }
+
+      // ----- ユーザープロファイル（保護者・スタッフ登録・承認管理）-----
+      match /users/{uid} {
+        // 自分のプロフィールは読める。マネージャーは全員分読める
+        allow read: if isAuth() && (request.auth.uid == uid || isManager(teamId));
+
+        // 新規登録申請: 自分の UID で、status='pending', role='parent' のみ作成可
+        allow create: if isAuth()
+          && request.auth.uid == uid
+          && request.resource.data.status == 'pending'
+          && request.resource.data.role == 'parent';
+
+        // マネージャーは承認・役割変更が可能
+        // ただし自分自身の status/role は変更不可（自分昇格防止）
+        allow update: if isAuth()
+          && isManager(teamId)
+          && request.auth.uid != uid;
+
+        // 削除は不可（Firebase Console のみ）
+        allow delete: if false;
+      }
+
+      // ----- メンバー（選手・スタッフ一覧）-----
+      match /members/{memberId} {
+        // 認証済みなら誰でも読める（新規登録時に子供選択のために必要）
+        allow read: if isAuth();
+
+        // 作成・更新: マネージャーのみ
+        // TODO: 将来的にその選手の保護者も編集可にする
+        allow create, update: if isAuth() && isManager(teamId);
+        allow delete: if isAuth() && isManager(teamId);
+      }
+
+      // ----- イベント（予定）-----
+      match /events/{eventId} {
+        allow read: if isAuth() && isApproved(teamId);
+        // 承認済みユーザーなら誰でも作成・編集・削除可（ユーザーの方針）
+        allow write: if isAuth() && isApproved(teamId);
+      }
+
+      // ----- 会場 -----
+      match /venues/{venueId} {
+        allow read: if isAuth() && isApproved(teamId);
+        allow write: if isAuth() && isManager(teamId);
+      }
+
+      // ----- 連絡事項 -----
+      match /notifications/{notifId} {
+        allow read:   if isAuth() && isApproved(teamId);
+        allow write:  if isAuth() && isApproved(teamId);
+      }
+
+      // ----- ログ -----
+      match /logs/{logId} {
+        allow read:   if isAuth() && isManager(teamId);
+        allow create: if isAuth() && isApproved(teamId);
+        allow update, delete: if false;
+      }
+
+      // ----- イベント固有データ（配車・出欠・座席割り当て）-----
+      match /eventData/{dataId} {
+        allow read, write: if isAuth() && isApproved(teamId);
+      }
     }
   }
 }
