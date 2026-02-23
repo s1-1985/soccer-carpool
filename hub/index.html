@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FC 尾島ジュニア HUB</title>
-    <link rel="stylesheet" href="../css/common.css?v=20260223b">
-    <link rel="stylesheet" href="../css/hub/calendar.css?v=20260223b">
-    <link rel="stylesheet" href="../css/hub/members.css?v=20260223b">
-    <link rel="stylesheet" href="../css/hub/notifications.css?v=20260223b">
-    <link rel="stylesheet" href="../css/hub/venues.css?v=20260223b">
+    <link rel="stylesheet" href="../css/common.css?v=20260223c">
+    <link rel="stylesheet" href="../css/hub/calendar.css?v=20260223c">
+    <link rel="stylesheet" href="../css/hub/members.css?v=20260223c">
+    <link rel="stylesheet" href="../css/hub/notifications.css?v=20260223c">
+    <link rel="stylesheet" href="../css/hub/venues.css?v=20260223c">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         /* ヘッダー＋タブを上部固定 */
@@ -62,16 +62,16 @@
                 </div>
             </div>
 
-            <!-- カレンダー表示 -->
+            <!-- カレンダー表示（月曜始まり: 月火水木金土日） -->
             <div id="calendar-container" class="view-container">
                 <div class="weekdays">
-                    <div>日</div>
                     <div>月</div>
                     <div>火</div>
                     <div>水</div>
                     <div>木</div>
                     <div>金</div>
-                    <div>土</div>
+                    <div style="color:#CC8C00;">土</div>
+                    <div style="color:#dc3545;">日</div>
                 </div>
                 <div id="calendar-grid" class="calendar-grid">
                     <!-- カレンダーの日付がJSで動的に生成される -->
@@ -212,7 +212,7 @@
                     <select id="event-type" required>
                         <option value="game">試合</option>
                         <option value="practice">練習</option>
-                        <option value="other">その他</option>
+                        <option value="event">イベント（保護者も出欠対象）</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -318,8 +318,16 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="venue-address">住所</label>
-                    <input type="text" id="venue-address" required>
+                    <label for="venue-address">住所・場所</label>
+                    <input type="text" id="venue-address" placeholder="例: 群馬県太田市大島町〇〇">
+                    <p style="font-size:12px;color:#888;margin:4px 0 6px;">河川敷など住所が分かりにくい場合は地図から登録してください</p>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button type="button" id="venue-map-pin" class="secondary-button" style="font-size:13px;">📍 地図でピンを指定</button>
+                        <button type="button" id="venue-current-location" class="secondary-button" style="font-size:13px;">📡 現在地を使用</button>
+                    </div>
+                    <div id="venue-map-preview" style="display:none;margin-top:8px;border-radius:6px;overflow:hidden;"></div>
+                    <input type="hidden" id="venue-lat" value="">
+                    <input type="hidden" id="venue-lng" value="">
                 </div>
                 <div class="form-group">
                     <label for="venue-notes">備考</label>
@@ -435,23 +443,23 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script src="../js/common/firebase-config.js?v=20260223b"></script>
+    <script src="../js/common/firebase-config.js?v=20260223c"></script>
 
     <!-- 共通モジュール -->
-    <script src="../js/common/global.js?v=20260223b"></script>
-    <script src="../js/common/utils.js?v=20260223b"></script>
-    <script src="../js/common/storage.js?v=20260223b"></script>
-    <script src="../js/common/ui.js?v=20260223b"></script>
-    <script src="../js/common/auth.js?v=20260223b"></script>
-    <script src="../js/common/db.js?v=20260223b"></script>
+    <script src="../js/common/global.js?v=20260223c"></script>
+    <script src="../js/common/utils.js?v=20260223c"></script>
+    <script src="../js/common/storage.js?v=20260223c"></script>
+    <script src="../js/common/ui.js?v=20260223c"></script>
+    <script src="../js/common/auth.js?v=20260223c"></script>
+    <script src="../js/common/db.js?v=20260223c"></script>
 
     <!-- HUBページ用モジュール -->
-    <script src="../js/hub/main.js?v=20260223b"></script>
-    <script src="../js/hub/calendar.js?v=20260223b"></script>
-    <script src="../js/hub/members.js?v=20260223b"></script>
-    <script src="../js/hub/notifications.js?v=20260223b"></script>
-    <script src="../js/hub/venues.js?v=20260223b"></script>
-    <script src="../js/hub/admin.js?v=20260223b"></script>
+    <script src="../js/hub/main.js?v=20260223c"></script>
+    <script src="../js/hub/calendar.js?v=20260223c"></script>
+    <script src="../js/hub/members.js?v=20260223c"></script>
+    <script src="../js/hub/notifications.js?v=20260223c"></script>
+    <script src="../js/hub/venues.js?v=20260223c"></script>
+    <script src="../js/hub/admin.js?v=20260223c"></script>
 
     <script>
         // タブの切り替えに応じてフローティングボタンの表示を制御

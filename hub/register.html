@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>新規登録 - FC尾島ジュニア</title>
-    <link rel="stylesheet" href="../css/common.css?v=20260223b">
+    <link rel="stylesheet" href="../css/common.css?v=20260223c">
     <style>
         .register-container {
             max-width: 500px;
@@ -97,10 +97,11 @@
 
             <div class="form-group">
                 <label>自分の子供（選手）を選択</label>
-                <div class="child-select-list" id="child-select-list">
-                    <p style="color:#999;padding:8px;">読み込み中...</p>
+                <p class="form-note">※1人目を選ぶと2人目の選択欄が自動的に追加されます（兄弟対応）。監督・コーチも同様に登録できます。</p>
+                <div id="child-selectors">
+                    <!-- 子供選択欄がJSで動的に追加される -->
                 </div>
-                <p class="form-note">※複数選択可。まだリストに子供がいない場合は空欄でも申請できます。承認後に追加可能です。</p>
+                <p class="form-note">※リストに子供がいない場合は空欄でも申請できます。承認後に管理者または本人が追加可能です。</p>
             </div>
 
             <div id="register-error" style="display:none;background:#fdecea;border-radius:6px;padding:12px;color:#c62828;font-size:14px;margin-top:12px;"></div>
@@ -113,7 +114,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script src="../js/common/firebase-config.js?v=20260223b"></script>
+    <script src="../js/common/firebase-config.js?v=20260223c"></script>
 
     <script>
         const regAuth = window.FCOjimaFirebase.auth;
@@ -149,30 +150,89 @@
             loadPlayers();
         });
 
+        let allPlayers = [];
+
         async function loadPlayers() {
             try {
                 const snap = await regDb.collection('teams').doc(TEAM_ID)
                     .collection('members').where('role', '==', 'player').get();
-                const players = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-                const list = document.getElementById('child-select-list');
-                if (players.length === 0) {
-                    list.innerHTML = '<p style="color:#999;padding:8px;">選手が登録されていません。管理者に連絡してください。</p>';
-                    return;
-                }
-                players.sort(function(a, b) {
+                allPlayers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                allPlayers.sort(function(a, b) {
                     return (a.name || '').localeCompare(b.name || '', 'ja');
                 });
-                list.innerHTML = players.map(function(p) {
-                    return '<label class="child-select-item">' +
-                        '<input type="checkbox" name="child" value="' + p.id + '"> ' +
-                        (p.name || '') + (p.grade ? '（' + p.grade + '年）' : '') +
-                    '</label>';
-                }).join('');
+                // 最初の選択欄を追加
+                addChildSelector(1);
             } catch(e) {
-                document.getElementById('child-select-list').innerHTML =
+                document.getElementById('child-selectors').innerHTML =
                     '<p style="color:#c00;padding:8px;">選手リストの読み込みに失敗しました。</p>';
             }
+        }
+
+        function addChildSelector(index) {
+            const container = document.getElementById('child-selectors');
+
+            // 既に同じindexの選択欄があれば追加しない
+            if (document.getElementById('child-select-' + index)) return;
+
+            const wrap = document.createElement('div');
+            wrap.style.marginBottom = '8px';
+
+            const label = document.createElement('label');
+            label.style.fontSize = '13px';
+            label.style.color = '#555';
+            label.textContent = index + '人目の子供';
+            wrap.appendChild(label);
+
+            const select = document.createElement('select');
+            select.id = 'child-select-' + index;
+            select.name = 'child-' + index;
+            select.className = 'form-control';
+            select.style.marginTop = '4px';
+
+            // 空オプション
+            const emptyOpt = document.createElement('option');
+            emptyOpt.value = '';
+            emptyOpt.textContent = '-- 選択してください --';
+            select.appendChild(emptyOpt);
+
+            // 既に選択済みのIDを除外
+            const selectedIds = getSelectedChildIds();
+            allPlayers.forEach(function(p) {
+                if (selectedIds.includes(p.id)) return;
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = (p.name || '') + (p.grade ? '（' + p.grade + '年）' : '');
+                select.appendChild(opt);
+            });
+
+            // 選択時に次の欄を追加
+            select.addEventListener('change', function() {
+                // 後続の選択欄を一旦削除して再構築
+                let next = index + 1;
+                while (document.getElementById('child-select-' + next)) {
+                    const toRemove = document.getElementById('child-select-' + next).parentElement;
+                    if (toRemove) toRemove.remove();
+                    next++;
+                }
+                if (this.value) {
+                    addChildSelector(index + 1);
+                }
+            });
+
+            wrap.appendChild(select);
+            container.appendChild(wrap);
+        }
+
+        function getSelectedChildIds() {
+            const ids = [];
+            let i = 1;
+            while (true) {
+                const sel = document.getElementById('child-select-' + i);
+                if (!sel) break;
+                if (sel.value) ids.push(sel.value);
+                i++;
+            }
+            return ids;
         }
 
         document.getElementById('register-form').addEventListener('submit', async function(e) {
@@ -190,9 +250,7 @@
                 return;
             }
 
-            const childrenIds = Array.from(
-                document.querySelectorAll('input[name="child"]:checked')
-            ).map(cb => cb.value);
+            const childrenIds = getSelectedChildIds();
 
             const btn = this.querySelector('button[type="submit"]');
             btn.disabled = true;

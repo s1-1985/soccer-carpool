@@ -204,13 +204,13 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
         
-        // 月の最初の日の曜日（0: 日曜日, 1: 月曜日, ...）
-        const firstDayIndex = firstDay.getDay();
-        
+        // 月の最初の日の曜日（月曜始まり: 月=0, 火=1, ..., 土=5, 日=6）
+        const firstDayIndex = (firstDay.getDay() + 6) % 7;
+
         // カレンダーグリッドを取得
         const calendarGrid = document.getElementById('calendar-grid');
         calendarGrid.innerHTML = '';
-        
+
         // 前月の日を表示
         const prevMonthLastDay = new Date(year, month, 0).getDate();
         for (let i = firstDayIndex - 1; i >= 0; i--) {
@@ -219,25 +219,25 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             const dayElement = this.createDayElement(dateObj, true);
             calendarGrid.appendChild(dayElement);
         }
-        
+
         // 当月の日を表示
         const today = new Date();
         for (let i = 1; i <= lastDay.getDate(); i++) {
             const dateObj = new Date(year, month, i);
-            const isToday = dateObj.getDate() === today.getDate() && 
-                             dateObj.getMonth() === today.getMonth() && 
+            const isToday = dateObj.getDate() === today.getDate() &&
+                             dateObj.getMonth() === today.getMonth() &&
                              dateObj.getFullYear() === today.getFullYear();
-            
+
             const dayElement = this.createDayElement(dateObj, false, isToday);
             calendarGrid.appendChild(dayElement);
         }
-        
+
         // 翌月の日を表示（6週間表示のために必要な分だけ）
         const daysFromPrevMonth = firstDayIndex;
         const daysFromCurrentMonth = lastDay.getDate();
         const totalCellsFilled = daysFromPrevMonth + daysFromCurrentMonth;
         const cellsToFill = 42 - totalCellsFilled; // 6週間 = 42日
-        
+
         for (let i = 1; i <= cellsToFill; i++) {
             const dateObj = new Date(year, month + 1, i);
             const dayElement = this.createDayElement(dateObj, true);
@@ -529,9 +529,14 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             attendanceDisplay = `<div class="detail-item"><span class="detail-label">出欠確認:</span><br><div style="margin-top:4px;line-height:2;">${rows}</div></div>`;
         }
 
-        // イベントログ
+        // このイベント固有のログ（eventId で絞り込み、なければタイトルで近似）
         const allLogs = app.Hub.logs || [];
-        const eventLogs = allLogs.filter(l => l.type === 'calendar' && l.details && l.details.includes(UI.escapeHTML(event.title).substring(0, 10)));
+        const eventLogs = allLogs.filter(function(l) {
+            if (l.type !== 'calendar') return false;
+            if (l.eventId) return String(l.eventId) === String(event.id);
+            // 旧フォーマットはタイトルで近似
+            return l.details && l.details.includes(event.title.substring(0, 10));
+        });
         let eventLogDisplay = '';
         if (eventLogs.length > 0) {
             const logRows = eventLogs.slice(-5).map(l =>
@@ -783,8 +788,9 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                     notes
                 };
                 
-                // ログに記録
-                app.Hub.logs = Storage.addLog('calendar', 'イベント更新', `「${title}」（${date}）`, logs);
+                // ログに記録（eventId付き）
+                const updatedEventId = events[events.findIndex(e => String(e.id) === String(eventFormId))].id;
+                app.Hub.logs = Storage.addLog('calendar', 'イベント更新', `「${title}」（${date}）`, logs, { eventId: updatedEventId });
             }
         } else {
             // 新規イベントを追加
@@ -804,9 +810,9 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 endTime,
                 notes
             });
-            
-            // ログに記録
-            app.Hub.logs = Storage.addLog('calendar', 'イベント追加', `「${title}」（${date}）`, logs);
+
+            // ログに記録（eventId付き）
+            app.Hub.logs = Storage.addLog('calendar', 'イベント追加', `「${title}」（${date}）`, logs, { eventId: newId });
         }
         
         // イベントを保存してUIを更新
@@ -899,8 +905,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             // イベントを削除
             app.Hub.events = events.filter(e => String(e.id) !== String(eventId));
             
-            // ログに記録
-            app.Hub.logs = Storage.addLog('calendar', 'イベント削除', `「${event.title}」（${event.date}）`, logs);
+            // ログに記録（eventId付き）
+            app.Hub.logs = Storage.addLog('calendar', 'イベント削除', `「${event.title}」（${event.date}）`, logs, { eventId: event.id });
             
             // イベントを保存してUIを更新
             Storage.saveEvents(app.Hub.events);
