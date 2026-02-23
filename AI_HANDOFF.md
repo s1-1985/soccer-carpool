@@ -287,14 +287,15 @@ gh run list --repo s1-1985/soccer-carpool --limit 3
 | #13 | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | タブ1行固定・上部スティッキー・ボタン下部スティッキー対応 | 1d4890d |
 | #15 | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | メンバー管理・カレンダー・認証・登録フロー改善 | 228787a |
 | #16 | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | カレンダーUI・出欠確認・登録フロー・会場地図対応 | 47ef18b |
+| hotfix | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | register.html SyntaxError修正・初回登録者自動管理者承認 | 5199da4 |
 
 ---
 
 ## 🔄 最新の作業状況
 
-**最終更新:** 2026-02-23 (Session 3 PR#15, PR#16完了)
+**最終更新:** 2026-02-23 (Session 4 - register.html緊急修正完了)
 **更新者:** Claude (branch: claude/fix-calendar-seating-bugs-fjK5Z)
-**最終正常コミット:** 47ef18b (PR#16)
+**最終正常コミット:** 5199da4 (hotfix - register.html SyntaxError修正)
 
 ### PR #15 (228787a) で行った変更
 1. **storage.js**: ダミーデータ削除・Firestore優先ロードに変更
@@ -348,6 +349,25 @@ gh run list --repo s1-1985/soccer-carpool --limit 3
    - `renderVenueList`: lat/lng優先で地図リンクを生成
    - `openAddVenueModal`: 編集時にlat/lngを復元
 
+### Hotfix (5199da4) で行った変更
+**問題:** PR#16デプロイ後、ログインページが壊れた（`Uncaught SyntaxError: Identifier 'TEAM_ID' has already been declared`）
+
+**原因:** `firebase-config.js` がグローバルスコープで `const TEAM_ID = 'fc-ojima'` を宣言。
+`register.html` のインラインスクリプト（IIFEなし）でも `const TEAM_ID = ...` を再宣言していた。
+
+**修正内容:**
+1. **hub/register.html**: 重複する `const TEAM_ID` 宣言を削除（グローバルの`TEAM_ID`をそのまま利用）
+2. **hub/register.html**: 初回登録者ブートストラップロジック追加
+   - 承認済みユーザーが0人の場合、最初の登録者を`role: 'admin', status: 'approved'`として自動承認
+   - 承認後は `/hub/index.html` へ直接遷移（`/hub/pending.html`ではない）
+   - サブタイトルに「最初の登録者は管理者として自動承認されます」のメッセージを表示
+3. **firestore.rules**: `/users/{uid}` の読み取りルールを緩和
+   - 認証済みユーザーが承認済みユーザーの有無をクエリ可能に（`resource.data.status == 'approved'`）
+   - 作成ルールに `admin/approved` でのユーザー作成を許可（ブートストラップ用）
+
+**注意:** firestore.rulesの変更により、認証済みユーザーは承認済みユーザーのドキュメントを読めるようになった。
+これは小規模チームアプリとして許容範囲のリスク判断。
+
 ### ユーザーからの方針指示（重要）
 - **座席割り当ては最終目標**：まずレイアウト・デザイン・その他機能を完成させる
 - **作業の都度 AI_HANDOFF.md を更新すること**（必須）
@@ -365,3 +385,4 @@ gh run list --repo s1-1985/soccer-carpool --limit 3
 - 車提供ページ（cars.html）：localStorageのみ読み込みの可能性
 - 旧ファイル（carpool/assignment.html, carprovision.html 等）が git 上に残存（削除はユーザー確認後）
 - イベント種別`event`（保護者出欠）は新規イベントにのみ適用。既存の`other`種別のイベントは保護者自動追加されない（後方互換のため）
+- Firestore の register.html ブートストラップ: 管理者登録後、Firestore rules の admin/approved 作成許可を残してある（次のAIはルールを再確認すること）
