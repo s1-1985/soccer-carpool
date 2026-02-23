@@ -68,7 +68,7 @@
 <body style="background: #f0f4f8; padding: 16px;">
     <div class="register-container">
         <div class="register-title">⚽ FC尾島ジュニア</div>
-        <div class="register-subtitle">利用者登録申請<br>送信後、管理者の承認をお待ちください</div>
+        <div class="register-subtitle">利用者登録申請<br><span id="register-mode-note">送信後、管理者の承認をお待ちください</span></div>
 
         <form id="register-form">
             <div class="form-group">
@@ -119,7 +119,6 @@
     <script>
         const regAuth = window.FCOjimaFirebase.auth;
         const regDb   = window.FCOjimaFirebase.db;
-        const TEAM_ID = window.FCOjimaFirebase.TEAM_ID;
 
         let currentUser = null;
 
@@ -148,6 +147,18 @@
 
             // 選手リストを読み込む
             loadPlayers();
+
+            // 承認済みユーザーがいない場合は最初の管理者登録であることを表示
+            regDb.collection('teams').doc(TEAM_ID)
+                .collection('users').where('status', '==', 'approved').limit(1).get()
+                .then(function(snap) {
+                    if (snap.empty) {
+                        document.getElementById('register-mode-note').textContent =
+                            '最初の登録者は管理者として自動承認されます';
+                        document.getElementById('register-mode-note').style.color = '#1a7f37';
+                        document.getElementById('register-mode-note').style.fontWeight = 'bold';
+                    }
+                }).catch(function() {});
         });
 
         let allPlayers = [];
@@ -257,18 +268,23 @@
             btn.textContent = '送信中...';
 
             try {
+                // 承認済みユーザーが0人なら最初の登録者をadminとして自動承認
+                const approvedSnap = await regDb.collection('teams').doc(TEAM_ID)
+                    .collection('users').where('status', '==', 'approved').limit(1).get();
+                const isFirstUser = approvedSnap.empty;
+
                 await regDb.collection('teams').doc(TEAM_ID)
                     .collection('users').doc(currentUser.uid).set({
                         name,
                         gender,
                         birth: birth || null,
                         email: currentUser.email || null,
-                        role: 'parent',
+                        role: isFirstUser ? 'admin' : 'parent',
                         childrenIds,
-                        status: 'pending',
+                        status: isFirstUser ? 'approved' : 'pending',
                         registeredAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
-                window.location.href = '/hub/pending.html';
+                window.location.href = isFirstUser ? '/hub/index.html' : '/hub/pending.html';
             } catch(err) {
                 errEl.textContent = '送信に失敗しました: ' + err.message;
                 errEl.style.display = 'block';

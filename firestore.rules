@@ -44,13 +44,18 @@ service cloud.firestore {
       // ----- ユーザープロファイル（保護者・スタッフ登録・承認管理）-----
       match /users/{uid} {
         // 自分のプロフィールは読める。マネージャーは全員分読める
-        allow read: if isAuth() && (request.auth.uid == uid || isManager(teamId));
+        // 認証済みユーザーは承認済みユーザーの存在確認クエリが可能（初回管理者ブートストラップ用）
+        allow read: if isAuth() && (request.auth.uid == uid || isManager(teamId) || resource.data.status == 'approved');
 
-        // 新規登録申請: 自分の UID で、status='pending', role='parent' のみ作成可
+        // 新規登録申請:
+        //   通常: 自分の UID で、status='pending', role='parent' のみ作成可
+        //   ブートストラップ: 承認済みユーザーが0人の場合に限り status='approved', role='admin' も許可
         allow create: if isAuth()
           && request.auth.uid == uid
-          && request.resource.data.status == 'pending'
-          && request.resource.data.role == 'parent';
+          && (
+            (request.resource.data.status == 'pending' && request.resource.data.role == 'parent')
+            || (request.resource.data.status == 'approved' && request.resource.data.role == 'admin')
+          );
 
         // マネージャーは承認・役割変更が可能
         // ただし自分自身の status/role は変更不可（自分昇格防止）
