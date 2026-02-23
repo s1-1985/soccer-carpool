@@ -13,12 +13,15 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
     var Utils = app.Utils;
     var Storage = app.Storage;
     
+    // 「自分の子供のみ」フィルター状態
+    Calendar.myChildOnly = false;
+
     /**
      * カレンダー機能の初期化
      */
     Calendar.init = function() {
         console.log('カレンダー機能を初期化しています...');
-        
+
         // データの読み込み
         app.Hub.events = Storage.loadEvents();
         
@@ -144,7 +147,46 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             Calendar.deleteEvent(eventId);
         });
 
+        // 「自分の子供のみ」フィルターボタン
+        var myChildBtn = document.getElementById('my-child-filter');
+        if (myChildBtn) {
+            myChildBtn.addEventListener('click', function() {
+                Calendar.myChildOnly = !Calendar.myChildOnly;
+                this.textContent = Calendar.myChildOnly ? '自分の子供のみ' : '全員';
+                this.classList.toggle('active', Calendar.myChildOnly);
+                Calendar.renderCalendar();
+                Calendar.renderEventsList();
+            });
+        }
+
         console.log('カレンダーのイベントリスナー設定が完了しました');
+    };
+
+    /**
+     * 「自分の子供のみ」フィルター適用
+     * @param {Array} events - フィルター前のイベント配列
+     * @returns {Array} フィルター後のイベント配列
+     */
+    Calendar.applyMyChildFilter = function(events) {
+        if (!Calendar.myChildOnly) return events;
+
+        var profile = app.Auth && app.Auth.currentUserProfile;
+        if (!profile || !profile.childrenIds || profile.childrenIds.length === 0) return events;
+
+        var members = app.Hub.members || [];
+        var myChildIds = profile.childrenIds;
+        var myChildGrades = [];
+        myChildIds.forEach(function(cid) {
+            var child = members.find(function(m) { return String(m.id) === String(cid); });
+            if (child && child.grade) myChildGrades.push(child.grade);
+        });
+
+        if (myChildGrades.length === 0) return events;
+
+        return events.filter(function(ev) {
+            if (!ev.target || ev.target.length === 0) return true; // 対象学年なし＝全員対象
+            return ev.target.some(function(g) { return myChildGrades.includes(g); });
+        });
     };
     
     /**
@@ -256,8 +298,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
      * イベントをカレンダーに表示
      */
     Calendar.displayEvents = function() {
-        const events = app.Hub.events;
-        
+        const events = Calendar.applyMyChildFilter(app.Hub.events);
+
         events.forEach(event => {
             // 日付要素を取得
             const dayElement = document.querySelector(`.calendar-day[data-date="${event.date}"]`);
@@ -286,7 +328,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         const currentDate = app.Hub.currentDate;
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth();
-        const events = app.Hub.events;
+        const events = Calendar.applyMyChildFilter(app.Hub.events);
         
         const listContainer = document.getElementById('events-list');
         listContainer.innerHTML = '';
@@ -673,12 +715,47 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             UI.showAlert('日付とタイトルは必須です');
             return;
         }
-        
+
+        // 同日同選手の重複チェック
+        const eventFormId = document.getElementById('event-form').getAttribute('data-event-id');
+        if (target && target.length > 0) {
+            const members = app.Hub.members || [];
+            const extraPlayers = (document.getElementById('event-extra-players').value || '').split(',').filter(Boolean);
+            // 対象選手一覧を構築（学年対象 + 追加選手）
+            const targetPlayerNames = new Set();
+            members.forEach(function(m) {
+                if (m.role === 'player' && target.includes(m.grade)) targetPlayerNames.add(m.name);
+            });
+            extraPlayers.forEach(function(n) { targetPlayerNames.add(n); });
+
+            const conflicts = [];
+            events.forEach(function(ev) {
+                if (String(ev.id) === String(eventFormId)) return; // 自分自身は除外
+                if (ev.date !== date) return;
+                if (!ev.target || ev.target.length === 0) return;
+                const evPlayerNames = new Set();
+                members.forEach(function(m) {
+                    if (m.role === 'player' && ev.target.includes(m.grade)) evPlayerNames.add(m.name);
+                });
+                (ev.extraPlayers || []).forEach(function(n) { evPlayerNames.add(n); });
+                evPlayerNames.forEach(function(n) {
+                    if (targetPlayerNames.has(n)) {
+                        conflicts.push({ player: n, event: ev.title });
+                    }
+                });
+            });
+
+            if (conflicts.length > 0) {
+                const msgs = conflicts.map(function(c) {
+                    return '・' + c.player + ' が「' + c.event + '」と重複しています';
+                });
+                UI.showAlert('イベントを登録できません:\n' + msgs.join('\n'), 'error');
+                return;
+            }
+        }
+
         // 新しいイベントID
         const newId = events.length > 0 ? Math.max(...events.map(e => e.id)) + 1 : 1;
-        
-        // 新しいイベントを追加または既存イベントを更新
-        const eventFormId = document.getElementById('event-form').getAttribute('data-event-id');
 
         // 追加選手
         const extraPlayersVal = document.getElementById('event-extra-players');

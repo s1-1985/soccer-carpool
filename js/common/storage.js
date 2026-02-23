@@ -24,18 +24,9 @@ FCOjima.Storage = FCOjima.Storage || {};
         if (window.FCOjima && FCOjima.Hub && FCOjima.Hub.members && FCOjima.Hub.members.length > 0) {
             return FCOjima.Hub.members;
         }
-        // フォールバック: localStorageから読み込む
+        // フォールバック: localStorageから読み込む（ダミーデータなし）
         const saved = localStorage.getItem(this.PREFIX + 'members');
-        let members = saved ? JSON.parse(saved) : [];
-        if (members.length === 0) {
-            members = [
-                { id: 1, name: '田中太郎',   birth: '2016-04-01', gender: 'male',   role: 'player', number: 10, grade: '3', notes: '' },
-                { id: 2, name: '鈴木花子',   birth: '2016-09-15', gender: 'female', role: 'player', number: 7,  grade: '3', notes: '' },
-                { id: 3, name: '佐藤次郎',   birth: '2017-03-20', gender: 'male',   role: 'player', number: 3,  grade: '2', notes: '' },
-                { id: 4, name: '山田美咲',   birth: '2015-11-10', gender: 'female', role: 'mother', number: null, grade: null, notes: '田中太郎の母' }
-            ];
-        }
-        return members;
+        return saved ? JSON.parse(saved) : [];
     };
 
     /**
@@ -60,53 +51,6 @@ FCOjima.Storage = FCOjima.Storage || {};
     };
     
     /**
-     * メンバーデータをローカルストレージから読み込む（続き）
-     */
-    // サンプルデータの続き
-    const sampleMembers = [
-        {
-            id: 5,
-            name: '渡邊悠人',
-            birth: '2017-08-30',
-            gender: 'male',
-            role: 'player',
-            number: 4,
-            grade: '2',
-            notes: ''
-        },
-        {
-            id: 6,
-            name: '飯田友則',
-            birth: '',
-            gender: 'male',
-            role: 'coach',
-            number: null,
-            grade: null,
-            notes: '監督'
-        },
-        {
-            id: 7,
-            name: '大槻智一',
-            birth: '',
-            gender: 'male',
-            role: 'assist',
-            number: null,
-            grade: null,
-            notes: 'コーチ'
-        },
-        {
-            id: 8,
-            name: '田中和人',
-            birth: '',
-            gender: 'male',
-            role: 'father',
-            number: null,
-            grade: null,
-            notes: '田中浩二の父'
-        }
-    ];
-    
-    /**
      * メンバーデータをローカルストレージに保存
      * @param {Array} members - メンバーデータの配列
      */
@@ -122,35 +66,11 @@ FCOjima.Storage = FCOjima.Storage || {};
      * @returns {Array} 会場データの配列
      */
     Storage.loadVenues = function() {
-        const savedVenues = localStorage.getItem(this.PREFIX + 'venues');
-        let venues = savedVenues ? JSON.parse(savedVenues) : [];
-        
-        // サンプルデータ（ローカルストレージにデータがない場合のみ）
-        if (venues.length === 0) {
-            const sampleVenues = [
-                {
-                    id: 1,
-                    name: '市民グラウンド',
-                    address: '尾島市中央区1-2-3',
-                    notes: '駐車場は第二駐車場を利用'
-                },
-                {
-                    id: 2,
-                    name: '第二運動公園',
-                    address: '尾島市西区5-6-7',
-                    notes: '雨天時は第二体育館に変更'
-                },
-                {
-                    id: 3,
-                    name: '学校グラウンド',
-                    address: '尾島市東区9-10-11',
-                    notes: '学校開放時のみ利用可能'
-                }
-            ];
-            return sampleVenues;
+        if (window.FCOjima && FCOjima.Hub && FCOjima.Hub.venues && FCOjima.Hub.venues.length > 0) {
+            return FCOjima.Hub.venues;
         }
-        
-        return venues;
+        const savedVenues = localStorage.getItem(this.PREFIX + 'venues');
+        return savedVenues ? JSON.parse(savedVenues) : [];
     };
     
     /**

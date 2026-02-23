@@ -42,6 +42,7 @@
             <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'members')">メンバー</button>
             <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'notifications')">連絡事項</button>
             <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'venues')">会場登録</button>
+            <button class="tablinks" id="admin-tab" onclick="FCOjima.UI.openTab(event, 'admin')" style="display:none;">管理</button>
         </div>
     </div>
 
@@ -57,6 +58,7 @@
                 <div class="view-toggle">
                     <button id="calendar-view" class="active">カレンダー</button>
                     <button id="list-view">リスト</button>
+                    <button id="my-child-filter" class="secondary-button" title="自分の子供に関係するイベントのみ表示">全員</button>
                 </div>
             </div>
 
@@ -173,6 +175,25 @@
                 <button id="add-venue">会場を追加</button>
                 <button id="venues-logs" class="secondary-button">ログを表示</button>
             </div>
+        </div>
+
+        <!-- 管理タブ（監督・コーチ・役員・管理者のみ表示） -->
+        <div id="admin" class="tabcontent">
+            <h2>管理</h2>
+
+            <section>
+                <h3>承認待ちユーザー</h3>
+                <div id="pending-users-list">
+                    <p class="loading">読み込み中...</p>
+                </div>
+            </section>
+
+            <section style="margin-top:24px;">
+                <h3>登録済みユーザー一覧</h3>
+                <div id="all-users-list">
+                    <p class="loading">読み込み中...</p>
+                </div>
+            </section>
         </div>
     </div>
 
@@ -338,6 +359,7 @@
                     <select id="member-role" required>
                         <option value="coach">監督</option>
                         <option value="assist">コーチ</option>
+                        <option value="officer">役員</option>
                         <option value="player">選手</option>
                         <option value="father">父</option>
                         <option value="mother">母</option>
@@ -347,6 +369,10 @@
                 <div class="form-group" id="number-group">
                     <label for="member-number">背番号</label>
                     <input type="number" id="member-number" min="1" max="99">
+                </div>
+                <div class="form-group">
+                    <label for="member-abbr">略称</label>
+                    <input type="text" id="member-abbr" placeholder="例: たなか（座席表等で使用）" maxlength="8">
                 </div>
                 <div class="form-group">
                     <label for="member-notes">備考</label>
@@ -409,22 +435,23 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script src="../js/common/firebase-config.js?v=20260219b"></script>
+    <script src="../js/common/firebase-config.js?v=20260223b"></script>
 
     <!-- 共通モジュール -->
-    <script src="../js/common/global.js?v=20260219b"></script>
-    <script src="../js/common/utils.js?v=20260219b"></script>
-    <script src="../js/common/storage.js?v=20260219b"></script>
-    <script src="../js/common/ui.js?v=20260219b"></script>
-    <script src="../js/common/auth.js?v=20260219b"></script>
-    <script src="../js/common/db.js?v=20260219b"></script>
+    <script src="../js/common/global.js?v=20260223b"></script>
+    <script src="../js/common/utils.js?v=20260223b"></script>
+    <script src="../js/common/storage.js?v=20260223b"></script>
+    <script src="../js/common/ui.js?v=20260223b"></script>
+    <script src="../js/common/auth.js?v=20260223b"></script>
+    <script src="../js/common/db.js?v=20260223b"></script>
 
     <!-- HUBページ用モジュール -->
-    <script src="../js/hub/main.js?v=20260219b"></script>
-    <script src="../js/hub/calendar.js?v=20260219b"></script>
-    <script src="../js/hub/members.js?v=20260219b"></script>
-    <script src="../js/hub/notifications.js?v=20260219b"></script>
-    <script src="../js/hub/venues.js?v=20260219b"></script>
+    <script src="../js/hub/main.js?v=20260223b"></script>
+    <script src="../js/hub/calendar.js?v=20260223b"></script>
+    <script src="../js/hub/members.js?v=20260223b"></script>
+    <script src="../js/hub/notifications.js?v=20260223b"></script>
+    <script src="../js/hub/venues.js?v=20260223b"></script>
+    <script src="../js/hub/admin.js?v=20260223b"></script>
 
     <script>
         // タブの切り替えに応じてフローティングボタンの表示を制御
@@ -453,16 +480,24 @@
             });
         });
 
-        // DOMContentLoaded イベントで初期化（ログイン確認 → Firestoreロード → 画面初期化）
+        // DOMContentLoaded イベントで初期化（承認確認 → Firestoreロード → 画面初期化）
         document.addEventListener('DOMContentLoaded', async function() {
-            await FCOjima.Auth.requireLogin();
+            const userProfile = await FCOjima.Auth.requireApproved();
             await FCOjima.Hub.init();
 
             // ログインユーザー名をヘッダーに表示
             const user = FCOjima.Auth.getCurrentUser();
             if (user) {
                 const header = document.querySelector('header h1');
-                header.textContent += '  [' + (user.displayName || user.email) + ']';
+                const name = userProfile ? userProfile.name : (user.displayName || user.email);
+                header.textContent += '  [' + name + ']';
+            }
+
+            // 管理者・監督・コーチ・役員のみ管理タブを表示
+            if (userProfile && ['admin','coach','assist','officer'].includes(userProfile.role)) {
+                const adminTab = document.getElementById('admin-tab');
+                if (adminTab) adminTab.style.display = '';
+                if (FCOjima.Hub.Admin && FCOjima.Hub.Admin.init) FCOjima.Hub.Admin.init();
             }
 
             // モーダルの初期化
@@ -473,9 +508,9 @@
             floatingAddButton.addEventListener('click', function(e) {
                 e.preventDefault();
                 const activeTab = document.querySelector('.tablinks.active');
-                if (activeTab.textContent === 'メンバー') {
+                if (activeTab && activeTab.textContent === 'メンバー') {
                     FCOjima.Hub.Members.openAddMemberModal();
-                } else if (activeTab.textContent === '会場登録') {
+                } else if (activeTab && activeTab.textContent === '会場登録') {
                     FCOjima.Hub.Venues.openAddVenueModal();
                 }
             });

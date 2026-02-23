@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>承認待ち - FC尾島ジュニア</title>
+    <link rel="stylesheet" href="../css/common.css?v=20260223b">
+    <style>
+        .pending-container {
+            max-width: 420px;
+            margin: 80px auto;
+            padding: 40px 30px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            text-align: center;
+        }
+        .pending-icon { font-size: 48px; margin-bottom: 16px; }
+        .pending-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #1C1600;
+            margin-bottom: 12px;
+        }
+        .pending-msg {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.8;
+            margin-bottom: 24px;
+        }
+        .reload-btn {
+            background: none;
+            border: 1px solid #E8A200;
+            color: #E8A200;
+            padding: 10px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .signout-btn {
+            background: none;
+            border: none;
+            color: #999;
+            padding: 10px 24px;
+            cursor: pointer;
+            font-size: 13px;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body style="background: #f0f4f8;">
+    <div class="pending-container">
+        <div class="pending-icon">⏳</div>
+        <div class="pending-title">承認をお待ちください</div>
+        <div class="pending-msg">
+            登録申請を受け付けました。<br>
+            監督・コーチ・役員による承認後、<br>
+            このシステムをご利用いただけます。<br><br>
+            承認完了後、このページを更新してください。
+        </div>
+        <button class="reload-btn" onclick="checkStatus()">承認状況を確認</button>
+        <br>
+        <button class="signout-btn" id="signout-btn">サインアウト</button>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="../js/common/firebase-config.js?v=20260223b"></script>
+
+    <script>
+        const pendingAuth = window.FCOjimaFirebase.auth;
+        const pendingDb   = window.FCOjimaFirebase.db;
+        const TEAM_ID     = window.FCOjimaFirebase.TEAM_ID;
+
+        pendingAuth.onAuthStateChanged(function(user) {
+            if (!user) {
+                window.location.href = '/hub/login.html';
+                return;
+            }
+            document.getElementById('signout-btn').addEventListener('click', function() {
+                pendingAuth.signOut().then(function() {
+                    window.location.href = '/hub/login.html';
+                });
+            });
+        });
+
+        async function checkStatus() {
+            const user = pendingAuth.currentUser;
+            if (!user) return;
+            try {
+                const doc = await pendingDb.collection('teams').doc(TEAM_ID)
+                    .collection('users').doc(user.uid).get();
+                if (!doc.exists) {
+                    window.location.href = '/hub/register.html';
+                    return;
+                }
+                const status = doc.data().status;
+                if (status === 'approved') {
+                    window.location.href = '/hub/index.html';
+                } else if (status === 'rejected') {
+                    document.querySelector('.pending-msg').innerHTML =
+                        '<strong style="color:#c00;">申請が却下されました。</strong><br>管理者にお問い合わせください。';
+                } else {
+                    document.querySelector('.pending-msg').innerHTML +=
+                        '<br><span style="color:#888;font-size:12px;">（まだ承認されていません）</span>';
+                }
+            } catch(e) {
+                alert('確認に失敗しました: ' + e.message);
+            }
+        }
+    </script>
+</body>
+</html>
