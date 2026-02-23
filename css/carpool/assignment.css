@@ -270,7 +270,8 @@
 }
 
 /* 役割別メンバーラベルの色分け */
-.member-item.coach .member-icon {
+.member-item.coach .member-icon,
+.member-item.assist .member-icon {
     background-color: #28a745;
 }
 
@@ -278,6 +279,9 @@
     background-color: #E8A200;
 }
 
+.member-item.father .member-icon,
+.member-item.mother .member-icon,
+.member-item.officer .member-icon,
 .member-item.parent .member-icon {
     background-color: #6c757d;
 }
