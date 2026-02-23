@@ -660,7 +660,35 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                 UI.closeModal('seat-edit-modal');
             });
         }
-        
+
+        // メンバーコンテナへのドロップ（座席 → メンバーリストに戻す）
+        // ここに設定することでsetupDragAndDropが複数回呼ばれても重複しない
+        var membersContainer = document.getElementById('members-container');
+        if (membersContainer) {
+            membersContainer.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            });
+            membersContainer.addEventListener('drop', function(e) {
+                e.preventDefault();
+                try {
+                    const jsonData = JSON.parse(e.dataTransfer.getData('application/json'));
+                    if (jsonData.type === 'seat') {
+                        const seat = document.querySelector(
+                            `.seat[data-car-index="${jsonData.fromCarIndex}"][data-seat-type="${jsonData.fromSeatType}"][data-seat-index="${jsonData.fromSeatIndex}"]`
+                        );
+                        if (seat) {
+                            Assignment.clearSeat(seat);
+                            Assignment.saveAssignments();
+                            Assignment.updateMembersList();
+                        }
+                    }
+                } catch (err) {
+                    console.error('ドロップデータの解析に失敗しました', err);
+                }
+            });
+        }
+
         console.log('割り当てのイベントリスナー設定が完了しました');
     };
     
@@ -1237,40 +1265,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             });
         });
         
-        // メンバーコンテナにもドロップイベントを設定（座席からメンバーリストへの移動）
-        const membersContainer = document.getElementById('members-container');
-        if (membersContainer) {
-            membersContainer.addEventListener('dragover', function(e) {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-            });
-            
-            membersContainer.addEventListener('drop', function(e) {
-                e.preventDefault();
-                
-                try {
-                    const jsonData = JSON.parse(e.dataTransfer.getData('application/json'));
-                    
-                    // 座席からのドロップの場合、その座席をクリア
-                    if (jsonData.type === 'seat') {
-                        const seat = document.querySelector(`.seat[data-car-index="${jsonData.fromCarIndex}"][data-seat-type="${jsonData.fromSeatType}"][data-seat-index="${jsonData.fromSeatIndex}"]`);
-                        if (seat) {
-                            Assignment.clearSeat(seat);
-                            
-                            // 配置データを保存
-                            Assignment.saveAssignments();
-                            
-                            // メンバーリストを更新
-                            Assignment.updateMembersList();
-                        }
-                    }
-                } catch (e) {
-                    console.error('ドロップデータの解析に失敗しました', e);
-                }
-            });
-        }
-        
-        console.log('ドラッグ＆ドロップのセットアップが完了しました');
+        console.log('ドラッグ＆ドロップのセットアップが完了しました（メンバーコンテナへのドロップはsetupEventListenersで設定）');
     };
     
     /**
