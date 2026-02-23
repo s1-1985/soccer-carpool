@@ -91,29 +91,83 @@ teams/fc-ojima/
 
 ---
 
-## 📁 ファイル構造
+## 📁 ファイル構造と各ファイルの役割
+
+### 【現役ファイル】実際に使われているファイル
 
 ```
-/
-├── hub/              HUBページ（メイン管理画面）
-│   ├── index.html    HUBトップ（メンバー・イベント・通知）
-│   ├── calendar.html カレンダー/イベント管理
-│   ├── members.html  メンバー管理
-│   ├── notifications.html 連絡事項
-│   └── venues.html   会場管理
-├── carpool/          配車管理ページ
-│   ├── index.html    配車概要
-│   ├── attendance.html 出欠確認
-│   ├── cars.html     車提供登録
-│   ├── assignments.html 座席割り当て ← 重点修正対象
-│   └── notifications.html 連絡
-├── js/
-│   ├── common/       共通ライブラリ
-│   └── hub/, carpool/ 各ページ用JS
-├── css/              スタイルシート
-├── firebase.json     Firebase設定（変更禁止）
-└── AI_HANDOFF.md     本ファイル
+/index.html                       ルートランディングページ（hub/ or carpool/ へ誘導）
+
+hub/
+├── index.html    ★メインHUBページ（SPA・タブ方式）
+│                   カレンダー / メンバー / 連絡事項 / 会場登録 の4タブを内包
+│                   CSSは hub/calendar.css, members.css, notifications.css, venues.css をすべてロード
+│                   JSは js/hub/main.js + calendar.js + members.js + notifications.js + venues.js をロード
+└── login.html    Googleログイン画面
+
+carpool/
+├── index.html         配車機能のエントリポイント（overview.html へリダイレクト等）
+├── overview.html      配車イベント一覧・選択画面
+├── attendance.html    出欠確認画面
+├── cars.html     ★車提供登録画面（旧 carprovision.html の後継・現役）
+├── assignments.html ★座席割り当て画面（旧 assignment.html の後継・現役）
+└── notifications.html 配車連絡画面
+
+js/
+├── common/
+│   ├── firebase-config.js  Firebase接続設定（変更禁止）
+│   ├── auth.js             Firebase認証ラッパー（FCOjima.Auth）
+│   ├── db.js               Firestoreアクセス層（FCOjima.DB）← Firestore操作はここのみ
+│   ├── storage.js          localStorage/Firestore二重保存（FCOjima.Storage）
+│   ├── ui.js               共通UI操作・タブ切り替え（FCOjima.UI）
+│   ├── utils.js            日付・文字列ユーティリティ（FCOjima.Utils）
+│   └── global.js           グローバル初期化
+├── hub/
+│   ├── main.js             HUB全体の初期化・認証チェック
+│   ├── calendar.js         カレンダー表示・イベントCRUD（FCOjima.Hub.Calendar）
+│   ├── members.js          メンバー一覧・CRUD（FCOjima.Hub.Members）
+│   ├── notifications.js    連絡事項（FCOjima.Hub.Notifications）
+│   └── venues.js           会場登録・一覧（FCOjima.Hub.Venues）
+└── carpool/
+    ├── overview.js         配車概要・イベント一覧（FCOjima.Carpool.Overview）
+    ├── assignment.js       座席割り当てロジック（1300行超）（FCOjima.Carpool.Assignment）
+    ├── carprovision.js     車提供登録（FCOjima.Carpool.CarProvision）
+    ├── attendance.js       出欠確認（FCOjima.Carpool.Attendance）
+    └── notifications.js   配車連絡（FCOjima.Carpool.Notifications）
+
+css/
+├── common.css              全ページ共通スタイル（ヘッダー・タブ・ボタン・モーダル等）
+├── hub/
+│   ├── calendar.css        カレンダーグリッド・イベント表示スタイル
+│   ├── members.css         メンバーカード・リストスタイル
+│   ├── notifications.css   連絡事項スタイル
+│   └── venues.css          会場リストスタイル
+└── carpool/
+    ├── common.css          carpool共通（ナビ・フッター・レイアウト）
+    ├── overview.css     ★配車概要スタイル（現役）
+    ├── attendance.css      出欠確認スタイル
+    ├── carprovision.css    車提供スタイル（cars.html も同CSSを使用）
+    ├── assignment.css      座席割り当てスタイル（assignments.html も同CSSを使用）
+    └── notifications.css   配車連絡スタイル
+
+Firebase設定ファイル:
+├── firebase.json           ホスティング設定（変更禁止）
+├── firestore.rules         Firestoreセキュリティルール
+├── firestore.indexes.json  Firestoreインデックス設定
+└── .github/workflows/firebase-deploy.yml  GitHub Actions自動デプロイ
 ```
+
+### 【旧・非推奨ファイル】git上に残っているが使われていない
+
+| ファイル | 後継 | 状態 |
+|---|---|---|
+| `carpool/assignment.html` | `carpool/assignments.html` | 旧版（v=20260219）。使用しない |
+| `carpool/carprovision.html` | `carpool/cars.html` | 旧版。ナビは cars.html を指している |
+| `css/carpool/overview-css.css` | `css/carpool/overview.css` | 不使用（overview.html は overview.css のみロード） |
+| `hub/calendar.html` | `hub/index.html`（カレンダータブ） | 単体ページ旧版。SPA移行済み |
+| `hub/members.html` | `hub/index.html`（メンバータブ） | 単体ページ旧版。SPA移行済み |
+| `hub/notifications.html` | `hub/index.html`（連絡事項タブ） | 単体ページ旧版。SPA移行済み |
+| `hub/venues.html` | `hub/index.html`（会場登録タブ） | 単体ページ旧版。SPA移行済み |
 
 ---
 
@@ -224,34 +278,61 @@ gh run list --repo s1-1985/soccer-carpool --limit 3
 
 ---
 
+## 🚀 デプロイ履歴
+
+| PR | 日付 | ブランチ | 内容 | コミット |
+|---|---|---|---|---|
+| #11 | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | hub二重ナビ削除・carpool-navデザイン修正 | 8e7ac8c |
+| #12 | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | hub/index.htmlに不足CSSを追加（カレンダー崩れ修正） | 948c5b5 |
+| #13 | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | タブ1行固定・上部スティッキー・ボタン下部スティッキー対応 | 1d4890d |
+
+---
+
 ## 🔄 最新の作業状況
 
-**最終更新:** 2026-02-23 (Session 2 追記)
+**最終更新:** 2026-02-23 (Session 2 PR#13)
 **更新者:** Claude (branch: claude/fix-calendar-seating-bugs-fjK5Z)
-**最終正常コミット:** 948c5b5
+**最終正常コミット:** 1d4890d
 
 ### 今回行った変更（レイアウト・デザイン修正）
-1. **hub/index.html** (PR #11)
+
+#### PR #11 (8e7ac8c)
+1. **hub/index.html**
    - `<nav class="main-nav">` を削除（タブと二重ナビになっていた）
    - `<div class="tab">` を `.container` の外に移動（全幅表示のため）
-   - 不足していた CSS を追加（PR #12）：calendar.css, members.css, notifications.css, venues.css
-   - **原因**: hub/index.htmlはSPA（タブ方式）なのに、タブ内コンテンツ用のCSSを読み込んでいなかった
-2. **css/carpool/common.css** (PR #11)
-   - `.carpool-nav` スタイル改善：白背景、金ボーダー（`border-bottom: 2px solid #E8A200`）、左右パディング統一
+2. **css/carpool/common.css**
+   - `.carpool-nav` スタイル改善：白背景、金ボーダー（`border-bottom: 2px solid #E8A200`）
    - `.container { padding-bottom: 90px }` 追加（固定フッターで隠れないよう）
    - モバイルの `carpool-nav` を縦並びから折り返し表示に変更
+
+#### PR #12 (948c5b5)
+1. **hub/index.html**
+   - 不足していた CSS を追加：calendar.css, members.css, notifications.css, venues.css
+   - **原因**: hub/index.htmlはSPA（タブ方式）なのに、タブ内コンテンツ用のCSSを読み込んでいなかった
+
+#### PR #13 (1d4890d)
+1. **css/common.css**
+   - `.tab { flex-wrap: nowrap }` でタブ折り返し禁止
+   - `.tablinks { flex: 1; text-align: center }` でタブを均等幅1行表示
+   - モバイルのタブ文字サイズ縮小（font-size: 12px / padding: 12px 6px）
+   - `.action-buttons` をモバイルでも横並び（flex-wrap: wrap）に変更
+2. **hub/index.html**
+   - `<header>` + `<div class="tab">` を `<div class="hub-sticky-top">` で囲んで上部 sticky 固定
+   - `.tabcontent .action-buttons { position: sticky; bottom: 0 }` でボタンを下部 sticky 固定
+   - インラインスタイルとして記述（別CSSファイル作成を避けるため）
 
 ### ユーザーからの方針指示（重要）
 - **座席割り当ては最終目標**：まずレイアウト・デザイン・その他機能を完成させる
 - **作業の都度 AI_HANDOFF.md を更新すること**（必須）
+- **ファイル構造の詳細・デプロイ日時・旧ファイル情報を引継ぎに明記すること**（必須）
 
 ### 次のAIがすべきこと
 1. ユーザーが指示するレイアウト・機能修正に対応する
-2. カレンダーが正しく表示されるか確認（CSS追加済みのため改善しているはず）
+2. carpool 各ページ（attendance.html, cars.html 等）も同様に上部ナビと下部ボタンのスティッキー化が必要かユーザーに確認
 3. 座席割り当て（assignments.html）は最後に対応
-4. 車提供（cars.html）の Firestore 非同期ロードは後で対応
+4. 車提供（cars.html / carprovision.js）の Firestore 非同期ロードは後で対応
 
 ### 既知の問題
 - 座席割り当て画面（assignments.html）：Firestoreからのロードが動作しているか未確認
 - 車提供ページ（cars.html）：localStorageのみ読み込みの可能性
-- hub サブページ（calendar.html, members.html等）は単体でも存在するが、メインは hub/index.html のタブ方式
+- 旧ファイル（carpool/assignment.html, carprovision.html 等）が git 上に残存しているが、削除するかどうかユーザーに確認が必要
