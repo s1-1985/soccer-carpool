@@ -306,20 +306,23 @@ tr:hover {
     border-bottom: 3px solid #E8A200;
     background-color: #1C1600;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
 }
 
 .tablinks {
+    flex: 1;
     background-color: #1C1600;
     color: #aaa;
     border: none;
     outline: none;
     cursor: pointer;
-    padding: 14px 20px;
-    font-size: 15px;
+    padding: 14px 10px;
+    font-size: 14px;
     font-weight: 500;
     border-radius: 0;
     transition: background-color 0.2s, color 0.2s;
+    white-space: nowrap;
+    text-align: center;
 }
 
 .tablinks:hover {
@@ -414,19 +417,27 @@ tr:hover {
         width: 95%;
         padding: 15px;
     }
-    
+
+    .tablinks {
+        padding: 12px 6px;
+        font-size: 12px;
+    }
+
     .action-buttons {
-        flex-direction: column;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px;
     }
-    
+
     .action-buttons button {
-        width: 100%;
+        flex: 1;
+        min-width: 0;
     }
-    
+
     .main-nav ul {
         flex-direction: column;
     }
-    
+
     .main-nav li {
         margin-bottom: 5px;
     }

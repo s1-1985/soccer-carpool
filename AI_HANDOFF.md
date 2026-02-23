@@ -226,15 +226,17 @@ gh run list --repo s1-1985/soccer-carpool --limit 3
 
 ## 🔄 最新の作業状況
 
-**最終更新:** 2026-02-23 (Session 2)
+**最終更新:** 2026-02-23 (Session 2 追記)
 **更新者:** Claude (branch: claude/fix-calendar-seating-bugs-fjK5Z)
-**最終正常コミット:** a1f8964（前回：Gemini破壊修復完了）
+**最終正常コミット:** 948c5b5
 
 ### 今回行った変更（レイアウト・デザイン修正）
-1. **hub/index.html**
+1. **hub/index.html** (PR #11)
    - `<nav class="main-nav">` を削除（タブと二重ナビになっていた）
    - `<div class="tab">` を `.container` の外に移動（全幅表示のため）
-2. **css/carpool/common.css**
+   - 不足していた CSS を追加（PR #12）：calendar.css, members.css, notifications.css, venues.css
+   - **原因**: hub/index.htmlはSPA（タブ方式）なのに、タブ内コンテンツ用のCSSを読み込んでいなかった
+2. **css/carpool/common.css** (PR #11)
    - `.carpool-nav` スタイル改善：白背景、金ボーダー（`border-bottom: 2px solid #E8A200`）、左右パディング統一
    - `.container { padding-bottom: 90px }` 追加（固定フッターで隠れないよう）
    - モバイルの `carpool-nav` を縦並びから折り返し表示に変更
@@ -245,7 +247,7 @@ gh run list --repo s1-1985/soccer-carpool --limit 3
 
 ### 次のAIがすべきこと
 1. ユーザーが指示するレイアウト・機能修正に対応する
-2. 各HTMLページのデザイン整合性を確認（carpool vs hub）
+2. カレンダーが正しく表示されるか確認（CSS追加済みのため改善しているはず）
 3. 座席割り当て（assignments.html）は最後に対応
 4. 車提供（cars.html）の Firestore 非同期ロードは後で対応
 
