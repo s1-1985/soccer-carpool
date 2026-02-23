@@ -124,7 +124,7 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
         if (!n) return;
 
         var url = window.location.origin + '/hub/index.html';
-        var message = '【FC 尾島ジュニア 連絡事項】\n' + (n.date || '') + '\n\n' + (n.text || '') + '\n\n' + url;
+        var message = '【FC 尾島ジュニア 連絡事項】\n' + (n.date || '') + '\n\n' + (n.text || '') + '\n\n' + url + '\n※このリンクはSafari/Chromeで開いてください（LINEブラウザ非対応）';
 
         var copied = false;
         if (navigator.clipboard) {

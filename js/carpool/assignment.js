@@ -496,6 +496,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         var baseUrl = window.location.origin;
         message += '\n\n▼ 出欠確認:\n' + baseUrl + '/carpool/attendance.html';
         message += '\n▼ 座席割り当て:\n' + baseUrl + '/carpool/assignments.html';
+        message += '\n\n※リンクはSafari/Chromeで開いてください（LINEブラウザ非対応）';
 
         // テキストをクリップボードにコピー
         if (Utils.copyToClipboard(message)) {

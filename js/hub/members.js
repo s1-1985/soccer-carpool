@@ -41,14 +41,6 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
         var logsBtn = document.getElementById('member-logs');
         if (logsBtn) logsBtn.addEventListener('click', function() { app.Hub.openLogsModal('members'); });
 
-        var floatingAddBtn = document.getElementById('floating-add-button');
-        if (floatingAddBtn) {
-            floatingAddBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                Members.openAddMemberModal();
-            });
-        }
-
         // メンバーフォーム送信
         var memberForm = document.getElementById('member-form');
         if (memberForm) {
@@ -245,6 +237,9 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
 
         var html = '<table style="width:100%;border-collapse:collapse;">';
         html += '<tr><td style="padding:6px;font-weight:bold;width:40%;">氏名</td><td style="padding:6px;">' + UI.escapeHTML(member.name) + '</td></tr>';
+        if (member.kana) {
+            html += '<tr><td style="padding:6px;font-weight:bold;">フリガナ</td><td style="padding:6px;color:#666;">' + UI.escapeHTML(member.kana) + '</td></tr>';
+        }
         html += '<tr><td style="padding:6px;font-weight:bold;">所属</td><td style="padding:6px;">' + (roleLabels[member.role] || member.role) + '</td></tr>';
         if (member.birth) {
             var birthDate = new Date(member.birth);
@@ -296,6 +291,8 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
             if (member && form) {
                 form.setAttribute('data-member-id', member.id);
                 document.getElementById('member-name').value = member.name || '';
+                var kanaEl = document.getElementById('member-kana');
+                if (kanaEl) kanaEl.value = member.kana || '';
                 document.getElementById('member-birth').value = member.birth || '';
                 document.getElementById('member-gender').value = member.gender || 'male';
                 document.getElementById('member-role').value = member.role || 'player';
@@ -327,6 +324,8 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
         var logs = app.Hub.logs || [];
 
         var name = document.getElementById('member-name').value.trim();
+        var kanaEl = document.getElementById('member-kana');
+        var kana = kanaEl ? kanaEl.value.trim() : '';
         var birth = document.getElementById('member-birth').value;
         var gender = document.getElementById('member-gender').value;
         var role = document.getElementById('member-role').value;
@@ -355,13 +354,13 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
             var index = members.findIndex(function(m) { return String(m.id) === String(memberFormId); });
             if (index !== -1) {
                 var origId = members[index].id;
-                members[index] = { id: origId, name: name, abbr: abbr, birth: birth, gender: gender, role: role, number: number ? parseInt(number) : null, grade: grade, notes: notes };
+                members[index] = { id: origId, name: name, kana: kana, abbr: abbr, birth: birth, gender: gender, role: role, number: number ? parseInt(number) : null, grade: grade, notes: notes };
                 app.Hub.logs = Storage.addLog('members', 'メンバー更新', '「' + name + '」', logs);
             }
         } else {
             var ids = members.map(function(m) { return parseInt(m.id) || 0; });
             var newId = ids.length > 0 ? Math.max.apply(null, ids) + 1 : 1;
-            members.push({ id: newId, name: name, abbr: abbr, birth: birth, gender: gender, role: role, number: number ? parseInt(number) : null, grade: grade, notes: notes });
+            members.push({ id: newId, name: name, kana: kana, abbr: abbr, birth: birth, gender: gender, role: role, number: number ? parseInt(number) : null, grade: grade, notes: notes });
             app.Hub.logs = Storage.addLog('members', 'メンバー追加', '「' + name + '」', logs);
         }
 

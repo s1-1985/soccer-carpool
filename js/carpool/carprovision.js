@@ -136,10 +136,14 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         if (!list) return;
 
         const members = FCOjima.Carpool.members;
-        const candidates = members.filter(function(m) {
-            return m.role === 'father' || m.role === 'mother' ||
-                   m.role === 'coach'  || m.role === 'assist';
-        });
+        // 保護者（父・母・役員）を名前順で先に、監督・コーチを最後に表示
+        const parents = members.filter(function(m) {
+            return m.role === 'father' || m.role === 'mother' || m.role === 'officer';
+        }).sort(function(a, b) { return (a.name || '').localeCompare(b.name || '', 'ja'); });
+        const staff = members.filter(function(m) {
+            return m.role === 'coach' || m.role === 'assist';
+        }).sort(function(a, b) { return (a.name || '').localeCompare(b.name || '', 'ja'); });
+        const candidates = parents.concat(staff);
 
         if (candidates.length === 0) {
             list.innerHTML = UI.createAlert('info', '選択できるメンバーがいません。先にHUBでメンバーを登録してください。');

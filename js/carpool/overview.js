@@ -433,7 +433,12 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         if (event.notes) {
             message += '\n備考:\n' + event.notes + '\n';
         }
-        
+
+        // 出欠確認URLを追加
+        var baseUrl = window.location.origin;
+        message += '\n▼ 出欠確認:\n' + baseUrl + '/carpool/attendance.html';
+        message += '\n\n※このリンクはSafari/Chromeで開いてください（LINEブラウザ非対応）';
+
         // テキストをクリップボードにコピー
         if (Utils.copyToClipboard(message)) {
             UI.showAlert('イベント情報をクリップボードにコピーしました。LINEなどに貼り付けて共有できます。');
