@@ -18,12 +18,44 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
     /**
      * 連絡機能の初期化
      */
-    Notifications.init = function() {
+    Notifications.init = async function() {
         console.log('連絡機能を初期化しています...');
-        FCOjima.Carpool.loadMembers();
-        FCOjima.Carpool.loadData();
 
+        // メンバーをロード（Firestore優先 → localStorageフォールバック）
+        if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadMembers) {
+            try {
+                FCOjima.Carpool.members = await FCOjima.DB.loadMembers();
+            } catch (e) {
+                FCOjima.Carpool.loadMembers();
+            }
+        } else {
+            FCOjima.Carpool.loadMembers();
+        }
+
+        // イベントデータをロード（Firestore優先 → localStorageフォールバック）
         const event = FCOjima.Storage.getSelectedEvent();
+        if (event) {
+            FCOjima.Carpool.appData.eventId = event.id;
+            let firestoreLoaded = false;
+            if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadEventData) {
+                try {
+                    const data = await FCOjima.DB.loadEventData(event.id);
+                    if (data && data.notifications && data.notifications.length > 0) {
+                        FCOjima.Carpool.appData.notifications = data.notifications || [];
+                        FCOjima.Carpool.appData.carRegistrations = data.carRegistrations || [];
+                        FCOjima.Carpool.appData.assignments = data.assignments || [];
+                        FCOjima.Carpool.appData.attendance = data.attendance || [];
+                        firestoreLoaded = true;
+                    }
+                } catch (e) {
+                    console.warn('Firestoreイベントデータロード失敗:', e);
+                }
+            }
+            if (!firestoreLoaded) {
+                FCOjima.Carpool.loadData();
+            }
+        }
+
         const header = document.getElementById('event-header');
         if (header && event) {
             header.textContent = FCOjima.Utils.formatDateForDisplay(event.date) + ' ' + event.title;

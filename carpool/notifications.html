@@ -86,9 +86,9 @@
     <script>
         document.addEventListener('DOMContentLoaded', async function() {
             await FCOjima.Auth.requireLogin();
-            // 連絡機能の初期化
+            // 連絡機能の初期化（Firestore非同期ロードのためawait必須）
             if (FCOjima.Carpool.Notifications && FCOjima.Carpool.Notifications.init) {
-                FCOjima.Carpool.Notifications.init();
+                await FCOjima.Carpool.Notifications.init();
             } else {
                 console.error('連絡機能の初期化に失敗しました');
             }
