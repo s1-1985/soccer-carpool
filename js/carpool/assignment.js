@@ -66,7 +66,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
 
             const members = app.Carpool.members || [];
             const assignedPeople = [];
-            document.querySelectorAll('.seat.filled').forEach(function(s) {
+            // filledクラスを持つ通常座席 + ドライバー座席（filledクラスなし）の両方を除外
+            document.querySelectorAll('.seat.filled, .seat.driver-seat').forEach(function(s) {
                 if (s !== seat && s.dataset.person) assignedPeople.push(s.dataset.person);
             });
 
@@ -295,7 +296,10 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         
         // 割り当てリセット
         app.Carpool.appData.assignments = [];
-        
+
+        // スタッフは1人につき1台の車にのみ割り当て（全車ループ通じてインデックスを保持）
+        let globalStaffIndex = 0;
+
         // 各車両に対して割り当て
         drivers.forEach((driver, carIndex) => {
             // 座席情報を初期化
@@ -304,16 +308,15 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                 '中列': {},
                 '後列': {}
             };
-            
+
             // 運転手は自動的に割り当て
             const driverName = driver.parent;
-            
+
             // 優先順位：監督・コーチ→助手席、選手→中列と後列
-            // 助手席に監督・コーチを割り当て
-            let staffIndex = 0;
-            for (let i = 0; i < driver.frontSeat && staffIndex < staffMembers.length; i++) {
-                seats['助手席'][i] = staffMembers[staffIndex];
-                staffIndex++;
+            // 助手席に監督・コーチを割り当て（globalStaffIndexで重複を防ぐ）
+            for (let i = 0; i < driver.frontSeat && globalStaffIndex < staffMembers.length; i++) {
+                seats['助手席'][i] = staffMembers[globalStaffIndex];
+                globalStaffIndex++;
             }
             
             // 残りの選手を中列と後列に割り当て
@@ -1041,9 +1044,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             filteredMembers = [...filteredMembers, ...parentMembers];
         }
         
-        // 既に座席に配置されているメンバーを除外
+        // 既に座席に配置されているメンバーを除外（ドライバー座席も含む）
         const assignedMembers = [];
-        document.querySelectorAll('.seat.filled').forEach(seat => {
+        document.querySelectorAll('.seat.filled, .seat.driver-seat').forEach(seat => {
             if (seat.dataset.person) {
                 assignedMembers.push(seat.dataset.person);
             }

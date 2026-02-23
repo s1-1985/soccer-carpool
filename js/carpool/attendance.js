@@ -17,18 +17,53 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
     /**
      * 出欠確認機能の初期化
      */
-    Attendance.init = function() {
+    Attendance.init = async function() {
         console.log('出欠確認機能を初期化しています...');
 
-        // メンバーとイベントデータをロード
-        FCOjima.Carpool.loadMembers();
-        FCOjima.Carpool.loadData();
+        // メンバーをロード（Firestore優先 → localStorageフォールバック）
+        if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadMembers) {
+            try {
+                FCOjima.Carpool.members = await FCOjima.DB.loadMembers();
+                console.log('メンバーをFirestoreからロードしました: ' + FCOjima.Carpool.members.length + '人');
+            } catch (e) {
+                console.warn('Firestoreメンバーロード失敗、localStorageにフォールバック:', e);
+                FCOjima.Carpool.loadMembers();
+            }
+        } else {
+            FCOjima.Carpool.loadMembers();
+        }
+
+        // イベントデータをロード（Firestore優先 → localStorageフォールバック）
+        const event = FCOjima.Storage.getSelectedEvent();
+        if (event) {
+            FCOjima.Carpool.appData.eventId = event.id;
+            let firestoreLoaded = false;
+            if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadEventData) {
+                try {
+                    const data = await FCOjima.DB.loadEventData(event.id);
+                    if (data && (data.attendance && data.attendance.length > 0 ||
+                                 data.carRegistrations && data.carRegistrations.length > 0)) {
+                        FCOjima.Carpool.appData.carRegistrations = data.carRegistrations || [];
+                        FCOjima.Carpool.appData.assignments     = data.assignments     || [];
+                        FCOjima.Carpool.appData.attendance      = data.attendance      || [];
+                        FCOjima.Carpool.appData.notifications   = data.notifications   || [];
+                        firestoreLoaded = true;
+                        console.log('イベントデータをFirestoreからロードしました');
+                    }
+                } catch (e) {
+                    console.warn('Firestoreイベントデータロード失敗:', e);
+                }
+            }
+            if (!firestoreLoaded) {
+                FCOjima.Carpool.loadData();
+                console.log('localStorageからイベントデータをロードしました');
+            }
+        }
 
         // イベント情報を表示
         this.updateEventInfo();
 
         // 出欠データが空なら対象学年の選手を自動追加
-        const event = FCOjima.Storage.getSelectedEvent();
         if (event && FCOjima.Carpool.appData.attendance.length === 0) {
             this.autoPopulateFromTargetGrades(event);
         }
@@ -243,7 +278,7 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
             '【出欠リマインド】\n' +
             eventInfo +
             '未回答 ' + unknown.length + '名: ' + names + '\n\n' +
-            'ご回答はこちらから:\n' + attendanceUrl;
+            'ご回答はこちらから:\n' + attendanceUrl + '\n※このリンクはSafari/Chromeで開いてください（LINEブラウザ非対応）';
 
         if (FCOjima.Utils.copyToClipboard(message)) {
             UI.showAlert('リマインドメッセージをクリップボードにコピーしました。LINEなどに貼り付けて共有できます。');

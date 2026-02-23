@@ -118,9 +118,9 @@
     <script>
         document.addEventListener('DOMContentLoaded', async function() {
             await FCOjima.Auth.requireLogin();
-            // 出欠確認機能の初期化
+            // 出欠確認機能の初期化（Firestore非同期ロードのためawait必須）
             if (FCOjima.Carpool.Attendance && FCOjima.Carpool.Attendance.init) {
-                FCOjima.Carpool.Attendance.init();
+                await FCOjima.Carpool.Attendance.init();
             } else {
                 console.error('出欠確認機能の初期化に失敗しました');
             }
