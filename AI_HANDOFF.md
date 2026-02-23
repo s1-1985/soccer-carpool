@@ -286,15 +286,15 @@ gh run list --repo s1-1985/soccer-carpool --limit 3
 | #12 | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | hub/index.htmlに不足CSSを追加（カレンダー崩れ修正） | 948c5b5 |
 | #13 | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | タブ1行固定・上部スティッキー・ボタン下部スティッキー対応 | 1d4890d |
 | #15 | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | メンバー管理・カレンダー・認証・登録フロー改善 | 228787a |
-| #16 | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | カレンダーUI・出欠確認・登録フロー・会場地図対応 | (予定) |
+| #16 | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | カレンダーUI・出欠確認・登録フロー・会場地図対応 | 47ef18b |
 
 ---
 
 ## 🔄 最新の作業状況
 
-**最終更新:** 2026-02-23 (Session 3 PR#15, PR#16予定)
+**最終更新:** 2026-02-23 (Session 3 PR#15, PR#16完了)
 **更新者:** Claude (branch: claude/fix-calendar-seating-bugs-fjK5Z)
-**最終正常コミット:** 228787a (PR#15)
+**最終正常コミット:** 47ef18b (PR#16)
 
 ### PR #15 (228787a) で行った変更
 1. **storage.js**: ダミーデータ削除・Firestore優先ロードに変更
