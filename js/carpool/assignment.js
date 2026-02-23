@@ -196,9 +196,12 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
      */
     Assignment.editCarDriver = function(carIndex) {
         console.log(`車のドライバーを編集します: インデックス=${carIndex}`);
-        
-        const carRegistrations = app.Carpool.appData.carRegistrations;
-        const car = carRegistrations[carIndex];
+
+        // carIndexはavailableCars内のインデックス（canDrive!='no'の車のみ）
+        const availableCars = (app.Carpool.appData.carRegistrations || []).filter(function(c) {
+            return c.canDrive !== 'no';
+        });
+        const car = availableCars[carIndex];
         if (!car) {
             console.log('指定された車両が見つかりません');
             return;
