@@ -345,7 +345,7 @@ FCOjima.Storage = FCOjima.Storage || {};
     Storage.clear = function() {
         for (let i = localStorage.length - 1; i >= 0; i--) {
             const key = localStorage.key(i);
-            if (key.startsWith(this.PREFIX)) {
+            if (key && key.startsWith(this.PREFIX)) {
                 localStorage.removeItem(key);
             }
         }

@@ -191,7 +191,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
             
             if (event.meetingPlace) {
                 // 会場登録データから住所を検索（なければ会場名でマップ検索）
-                var allVenues = (app.Hub && app.Hub.venues) ? app.Hub.venues : Storage.loadVenues();
+                var allVenues = ((app.Hub && app.Hub.venues) ? app.Hub.venues : Storage.loadVenues()) || [];
                 var meetingVenue = allVenues.find(function(v) { return v.name === event.meetingPlace; });
                 var meetingQuery = (meetingVenue && meetingVenue.address) ? meetingVenue.address : event.meetingPlace;
                 var meetingMapBtn = '<button type="button" class="map-button" onclick="window.open(\'https://www.google.com/maps/search/?api=1&query=' +
@@ -209,7 +209,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
 
             if (event.venue) {
                 // 会場登録データから住所を検索（なければ会場名でマップ検索）
-                var allVenues2 = (app.Hub && app.Hub.venues) ? app.Hub.venues : Storage.loadVenues();
+                var allVenues2 = ((app.Hub && app.Hub.venues) ? app.Hub.venues : Storage.loadVenues()) || [];
                 var venueData = allVenues2.find(function(v) { return v.name === event.venue; });
                 var venueQuery = (venueData && venueData.address) ? venueData.address : event.venue;
                 var venueMapBtn = '<button type="button" class="map-button" onclick="window.open(\'https://www.google.com/maps/search/?api=1&query=' +

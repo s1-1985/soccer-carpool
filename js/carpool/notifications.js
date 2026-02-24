@@ -283,7 +283,8 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
         message += '以上、ご確認ください。';
         
         // テキストエリアに設定
-        document.getElementById('notificationText').value = message;
+        var notifTextarea = document.getElementById('notificationText');
+        if (notifTextarea) notifTextarea.value = message;
         
         UI.showAlert('配車完了連絡を作成しました。内容を確認して「送信」ボタンをクリックしてください。');
         console.log('配車完了連絡を作成しました');
