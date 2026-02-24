@@ -24,6 +24,7 @@ FCOjima.DB = FCOjima.DB || {};
             await Collections.members().doc(id).set(data, { merge: true });
         } else {
             const ref = await Collections.members().add(member);
+            member.id = ref.id; // 新規追加時はidをメンバーオブジェクトに反映
             return ref.id;
         }
     };

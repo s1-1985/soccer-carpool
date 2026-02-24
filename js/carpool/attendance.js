@@ -398,8 +398,8 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
                 '未設定': 99
             };
             
-            const valA = gradeOrder[a] !== undefined ? gradeOrder[a] : parseInt(a);
-            const valB = gradeOrder[b] !== undefined ? gradeOrder[b] : parseInt(b);
+            const valA = gradeOrder[a] !== undefined ? gradeOrder[a] : (parseInt(a, 10) || 99);
+            const valB = gradeOrder[b] !== undefined ? gradeOrder[b] : (parseInt(b, 10) || 99);
             
             return valA - valB;
         });
@@ -658,8 +658,8 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
                 '未設定': 99
             };
             
-            const valA = gradeOrder[a] !== undefined ? gradeOrder[a] : parseInt(a);
-            const valB = gradeOrder[b] !== undefined ? gradeOrder[b] : parseInt(b);
+            const valA = gradeOrder[a] !== undefined ? gradeOrder[a] : (parseInt(a, 10) || 99);
+            const valB = gradeOrder[b] !== undefined ? gradeOrder[b] : (parseInt(b, 10) || 99);
             
             return valA - valB;
         });
