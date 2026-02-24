@@ -1254,6 +1254,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                             this.dataset.seatType,
                             this.dataset.seatIndex
                         );
+                        // 座席移動後はメンバーリストを再描画（空席になった座席の人が一覧に戻る場合がある）
+                        Assignment.updateMembersList();
                     } else {
                         // 新規配置
                         Assignment.setSeatOccupant(this, memberName);
