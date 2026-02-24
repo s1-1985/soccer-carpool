@@ -92,8 +92,8 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    margin: 0 auto 20px;
     cursor: pointer;
+    flex-shrink: 0;
 }
 
 .driver-seat:hover {
@@ -104,7 +104,23 @@
 .seat-row {
     display: flex;
     justify-content: space-around;
+    align-items: center;
     margin-bottom: 15px;
+}
+
+/* 前列行（助手席＋運転席）: 助手席が左、運転席が右 */
+.driver-row {
+    justify-content: space-between;
+}
+
+/* 助手席ゼロ時のスペーサー */
+.seat-spacer {
+    width: 60px;
+    height: 60px;
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    pointer-events: none;
 }
 
 /* 通常の座席 */
@@ -283,6 +299,15 @@
 
 .share-button:hover {
     background-color: #218838;
+}
+
+/* 画像出力ボタン */
+.export-image-button {
+    background-color: #17a2b8;
+}
+
+.export-image-button:hover {
+    background-color: #138496;
 }
 
 /* 保存ボタン */

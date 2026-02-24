@@ -533,7 +533,82 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     var UI = app.UI;
     var Utils = app.Utils;
     var Storage = app.Storage;
-    
+
+    // タッチドラッグ内部状態
+    var _td = { el: null, ghost: null, data: null, x: 0, y: 0, on: false };
+
+    /**
+     * タッチドラッグ&ドロップ初期化
+     * @param {HTMLElement} el - ドラッグ元要素
+     * @param {Function|Object} dataFn - ドラッグデータ（関数の場合は呼び出し時に評価）
+     */
+    Assignment.initTouchDrag = function(el, dataFn) {
+        el.addEventListener('touchstart', function(e) {
+            var d = typeof dataFn === 'function' ? dataFn() : dataFn;
+            if (!d) return;
+            _td = { el: el, ghost: null, data: d, x: e.touches[0].clientX, y: e.touches[0].clientY, on: false };
+        }, { passive: true });
+
+        el.addEventListener('touchmove', function(e) {
+            if (_td.el !== el) return;
+            var t = e.touches[0], dx = t.clientX - _td.x, dy = t.clientY - _td.y;
+            if (!_td.on) {
+                if (Math.sqrt(dx * dx + dy * dy) < 8) return;
+                _td.on = true;
+                var g = el.cloneNode(true);
+                g.style.cssText = 'position:fixed;opacity:0.75;pointer-events:none;z-index:9999;transition:none;';
+                g.style.width = el.offsetWidth + 'px';
+                document.body.appendChild(g);
+                _td.ghost = g;
+                el.classList.add('dragging');
+            }
+            e.preventDefault();
+            var g = _td.ghost;
+            g.style.left = (t.clientX - g.offsetWidth / 2) + 'px';
+            g.style.top = (t.clientY - g.offsetHeight / 2) + 'px';
+            g.style.display = 'none';
+            var below = document.elementFromPoint(t.clientX, t.clientY);
+            g.style.display = '';
+            document.querySelectorAll('.seat.dragover').forEach(function(s) { s.classList.remove('dragover'); });
+            var dropSeat = below && below.closest && below.closest('.seat:not(.driver-seat)');
+            if (dropSeat) dropSeat.classList.add('dragover');
+        }, { passive: false });
+
+        el.addEventListener('touchend', function(e) {
+            if (_td.el !== el) return;
+            document.querySelectorAll('.seat.dragover').forEach(function(s) { s.classList.remove('dragover'); });
+            if (!_td.on) { _td = { el: null, ghost: null, data: null, x: 0, y: 0, on: false }; return; }
+            var t = e.changedTouches[0];
+            if (_td.ghost) _td.ghost.style.display = 'none';
+            var below = document.elementFromPoint(t.clientX, t.clientY);
+            if (_td.ghost) { _td.ghost.remove(); _td.ghost = null; }
+            el.classList.remove('dragging');
+            var dropSeat = below && below.closest && below.closest('.seat:not(.driver-seat)');
+            var backToList = below && below.closest && below.closest('#members-container');
+            var d = _td.data;
+            _td = { el: null, ghost: null, data: null, x: 0, y: 0, on: false };
+            if (dropSeat && d) {
+                if (d.type === 'member') {
+                    Assignment.setSeatOccupant(dropSeat, d.name);
+                    Assignment.saveAssignments();
+                    Assignment.updateMembersList();
+                } else if (d.type === 'seat') {
+                    Assignment.handleSeatExchange(
+                        d.fromCarIndex, d.fromSeatType, d.fromSeatIndex,
+                        dropSeat.dataset.carIndex, dropSeat.dataset.seatType, dropSeat.dataset.seatIndex
+                    );
+                    Assignment.saveAssignments();
+                    Assignment.updateMembersList();
+                }
+            } else if (backToList && d && d.type === 'seat') {
+                var seat = document.querySelector(
+                    '.seat[data-car-index="' + d.fromCarIndex + '"][data-seat-type="' + d.fromSeatType + '"][data-seat-index="' + d.fromSeatIndex + '"]'
+                );
+                if (seat) { Assignment.clearSeat(seat); Assignment.saveAssignments(); Assignment.updateMembersList(); }
+            }
+        });
+    };
+
     /**
      * 割り当て機能の初期化
      */
@@ -817,23 +892,28 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         const carView = document.createElement('div');
         carView.className = 'car-top-view';
         
-        // 運転席
-        const driverSeat = this.createDriverSeat(car.parent, carIndex);
-        carView.appendChild(driverSeat);
-        
-        // 座席レイアウトを作成
-        // 前列（助手席）
-        if (car.frontSeat > 0) {
-            const frontRow = document.createElement('div');
-            frontRow.className = 'seat-row front-row';
-            
-            for (let i = 0; i < car.frontSeat; i++) {
-                const seat = this.createSeat('助手席', i, carIndex);
-                frontRow.appendChild(seat);
-            }
-            
-            carView.appendChild(frontRow);
+        // 前列：助手席（左）+ 運転席（右）を同じ行に並べる（右ハンドル車）
+        const driverRow = document.createElement('div');
+        driverRow.className = 'seat-row driver-row';
+
+        // 助手席を左側に配置
+        const frontCount = car.frontSeat || 0;
+        for (let i = 0; i < frontCount; i++) {
+            const seat = this.createSeat('助手席', i, carIndex);
+            driverRow.appendChild(seat);
         }
+        // 助手席ゼロの場合はスペーサーで運転席を右端に寄せる
+        if (frontCount === 0) {
+            const spacer = document.createElement('div');
+            spacer.className = 'seat-spacer';
+            driverRow.appendChild(spacer);
+        }
+
+        // 運転席を右側に配置
+        const driverSeat = this.createDriverSeat(car.parent, carIndex);
+        driverRow.appendChild(driverSeat);
+
+        carView.appendChild(driverRow);
         
         // 中列
         if (car.middleSeat > 0) {
@@ -940,6 +1020,23 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         // 座席クリック時の処理（PCクリック・モバイルタップ両対応）
         seat.addEventListener('click', () => {
             this.openSeatEditModal(seat);
+        });
+
+        // HTML5ドラッグ（PC）
+        seat.draggable = true;
+        seat.addEventListener('dragstart', Assignment.handleDragStart.bind(Assignment));
+        seat.addEventListener('dragend', function() { this.classList.remove('dragging'); });
+
+        // タッチドラッグ（スマホ）
+        Assignment.initTouchDrag(seat, function() {
+            if (!seat.dataset.person) return null;
+            return {
+                type: 'seat',
+                name: seat.dataset.person,
+                fromCarIndex: seat.dataset.carIndex,
+                fromSeatType: seat.dataset.seatType,
+                fromSeatIndex: seat.dataset.seatIndex
+            };
         });
 
         return seat;
@@ -1192,10 +1289,14 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         memberItem.appendChild(icon);
         memberItem.appendChild(nameLabel);
         
-        // ドラッグ＆ドロップ用の属性
+        // HTML5ドラッグ（PC）
         memberItem.draggable = true;
-        memberItem.addEventListener('dragstart', this.handleDragStart.bind(this));
-        
+        memberItem.addEventListener('dragstart', Assignment.handleDragStart.bind(Assignment));
+        memberItem.addEventListener('dragend', function() { this.classList.remove('dragging'); });
+
+        // タッチドラッグ（スマホ）
+        Assignment.initTouchDrag(memberItem, { type: 'member', name: member.name });
+
         return memberItem;
     };
     
@@ -1204,27 +1305,32 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
      * @param {DragEvent} e - ドラッグイベント
      */
     Assignment.handleDragStart = function(e) {
+        var el = e.currentTarget;
         // 要素がメンバーアイテムの場合
-        if (e.target.classList.contains('member-item')) {
-            e.dataTransfer.setData('text/plain', e.target.dataset.name);
+        if (el.classList.contains('member-item')) {
+            e.dataTransfer.setData('text/plain', el.dataset.name);
             e.dataTransfer.setData('application/json', JSON.stringify({
                 type: 'member',
-                name: e.target.dataset.name
+                name: el.dataset.name
             }));
+            e.dataTransfer.effectAllowed = 'move';
+            el.classList.add('dragging');
         }
-        // 要素が座席の場合
-        else if (e.target.classList.contains('seat') && e.target.dataset.person) {
-            e.dataTransfer.setData('text/plain', e.target.dataset.person);
+        // 要素が座席の場合（人が設定されている場合のみ）
+        else if (el.classList.contains('seat') && el.dataset.person) {
+            e.dataTransfer.setData('text/plain', el.dataset.person);
             e.dataTransfer.setData('application/json', JSON.stringify({
                 type: 'seat',
-                name: e.target.dataset.person,
-                fromCarIndex: e.target.dataset.carIndex,
-                fromSeatType: e.target.dataset.seatType,
-                fromSeatIndex: e.target.dataset.seatIndex
+                name: el.dataset.person,
+                fromCarIndex: el.dataset.carIndex,
+                fromSeatType: el.dataset.seatType,
+                fromSeatIndex: el.dataset.seatIndex
             }));
+            e.dataTransfer.effectAllowed = 'move';
+            el.classList.add('dragging');
+        } else {
+            e.preventDefault();
         }
-        
-        e.dataTransfer.effectAllowed = 'move';
     };
     
     /**
@@ -1340,5 +1446,138 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         
         // 配置データを保存
         this.saveAssignments();
+    };
+
+    /**
+     * 全車両の座席割り当てを画像として出力
+     * html2canvas でキャプチャし、Web Share API または直接ダウンロード
+     */
+    Assignment.exportAssignmentsAsImage = function() {
+        console.log('画像エクスポートを開始します...');
+
+        if (typeof html2canvas === 'undefined') {
+            UI.showAlert('画像出力ライブラリを読み込み中です。少し待って再試行してください。');
+            return;
+        }
+
+        const event = Storage.getSelectedEvent();
+
+        // エクスポート用の一時コンテナを作成
+        const wrap = document.createElement('div');
+        wrap.style.cssText = [
+            'position:fixed', 'top:-9999px', 'left:0',
+            'width:640px', 'background:#fff',
+            'padding:20px', 'font-family:sans-serif',
+            'box-sizing:border-box'
+        ].join(';');
+
+        // ヘッダー（イベント情報）
+        const header = document.createElement('div');
+        header.style.cssText = 'margin-bottom:16px;padding-bottom:12px;border-bottom:3px solid #E8A200;';
+        header.innerHTML = '<div style="font-size:20px;font-weight:bold;color:#E8A200;">FC尾島ジュニア 乗車割り当て</div>' +
+            (event
+                ? '<div style="font-size:14px;color:#444;margin-top:4px;">' +
+                  Utils.formatDateForDisplay(event.date) + '　' + UI.escapeHTML(event.title) +
+                  (event.startTime ? '　' + event.startTime + '〜' : '') + '</div>'
+                : '');
+        wrap.appendChild(header);
+
+        // 各車両をレンダリング
+        const carRegistrations = (app.Carpool.appData.carRegistrations || []).filter(function(c) {
+            return c.canDrive !== 'no';
+        });
+        const assignments = app.Carpool.appData.assignments || [];
+
+        if (carRegistrations.length === 0) {
+            UI.showAlert('車両登録がありません。');
+            return;
+        }
+
+        carRegistrations.forEach(function(car, carIndex) {
+            const assignment = assignments.find(function(a) { return a.carIndex === carIndex; });
+            const seats = assignment ? assignment.seats : {};
+
+            const carBlock = document.createElement('div');
+            carBlock.style.cssText = 'margin-bottom:16px;padding:12px;background:#f9f9f9;border-radius:8px;border:1px solid #ddd;';
+
+            // 車名
+            const carTitle = document.createElement('div');
+            carTitle.style.cssText = 'font-size:16px;font-weight:bold;color:#E8A200;margin-bottom:8px;';
+            carTitle.textContent = car.parent + 'の車';
+            carBlock.appendChild(carTitle);
+
+            // 座席一覧（横並び）
+            const seatGrid = document.createElement('div');
+            seatGrid.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;';
+
+            // 運転席
+            const driverCell = Assignment._makeImageSeatCell('運転席', car.parent, '#28a745');
+            seatGrid.appendChild(driverCell);
+
+            // 助手席・中列・後列
+            [['助手席', car.frontSeat], ['中列', car.middleSeat], ['後列', car.backSeat]].forEach(function(row) {
+                var seatType = row[0], count = row[1] || 0;
+                for (var i = 0; i < count; i++) {
+                    var person = (seats[seatType] && seats[seatType][i]) || '';
+                    var cell = Assignment._makeImageSeatCell(seatType + (count > 1 ? (i + 1) : ''), person, person ? '#E8A200' : '#ccc');
+                    seatGrid.appendChild(cell);
+                }
+            });
+
+            carBlock.appendChild(seatGrid);
+            wrap.appendChild(carBlock);
+        });
+
+        document.body.appendChild(wrap);
+
+        html2canvas(wrap, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
+            .then(function(canvas) {
+                document.body.removeChild(wrap);
+                canvas.toBlob(function(blob) {
+                    var fileName = '乗車割り当て' + (event ? '_' + event.date : '') + '.png';
+                    var file = new File([blob], fileName, { type: 'image/png' });
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        navigator.share({ title: '乗車割り当て', files: [file] })
+                            .catch(function(err) { console.warn('share cancelled:', err); });
+                    } else {
+                        var url = URL.createObjectURL(blob);
+                        var a = document.createElement('a');
+                        a.href = url;
+                        a.download = fileName;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    }
+                }, 'image/png');
+            })
+            .catch(function(err) {
+                if (document.body.contains(wrap)) document.body.removeChild(wrap);
+                console.error('html2canvas エラー:', err);
+                UI.showAlert('画像の生成に失敗しました。');
+            });
+    };
+
+    /**
+     * 画像エクスポート用の座席セルを作成（内部ヘルパー）
+     */
+    Assignment._makeImageSeatCell = function(label, name, color) {
+        var cell = document.createElement('div');
+        cell.style.cssText = 'text-align:center;min-width:70px;';
+        var circle = document.createElement('div');
+        circle.style.cssText = 'width:44px;height:44px;border-radius:50%;background:' + color +
+            ';color:#fff;display:flex;align-items:center;justify-content:center;' +
+            'font-weight:bold;font-size:13px;margin:0 auto 4px;';
+        circle.textContent = name ? name.substring(0, 2) : '空';
+        var nameDiv = document.createElement('div');
+        nameDiv.style.cssText = 'font-size:11px;color:#333;white-space:nowrap;overflow:hidden;max-width:72px;text-overflow:ellipsis;';
+        nameDiv.textContent = name || '（空席）';
+        var labelDiv = document.createElement('div');
+        labelDiv.style.cssText = 'font-size:10px;color:#888;';
+        labelDiv.textContent = label;
+        cell.appendChild(circle);
+        cell.appendChild(nameDiv);
+        cell.appendChild(labelDiv);
+        return cell;
     };
 })(window.FCOjima);

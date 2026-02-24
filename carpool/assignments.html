@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>座席割り当て - FC尾島ジュニア</title>
-    <link rel="stylesheet" href="../css/common.css?v=20260224b">
-    <link rel="stylesheet" href="../css/carpool/common.css?v=20260224b">
-    <link rel="stylesheet" href="../css/carpool/assignment.css?v=20260224b">
+    <link rel="stylesheet" href="../css/common.css?v=20260224c">
+    <link rel="stylesheet" href="../css/carpool/common.css?v=20260224c">
+    <link rel="stylesheet" href="../css/carpool/assignment.css?v=20260224c">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -52,6 +52,7 @@
             <button id="generate-random" class="random-assign-button">ランダム配置</button>
             <button id="save-assignments" class="save-button">保存</button>
             <button id="share-assignments" class="share-button">LINEで共有</button>
+            <button id="export-image" class="export-image-button">画像で出力</button>
         </div>
     </div>
 
@@ -80,23 +81,26 @@
         <button id="save-and-share-button" class="share-button">保存して共有</button>
     </div>
 
+    <!-- html2canvas（画像エクスポート用） -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script src="../js/common/firebase-config.js?v=20260224b"></script>
+    <script src="../js/common/firebase-config.js?v=20260224c"></script>
 
     <!-- 共通モジュール -->
-    <script src="../js/common/global.js?v=20260224b"></script>
-    <script src="../js/common/utils.js?v=20260224b"></script>
-    <script src="../js/common/storage.js?v=20260224b"></script>
-    <script src="../js/common/ui.js?v=20260224b"></script>
-    <script src="../js/common/auth.js?v=20260224b"></script>
-    <script src="../js/common/db.js?v=20260224b"></script>
+    <script src="../js/common/global.js?v=20260224c"></script>
+    <script src="../js/common/utils.js?v=20260224c"></script>
+    <script src="../js/common/storage.js?v=20260224c"></script>
+    <script src="../js/common/ui.js?v=20260224c"></script>
+    <script src="../js/common/auth.js?v=20260224c"></script>
+    <script src="../js/common/db.js?v=20260224c"></script>
 
     <!-- 配車管理用モジュール -->
-    <script src="../js/carpool/overview.js?v=20260224b"></script>
-    <script src="../js/carpool/assignment.js?v=20260224b"></script>
+    <script src="../js/carpool/overview.js?v=20260224c"></script>
+    <script src="../js/carpool/assignment.js?v=20260224c"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', async function() {
@@ -125,6 +129,13 @@
                 }
             });
             
+            // 画像で出力ボタンの設定
+            document.getElementById('export-image').addEventListener('click', function() {
+                if (FCOjima.Carpool.Assignment && FCOjima.Carpool.Assignment.exportAssignmentsAsImage) {
+                    FCOjima.Carpool.Assignment.exportAssignmentsAsImage();
+                }
+            });
+
             // 保存して共有ボタンの設定
             document.getElementById('save-and-share-button').addEventListener('click', function() {
                 if (FCOjima.Carpool.Assignment) {
