@@ -39,6 +39,7 @@ FCOjima.DB = FCOjima.DB || {};
         const snapshot = await Collections.members().get();
         snapshot.docs.forEach(doc => batch.delete(doc.ref));
         members.forEach(member => {
+            if (!member.id) return; // IDなしメンバーはスキップ
             const data = Object.assign({}, member);
             const id = String(data.id);
             delete data.id;
@@ -59,6 +60,7 @@ FCOjima.DB = FCOjima.DB || {};
         const snapshot = await Collections.venues().get();
         snapshot.docs.forEach(doc => batch.delete(doc.ref));
         venues.forEach(venue => {
+            if (!venue.id) return; // IDなし会場はスキップ
             const data = Object.assign({}, venue);
             const id = String(data.id);
             delete data.id;
@@ -79,6 +81,7 @@ FCOjima.DB = FCOjima.DB || {};
         const snapshot = await Collections.events().get();
         snapshot.docs.forEach(doc => batch.delete(doc.ref));
         events.forEach(event => {
+            if (!event.id) return; // IDなしイベントはスキップ
             const data = Object.assign({}, event);
             const id = String(data.id);
             delete data.id;
