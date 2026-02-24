@@ -47,6 +47,13 @@
     gap: 10px;
 }
 
+/* 配車ページ: ヘッダー上部スティッキー固定 */
+header {
+    position: sticky;
+    top: 0;
+    z-index: 200;
+}
+
 /* 配車管理ナビゲーション */
 .carpool-nav {
     display: flex;
@@ -56,6 +63,10 @@
     background-color: #fff;
     border-bottom: 2px solid #E8A200;
     box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    /* ヘッダー直下にスティッキー固定（header高さ: padding30px + h1約38px + border3px ≒ 71px） */
+    position: sticky;
+    top: 71px;
+    z-index: 199;
 }
 
 .carpool-nav a {
@@ -112,6 +123,20 @@
 /* global-navigation（固定フッター）分のパディング */
 .container {
     padding-bottom: 90px;
+}
+
+/* メインアクションボタンを下部スティッキー固定 */
+/* .card内・.container直下の action-buttons が対象。overview.htmlの.step-content内は対象外 */
+.card > .action-buttons,
+.container > .action-buttons {
+    position: sticky;
+    bottom: 60px; /* グローバルナビ（~60px）の上 */
+    background: #f8f9fa;
+    border-top: 2px solid #E8A200;
+    padding: 10px;
+    margin-top: 16px;
+    z-index: 100;
+    box-shadow: 0 -2px 6px rgba(0,0,0,0.1);
 }
 
 /* 配車管理フッター */

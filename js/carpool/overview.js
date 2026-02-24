@@ -16,15 +16,15 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
     /**
      * 概要機能の初期化
      */
-    Overview.init = function() {
+    Overview.init = async function() {
         console.log('配車管理概要機能を初期化しています...');
-        
-        // イベントデータの初期化
-        this.initEventData();
-        
+
+        // イベントデータの初期化（Firestore対応）
+        await this.initEventData();
+
         // イベントリスナーの設定
         this.setupEventListeners();
-        
+
         console.log('配車管理概要機能の初期化が完了しました');
     };
     
@@ -50,18 +50,36 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
     /**
      * イベントデータを初期化
      */
-    Overview.initEventData = function() {
+    Overview.initEventData = async function() {
         console.log('イベントデータを初期化します...');
-        
+
         var event = Storage.getSelectedEvent();
         if (event) {
             this.displayEventData(event);
-            
+
             // イベントIDを保存
             app.Carpool.appData.eventId = event.id;
-            
-            // イベント固有のデータをロード
-            app.Carpool.loadData();
+
+            // イベントデータをロード（Firestore優先 → localStorageフォールバック）
+            var firestoreLoaded = false;
+            if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadEventData) {
+                try {
+                    var data = await FCOjima.DB.loadEventData(event.id);
+                    if (data) {
+                        app.Carpool.appData.carRegistrations = data.carRegistrations || [];
+                        app.Carpool.appData.assignments      = data.assignments      || [];
+                        app.Carpool.appData.attendance       = data.attendance       || [];
+                        app.Carpool.appData.notifications    = data.notifications    || [];
+                        firestoreLoaded = true;
+                        console.log('イベントデータをFirestoreからロードしました');
+                    }
+                } catch (e) {
+                    console.warn('Firestoreイベントデータロード失敗:', e);
+                }
+            }
+            if (!firestoreLoaded) {
+                app.Carpool.loadData();
+            }
             
             console.log('イベントデータを読み込みました: ID=' + event.id + ', タイトル=' + event.title);
             
@@ -433,7 +451,12 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         if (event.notes) {
             message += '\n備考:\n' + event.notes + '\n';
         }
-        
+
+        // 出欠確認URLを追加
+        var baseUrl = window.location.origin;
+        message += '\n▼ 出欠確認:\n' + baseUrl + '/carpool/attendance.html';
+        message += '\n\n※このリンクはSafari/Chromeで開いてください（LINEブラウザ非対応）';
+
         // テキストをクリップボードにコピー
         if (Utils.copyToClipboard(message)) {
             UI.showAlert('イベント情報をクリップボードにコピーしました。LINEなどに貼り付けて共有できます。');

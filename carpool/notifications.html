@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>連絡 - FC尾島ジュニア</title>
     <link rel="stylesheet" href="../css/common.css?v=20260219">
-    <link rel="stylesheet" href="../css/carpool/common.css?v=20260219">
+    <link rel="stylesheet" href="../css/carpool/common.css?v=20260224">
     <link rel="stylesheet" href="../css/carpool/notifications.css?v=20260219">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
@@ -86,9 +86,9 @@
     <script>
         document.addEventListener('DOMContentLoaded', async function() {
             await FCOjima.Auth.requireLogin();
-            // 連絡機能の初期化
+            // 連絡機能の初期化（Firestore非同期ロードのためawait必須）
             if (FCOjima.Carpool.Notifications && FCOjima.Carpool.Notifications.init) {
-                FCOjima.Carpool.Notifications.init();
+                await FCOjima.Carpool.Notifications.init();
             } else {
                 console.error('連絡機能の初期化に失敗しました');
             }

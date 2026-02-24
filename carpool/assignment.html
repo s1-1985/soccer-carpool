@@ -60,16 +60,14 @@
         <div class="modal-content">
             <span class="close">&times;</span>
             <h2>座席の編集</h2>
+            <p id="seat-current-info" style="color:#666;font-size:14px;margin-bottom:10px;"></p>
+            <div id="seat-member-list" style="max-height:300px;overflow-y:auto;border:1px solid #eee;border-radius:6px;margin-bottom:12px;"></div>
             <form id="seat-edit-form">
-                <div class="form-group">
-                    <label for="seat-person">乗車メンバー:</label>
-                    <input type="text" id="seat-person">
-                </div>
                 <div class="form-actions">
-                    <button type="submit">保存</button>
                     <button type="button" id="cancel-seat-edit">キャンセル</button>
                     <button type="button" id="clear-seat" class="delete-button">座席をクリア</button>
                 </div>
+                <input type="hidden" id="seat-person">
             </form>
         </div>
     </div>

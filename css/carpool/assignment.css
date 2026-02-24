@@ -164,6 +164,26 @@
     background-color: #28a745;
 }
 
+/* 座席内アイコンの役割別色分け */
+.seat .member-icon.coach,
+.seat .member-icon.assist {
+    background-color: #28a745;
+}
+
+.seat .member-icon.player {
+    background-color: #E8A200;
+}
+
+.seat .member-icon.father,
+.seat .member-icon.mother,
+.seat .member-icon.officer {
+    background-color: #6c757d;
+}
+
+.seat .member-icon.other {
+    background-color: #6f42c1;
+}
+
 /* メンバーリスト */
 .member-group-header {
     font-size: 16px;
@@ -270,7 +290,8 @@
 }
 
 /* 役割別メンバーラベルの色分け */
-.member-item.coach .member-icon {
+.member-item.coach .member-icon,
+.member-item.assist .member-icon {
     background-color: #28a745;
 }
 
@@ -278,6 +299,9 @@
     background-color: #E8A200;
 }
 
+.member-item.father .member-icon,
+.member-item.mother .member-icon,
+.member-item.officer .member-icon,
 .member-item.parent .member-icon {
     background-color: #6c757d;
 }

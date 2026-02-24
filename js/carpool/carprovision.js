@@ -17,10 +17,48 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
     /**
      * 車提供機能の初期化
      */
-    CarProvision.init = function() {
+    CarProvision.init = async function() {
         console.log('車提供機能を初期化しています...');
-        FCOjima.Carpool.loadMembers();
-        FCOjima.Carpool.loadData();
+
+        // メンバーをロード（Firestore優先 → localStorageフォールバック）
+        if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadMembers) {
+            try {
+                FCOjima.Carpool.members = await FCOjima.DB.loadMembers();
+                console.log('メンバーをFirestoreからロードしました: ' + FCOjima.Carpool.members.length + '人');
+            } catch (e) {
+                console.warn('Firestoreメンバーロード失敗、localStorageにフォールバック:', e);
+                FCOjima.Carpool.loadMembers();
+            }
+        } else {
+            FCOjima.Carpool.loadMembers();
+        }
+
+        // イベントデータをロード（Firestore優先 → localStorageフォールバック）
+        const event = FCOjima.Storage.getSelectedEvent();
+        if (event) {
+            FCOjima.Carpool.appData.eventId = event.id;
+            let firestoreLoaded = false;
+            if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadEventData) {
+                try {
+                    const data = await FCOjima.DB.loadEventData(event.id);
+                    if (data) {
+                        FCOjima.Carpool.appData.carRegistrations = data.carRegistrations || [];
+                        FCOjima.Carpool.appData.assignments     = data.assignments     || [];
+                        FCOjima.Carpool.appData.attendance      = data.attendance      || [];
+                        FCOjima.Carpool.appData.notifications   = data.notifications   || [];
+                        firestoreLoaded = true;
+                        console.log('イベントデータをFirestoreからロードしました: 車両=' + FCOjima.Carpool.appData.carRegistrations.length + '台');
+                    }
+                } catch (e) {
+                    console.warn('Firestoreイベントデータロード失敗:', e);
+                }
+            }
+            if (!firestoreLoaded) {
+                FCOjima.Carpool.loadData();
+                console.log('localStorageからイベントデータをロードしました');
+            }
+        }
+
         this.updateEventInfo();
         this.updateCarRegistrations();
         console.log('車提供機能の初期化が完了しました');
@@ -136,10 +174,14 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         if (!list) return;
 
         const members = FCOjima.Carpool.members;
-        const candidates = members.filter(function(m) {
-            return m.role === 'father' || m.role === 'mother' ||
-                   m.role === 'coach'  || m.role === 'assist';
-        });
+        // 保護者（父・母・役員）を名前順で先に、監督・コーチを最後に表示
+        const parents = members.filter(function(m) {
+            return m.role === 'father' || m.role === 'mother' || m.role === 'officer';
+        }).sort(function(a, b) { return (a.name || '').localeCompare(b.name || '', 'ja'); });
+        const staff = members.filter(function(m) {
+            return m.role === 'coach' || m.role === 'assist';
+        }).sort(function(a, b) { return (a.name || '').localeCompare(b.name || '', 'ja'); });
+        const candidates = parents.concat(staff);
 
         if (candidates.length === 0) {
             list.innerHTML = UI.createAlert('info', '選択できるメンバーがいません。先にHUBでメンバーを登録してください。');

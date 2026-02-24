@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>車提供 - FC尾島ジュニア</title>
     <link rel="stylesheet" href="../css/common.css?v=20260219">
-    <link rel="stylesheet" href="../css/carpool/common.css?v=20260219">
+    <link rel="stylesheet" href="../css/carpool/common.css?v=20260224">
     <link rel="stylesheet" href="../css/carpool/carprovision.css?v=20260219">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
@@ -169,9 +169,9 @@
             // モーダル初期化
             FCOjima.UI.initModals();
             
-            // 車提供機能の初期化
+            // 車提供機能の初期化（Firestore非同期ロードのためawait必須）
             if (FCOjima.Carpool.CarProvision && FCOjima.Carpool.CarProvision.init) {
-                FCOjima.Carpool.CarProvision.init();
+                await FCOjima.Carpool.CarProvision.init();
             } else {
                 console.error('車提供機能の初期化に失敗しました');
             }
