@@ -101,7 +101,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                     }
 
                     var nameSpan = document.createElement('span');
-                    nameSpan.textContent = member.abbr || member.name;
+                    nameSpan.textContent = (member.abbr != null && member.abbr !== '') ? member.abbr : member.name;
                     nameSpan.style.fontSize = '14px';
                     item.appendChild(nameSpan);
 
@@ -360,9 +360,15 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         var totalPlayers = sortedPlayers.length;
         var toAssign = Math.min(totalPlayers, totalRemaining);
 
-        // 各車の目標人数を容量比で計算
+        // 空き座席がなければスキップ
+        if (totalRemaining === 0) {
+            console.log('空き座席がありません。選手の割り当てをスキップします');
+            toAssign = 0;
+        }
+
+        // 各車の目標人数を容量比で計算（totalRemaining > 0 が保証済み）
         var carTargets = carSeatsList.map(function(l) {
-            return Math.floor(toAssign * l.length / totalRemaining);
+            return totalRemaining > 0 ? Math.floor(toAssign * l.length / totalRemaining) : 0;
         });
         // 端数を先頭車から補完
         var assigned = carTargets.reduce(function(a, b) { return a + b; }, 0);
@@ -1067,7 +1073,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
 
         // メンバー情報を取得
         var member = app.Carpool.members.find(function(m) { return m.name === personName; });
-        var displayName = member ? (member.abbr || member.name) : (personName.length > 4 ? personName.substring(0, 4) : personName);
+        var displayName = member ? ((member.abbr != null && member.abbr !== '') ? member.abbr : member.name) : (personName.length > 4 ? personName.substring(0, 4) : personName);
         var gc = (member && member.role === 'player') ? Assignment.getGradeColor(member.grade) : null;
 
         // 学年色で座席背景を薄く色づけ
@@ -1350,7 +1356,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         // 名前（略称優先、丸なし）
         const nameLabel = document.createElement('div');
         nameLabel.className = 'member-name';
-        nameLabel.textContent = member.abbr || member.name;
+        nameLabel.textContent = (member.abbr != null && member.abbr !== '') ? member.abbr : member.name;
         memberItem.appendChild(nameLabel);
 
         // HTML5ドラッグ（PC）
@@ -1358,8 +1364,10 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         memberItem.addEventListener('dragstart', Assignment.handleDragStart.bind(Assignment));
         memberItem.addEventListener('dragend', function() { this.classList.remove('dragging'); });
 
-        // タッチドラッグ（スマホ）
-        Assignment.initTouchDrag(memberItem, { type: 'member', name: member.name });
+        // タッチドラッグ（スマホ）— 関数クロージャで各アイテム固有のデータを保持
+        Assignment.initTouchDrag(memberItem, (function(n) {
+            return function() { return { type: 'member', name: n }; };
+        })(member.name));
 
         return memberItem;
     };
