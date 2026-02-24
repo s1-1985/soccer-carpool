@@ -264,7 +264,7 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
 
             // 座席タイプごとに乗車メンバーを取得
             Object.keys(assignment.seats || {}).forEach(seatType => {
-                Object.values(assignment.seats[seatType]).forEach(passengerName => {
+                Object.values(assignment.seats[seatType] || {}).forEach(passengerName => {
                     if (passengerName && passengerName !== assignment.driver) {
                         passengers.push(passengerName);
                     }
