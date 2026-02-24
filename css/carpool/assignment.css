@@ -252,6 +252,21 @@
     margin-top: 20px;
 }
 
+/* 割り当て画面のアクションボタン（固定しない） */
+.assignment-action-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 16px 0;
+    padding: 12px 0;
+    border-top: 1px solid #eee;
+}
+
+.assignment-action-buttons button {
+    flex: 1;
+    min-width: 100px;
+}
+
 /* ランダム配置ボタン */
 .random-assign-button {
     background-color: #6c757d;
@@ -310,31 +325,46 @@
     background-color: #6f42c1;
 }
 
-/* レスポンシブ対応 */
+/* レスポンシブ対応（スマホでも左右分割を維持） */
 @media screen and (max-width: 768px) {
     .assignment-container {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr;
+        grid-gap: 8px;
     }
-    
+
+    .car-seats-container,
+    .members-assignment-container {
+        padding: 8px;
+    }
+
+    .car-seats-container {
+        border-right: 2px solid #E8A200;
+    }
+
+    .cars-scroll-area,
+    .members-scroll-area {
+        max-height: 60vh;
+    }
+
     .car-top-view {
-        width: 95%;
+        width: 100%;
+        padding: 10px 4px;
     }
-    
+
     .seat {
-        width: 50px;
-        height: 50px;
+        width: 42px;
+        height: 42px;
     }
-    
+
     .member-item {
         width: 100%;
+        padding: 6px;
+        font-size: 12px;
     }
-    
-    .action-buttons {
-        flex-direction: column;
-    }
-    
-    .action-buttons button {
-        width: 100%;
-        margin-bottom: 10px;
+
+    .member-item .member-icon {
+        width: 26px;
+        height: 26px;
+        font-size: 11px;
     }
 }

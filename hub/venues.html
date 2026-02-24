@@ -28,15 +28,6 @@
                 <div class="venue-search">
                     <input type="text" id="venue-search" placeholder="会場名で検索..." class="form-control">
                 </div>
-                <div class="venue-filter">
-                    <select id="venue-type-filter" class="form-control">
-                        <option value="all">全てのタイプ</option>
-                        <option value="ground">グラウンド</option>
-                        <option value="gym">体育館</option>
-                        <option value="park">公園</option>
-                        <option value="other">その他</option>
-                    </select>
-                </div>
             </div>
 
             <h2>会場一覧</h2>
@@ -62,17 +53,10 @@
                     <input type="text" id="venue-name" required>
                 </div>
                 <div class="form-group">
-                    <label for="venue-type">会場タイプ</label>
-                    <select id="venue-type">
-                        <option value="ground">グラウンド</option>
-                        <option value="gym">体育館</option>
-                        <option value="park">公園</option>
-                        <option value="other">その他</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="venue-address">住所</label>
-                    <input type="text" id="venue-address" required>
+                    <label for="venue-address">住所・場所</label>
+                    <input type="text" id="venue-address" placeholder="例: 群馬県太田市大島町〇〇">
+                    <p style="font-size:12px;color:#888;margin:4px 0 6px;">住所を入力後、地図で確認できます</p>
+                    <button type="button" id="venue-map-open" class="secondary-button" style="font-size:13px;">🗺 地図を開いて住所を確認</button>
                 </div>
                 <div class="form-group">
                     <label for="venue-notes">備考</label>
