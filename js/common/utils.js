@@ -30,12 +30,14 @@ FCOjima.Utils = FCOjima.Utils || {};
      * @returns {string} 「YYYY年MM月DD日(曜日)」形式の日付文字列
      */
     Utils.formatDateForDisplay = function(dateString) {
+        if (!dateString) return '-';
         const date = new Date(dateString);
+        if (isNaN(date.getTime())) return dateString;
         const year = date.getFullYear();
         const month = date.getMonth() + 1;
         const day = date.getDate();
         const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
-        
+
         return year + '年' + month + '月' + day + '日(' + dayOfWeek + ')';
     };
     
@@ -61,6 +63,7 @@ FCOjima.Utils = FCOjima.Utils || {};
      * @returns {string} 表示用ラベル
      */
     Utils.getGradeLabel = function(grade) {
+        if (!grade) return '-';
         if (grade === '年少' || grade === '年中' || grade === '年長') {
             return grade;
         }
