@@ -18,12 +18,44 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
     /**
      * 連絡機能の初期化
      */
-    Notifications.init = function() {
+    Notifications.init = async function() {
         console.log('連絡機能を初期化しています...');
-        FCOjima.Carpool.loadMembers();
-        FCOjima.Carpool.loadData();
 
+        // メンバーをロード（Firestore優先 → localStorageフォールバック）
+        if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadMembers) {
+            try {
+                FCOjima.Carpool.members = await FCOjima.DB.loadMembers();
+            } catch (e) {
+                FCOjima.Carpool.loadMembers();
+            }
+        } else {
+            FCOjima.Carpool.loadMembers();
+        }
+
+        // イベントデータをロード（Firestore優先 → localStorageフォールバック）
         const event = FCOjima.Storage.getSelectedEvent();
+        if (event) {
+            FCOjima.Carpool.appData.eventId = event.id;
+            let firestoreLoaded = false;
+            if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadEventData) {
+                try {
+                    const data = await FCOjima.DB.loadEventData(event.id);
+                    if (data) {
+                        FCOjima.Carpool.appData.notifications = data.notifications || [];
+                        FCOjima.Carpool.appData.carRegistrations = data.carRegistrations || [];
+                        FCOjima.Carpool.appData.assignments = data.assignments || [];
+                        FCOjima.Carpool.appData.attendance = data.attendance || [];
+                        firestoreLoaded = true;
+                    }
+                } catch (e) {
+                    console.warn('Firestoreイベントデータロード失敗:', e);
+                }
+            }
+            if (!firestoreLoaded) {
+                FCOjima.Carpool.loadData();
+            }
+        }
+
         const header = document.getElementById('event-header');
         if (header && event) {
             header.textContent = FCOjima.Utils.formatDateForDisplay(event.date) + ' ' + event.title;
@@ -84,8 +116,10 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
         }
 
         const today = new Date().toISOString().slice(0, 10);
+        const user = (window.FCOjima && FCOjima.Auth && FCOjima.Auth.getDisplayName)
+            ? FCOjima.Auth.getDisplayName() : '';
         const notifications = FCOjima.Carpool.appData.notifications || [];
-        notifications.unshift({ date: today, text: text, type: 'info' });
+        notifications.unshift({ date: today, text: text, type: 'info', user: user });
         FCOjima.Carpool.appData.notifications = notifications;
         FCOjima.Carpool.saveData();
 
@@ -221,18 +255,17 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
         
         // 配車情報を整理
         assignments.forEach((assignment, carIndex) => {
-            const car = carRegistrations[assignment.carIndex];
-            if (!car) return;
-            
-            message += `■ ${car.parent}さんの車\n`;
-            
+            if (!assignment.driver) return;
+
+            message += `■ ${assignment.driver}さんの車\n`;
+
             // 乗車メンバーを集計
             const passengers = [];
-            
+
             // 座席タイプごとに乗車メンバーを取得
-            Object.keys(assignment.seats).forEach(seatType => {
+            Object.keys(assignment.seats || {}).forEach(seatType => {
                 Object.values(assignment.seats[seatType]).forEach(passengerName => {
-                    if (passengerName && passengerName !== car.parent) {
+                    if (passengerName && passengerName !== assignment.driver) {
                         passengers.push(passengerName);
                     }
                 });
@@ -363,11 +396,14 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
      */
     Notifications.searchNotifications = function(keyword) {
         console.log(`連絡事項を検索します: "${keyword}"`);
-        
+
         if (!keyword) {
             this.updateNotifications(); // キーワードがなければ全て表示
             return;
         }
+
+        // 正規表現のメタ文字をエスケープ（例: "(" や "." を含むキーワードでエラーにならないよう）
+        const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         
         const notificationsList = document.getElementById('notificationsList');
         if (!notificationsList) {
@@ -413,7 +449,7 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
             
             // 検索キーワードをハイライト表示
             const highlightedText = UI.escapeHTML(notification.text).replace(
-                new RegExp(keyword, 'gi'),
+                new RegExp(escapedKeyword, 'gi'),
                 match => `<span class="highlight">${match}</span>`
             );
             
@@ -421,12 +457,12 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
             notificationContent.innerHTML = '\
                 <div class="notification-header">\
                     <div class="notification-date">' + notification.date.replace(
-                        new RegExp(keyword, 'gi'),
+                        new RegExp(escapedKeyword, 'gi'),
                         match => `<span class="highlight">${match}</span>`
                     ) + '</div>\
                     <div class="notification-author">' + 
                         (notification.user ? UI.escapeHTML(notification.user).replace(
-                            new RegExp(keyword, 'gi'),
+                            new RegExp(escapedKeyword, 'gi'),
                             match => `<span class="highlight">${match}</span>`
                         ) : '') + 
                     '</div>\

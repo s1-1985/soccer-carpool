@@ -113,8 +113,9 @@
         document.addEventListener('DOMContentLoaded', async function() {
             await FCOjima.Auth.requireLogin();
 
+            // 概要機能の初期化（Firestore非同期ロードのためawait必須）
             if (FCOjima.Carpool.Overview && FCOjima.Carpool.Overview.init) {
-                FCOjima.Carpool.Overview.init();
+                await FCOjima.Carpool.Overview.init();
             }
 
             document.getElementById('back-to-hub').addEventListener('click', function() {

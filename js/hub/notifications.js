@@ -53,7 +53,9 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
             return new Date(b.date) - new Date(a.date);
         });
 
-        sorted.forEach(function(n, i) {
+        sorted.forEach(function(n) {
+            // 元の配列でのインデックスを使う（sortedはシャローコピーなので同じオブジェクト参照）
+            var origIndex = notifications.indexOf(n);
             var div = document.createElement('div');
             div.className = 'notification-card';
 
@@ -68,8 +70,8 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
                 '</div>' +
                 '<div class="notification-content">' + textStr + '</div>' +
                 '<div class="notification-actions">' +
-                    '<button type="button" class="secondary-button" data-action="share" data-index="' + i + '">LINEで共有</button>' +
-                    '<button type="button" class="delete-button" data-action="delete" data-index="' + i + '">削除</button>' +
+                    '<button type="button" class="secondary-button" data-action="share" data-index="' + origIndex + '">LINEで共有</button>' +
+                    '<button type="button" class="delete-button" data-action="delete" data-index="' + origIndex + '">削除</button>' +
                 '</div>';
 
             listEl.appendChild(div);
@@ -103,7 +105,9 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
 
         var user = (app.Auth && app.Auth.getDisplayName) ? app.Auth.getDisplayName() : 'システム';
 
-        var newItem = { date: dateStr, text: text, user: user };
+        // Firestoreの doc パスに使用するためユニークIDを付与（未設定だと全件が "undefined" パスに上書きされる）
+        var newId = Date.now().toString() + Math.floor(Math.random() * 1000);
+        var newItem = { id: newId, date: dateStr, text: text, user: user };
 
         app.Hub.notifications = app.Hub.notifications || [];
         app.Hub.notifications.unshift(newItem);
@@ -124,7 +128,7 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
         if (!n) return;
 
         var url = window.location.origin + '/hub/index.html';
-        var message = '【FC 尾島ジュニア 連絡事項】\n' + (n.date || '') + '\n\n' + (n.text || '') + '\n\n' + url;
+        var message = '【FC 尾島ジュニア 連絡事項】\n' + (n.date || '') + '\n\n' + (n.text || '') + '\n\n' + url + '\n※このリンクはSafari/Chromeで開いてください（LINEブラウザ非対応）';
 
         var copied = false;
         if (navigator.clipboard) {

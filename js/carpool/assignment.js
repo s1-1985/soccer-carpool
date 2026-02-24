@@ -66,7 +66,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
 
             const members = app.Carpool.members || [];
             const assignedPeople = [];
-            document.querySelectorAll('.seat.filled').forEach(function(s) {
+            // filledクラスを持つ通常座席 + ドライバー座席（filledクラスなし）の両方を除外
+            document.querySelectorAll('.seat.filled, .seat.driver-seat').forEach(function(s) {
                 if (s !== seat && s.dataset.person) assignedPeople.push(s.dataset.person);
             });
 
@@ -195,9 +196,12 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
      */
     Assignment.editCarDriver = function(carIndex) {
         console.log(`車のドライバーを編集します: インデックス=${carIndex}`);
-        
-        const carRegistrations = app.Carpool.appData.carRegistrations;
-        const car = carRegistrations[carIndex];
+
+        // carIndexはavailableCars内のインデックス（canDrive!='no'の車のみ）
+        const availableCars = (app.Carpool.appData.carRegistrations || []).filter(function(c) {
+            return c.canDrive !== 'no';
+        });
+        const car = availableCars[carIndex];
         if (!car) {
             console.log('指定された車両が見つかりません');
             return;
@@ -295,7 +299,10 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         
         // 割り当てリセット
         app.Carpool.appData.assignments = [];
-        
+
+        // スタッフは1人につき1台の車にのみ割り当て（全車ループ通じてインデックスを保持）
+        let globalStaffIndex = 0;
+
         // 各車両に対して割り当て
         drivers.forEach((driver, carIndex) => {
             // 座席情報を初期化
@@ -304,16 +311,15 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                 '中列': {},
                 '後列': {}
             };
-            
+
             // 運転手は自動的に割り当て
             const driverName = driver.parent;
-            
+
             // 優先順位：監督・コーチ→助手席、選手→中列と後列
-            // 助手席に監督・コーチを割り当て
-            let staffIndex = 0;
-            for (let i = 0; i < driver.frontSeat && staffIndex < staffMembers.length; i++) {
-                seats['助手席'][i] = staffMembers[staffIndex];
-                staffIndex++;
+            // 助手席に監督・コーチを割り当て（globalStaffIndexで重複を防ぐ）
+            for (let i = 0; i < driver.frontSeat && globalStaffIndex < staffMembers.length; i++) {
+                seats['助手席'][i] = staffMembers[globalStaffIndex];
+                globalStaffIndex++;
             }
             
             // 残りの選手を中列と後列に割り当て
@@ -469,7 +475,6 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         
         if (assignments && assignments.length > 0) {
             assignments.forEach((assignment, index) => {
-                const car = carRegistrations[assignment.carIndex];
                 message += `■ ${assignment.driver}の車\n`;
                 
                 // 各座席タイプごとに乗車メンバーを表示
@@ -496,6 +501,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         var baseUrl = window.location.origin;
         message += '\n\n▼ 出欠確認:\n' + baseUrl + '/carpool/attendance.html';
         message += '\n▼ 座席割り当て:\n' + baseUrl + '/carpool/assignments.html';
+        message += '\n\n※リンクはSafari/Chromeで開いてください（LINEブラウザ非対応）';
 
         // テキストをクリップボードにコピー
         if (Utils.copyToClipboard(message)) {
@@ -555,10 +561,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadEventData) {
                 try {
                     var data = await FCOjima.DB.loadEventData(event.id);
-                    // Firestoreにデータがある場合（carRegistrationsが存在する）はそれを使う
-                    if (data && (data.carRegistrations && data.carRegistrations.length > 0 ||
-                                 data.assignments && data.assignments.length > 0 ||
-                                 data.attendance && data.attendance.length > 0)) {
+                    // Firestoreにデータがある場合（ドキュメントが存在する）はそれを使う
+                    if (data) {
                         app.Carpool.appData.carRegistrations = data.carRegistrations || [];
                         app.Carpool.appData.assignments     = data.assignments     || [];
                         app.Carpool.appData.attendance      = data.attendance      || [];
@@ -656,7 +660,35 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                 UI.closeModal('seat-edit-modal');
             });
         }
-        
+
+        // メンバーコンテナへのドロップ（座席 → メンバーリストに戻す）
+        // ここに設定することでsetupDragAndDropが複数回呼ばれても重複しない
+        var membersContainer = document.getElementById('members-container');
+        if (membersContainer) {
+            membersContainer.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            });
+            membersContainer.addEventListener('drop', function(e) {
+                e.preventDefault();
+                try {
+                    const jsonData = JSON.parse(e.dataTransfer.getData('application/json'));
+                    if (jsonData.type === 'seat') {
+                        const seat = document.querySelector(
+                            `.seat[data-car-index="${jsonData.fromCarIndex}"][data-seat-type="${jsonData.fromSeatType}"][data-seat-index="${jsonData.fromSeatIndex}"]`
+                        );
+                        if (seat) {
+                            Assignment.clearSeat(seat);
+                            Assignment.saveAssignments();
+                            Assignment.updateMembersList();
+                        }
+                    }
+                } catch (err) {
+                    console.error('ドロップデータの解析に失敗しました', err);
+                }
+            });
+        }
+
         console.log('割り当てのイベントリスナー設定が完了しました');
     };
     
@@ -921,19 +953,26 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     Assignment.setSeatOccupant = function(seat, personName) {
         seat.classList.add('filled');
         seat.dataset.person = personName;
-        
+
         // 既存のアイコンがあれば削除
         const existingIcon = seat.querySelector('.member-icon');
         if (existingIcon) {
             existingIcon.remove();
         }
-        
+
         const icon = document.createElement('div');
         icon.className = 'member-icon';
+
+        // 役割に応じてクラスを追加（座席内アイコンの色分けのため）
+        const member = app.Carpool.members.find(m => m.name === personName);
+        if (member && member.role) {
+            icon.classList.add(member.role);
+        }
+
         icon.textContent = this.getNameInitials(personName);
         icon.dataset.name = personName;
         icon.title = personName;
-        
+
         seat.insertBefore(icon, seat.firstChild);
     };
     
@@ -1008,9 +1047,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         
         // 対象学年の選手を追加
         if (targetGrades.length > 0) {
-            const targetPlayers = members.filter(m => 
-                m.role === 'player' && 
-                m.grade && 
+            const targetPlayers = members.filter(m =>
+                m.role === 'player' &&
+                m.grade &&
                 targetGrades.includes(m.grade)
             );
             filteredMembers = [...filteredMembers, ...targetPlayers];
@@ -1019,7 +1058,21 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             const allPlayers = members.filter(m => m.role === 'player');
             filteredMembers = [...filteredMembers, ...allPlayers];
         }
-        
+
+        // 学年外追加選手を追加（重複を除く）
+        if (event && event.extraPlayers && event.extraPlayers.length > 0) {
+            const existingNames = new Set(filteredMembers.map(m => m.name));
+            event.extraPlayers.forEach(name => {
+                if (!existingNames.has(name)) {
+                    const m = members.find(m => m.name === name);
+                    if (m) {
+                        filteredMembers.push(m);
+                        existingNames.add(name);
+                    }
+                }
+            });
+        }
+
         // 出欠で参加確定している選手の保護者を追加
         const attendance = app.Carpool.appData.attendance;
         if (attendance && attendance.length > 0) {
@@ -1040,9 +1093,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             filteredMembers = [...filteredMembers, ...parentMembers];
         }
         
-        // 既に座席に配置されているメンバーを除外
+        // 既に座席に配置されているメンバーを除外（ドライバー座席も含む）
         const assignedMembers = [];
-        document.querySelectorAll('.seat.filled').forEach(seat => {
+        document.querySelectorAll('.seat.filled, .seat.driver-seat').forEach(seat => {
             if (seat.dataset.person) {
                 assignedMembers.push(seat.dataset.person);
             }
@@ -1208,6 +1261,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                             this.dataset.seatType,
                             this.dataset.seatIndex
                         );
+                        // 座席移動後はメンバーリストを再描画（空席になった座席の人が一覧に戻る場合がある）
+                        Assignment.updateMembersList();
                     } else {
                         // 新規配置
                         Assignment.setSeatOccupant(this, memberName);
@@ -1233,40 +1288,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             });
         });
         
-        // メンバーコンテナにもドロップイベントを設定（座席からメンバーリストへの移動）
-        const membersContainer = document.getElementById('members-container');
-        if (membersContainer) {
-            membersContainer.addEventListener('dragover', function(e) {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-            });
-            
-            membersContainer.addEventListener('drop', function(e) {
-                e.preventDefault();
-                
-                try {
-                    const jsonData = JSON.parse(e.dataTransfer.getData('application/json'));
-                    
-                    // 座席からのドロップの場合、その座席をクリア
-                    if (jsonData.type === 'seat') {
-                        const seat = document.querySelector(`.seat[data-car-index="${jsonData.fromCarIndex}"][data-seat-type="${jsonData.fromSeatType}"][data-seat-index="${jsonData.fromSeatIndex}"]`);
-                        if (seat) {
-                            Assignment.clearSeat(seat);
-                            
-                            // 配置データを保存
-                            Assignment.saveAssignments();
-                            
-                            // メンバーリストを更新
-                            Assignment.updateMembersList();
-                        }
-                    }
-                } catch (e) {
-                    console.error('ドロップデータの解析に失敗しました', e);
-                }
-            });
-        }
-        
-        console.log('ドラッグ＆ドロップのセットアップが完了しました');
+        console.log('ドラッグ＆ドロップのセットアップが完了しました（メンバーコンテナへのドロップはsetupEventListenersで設定）');
     };
     
     /**

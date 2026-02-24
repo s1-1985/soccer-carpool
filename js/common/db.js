@@ -158,7 +158,7 @@ FCOjima.DB = FCOjima.DB || {};
         if (doc.exists) {
             return doc.data();
         }
-        return { carRegistrations: [], assignments: [], attendance: [], notifications: [] };
+        return null; // ドキュメントが存在しない場合は null を返す（呼び出し側で localStorage にフォールバック）
     };
 
     DB.saveEventData = async function(eventId, data) {

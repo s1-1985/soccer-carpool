@@ -885,11 +885,30 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             });
         }
         
+        // 学年外追加選手を復元
+        var extraInput = document.getElementById('event-extra-players');
+        var extraListEl = document.getElementById('extra-players-list');
+        if (extraInput) {
+            var extraPlayers = event.extraPlayers || [];
+            extraInput.value = extraPlayers.join(',');
+            if (extraListEl) {
+                if (extraPlayers.length > 0) {
+                    extraListEl.innerHTML = '<b>追加選手: </b>' + extraPlayers.map(function(name) {
+                        return '<span style="background:#fff3cd;padding:2px 6px;border-radius:4px;margin:2px;">' + UI.escapeHTML(name) + '</span>';
+                    }).join('');
+                    extraListEl.style.display = 'block';
+                } else {
+                    extraListEl.innerHTML = '';
+                    extraListEl.style.display = 'none';
+                }
+            }
+        }
+
         // 詳細モーダルを閉じて編集モーダルを開く
         UI.closeModal('event-details-modal');
         UI.openModal('event-modal');
     };
-    
+
     /**
      * イベント削除
      * @param {number} eventId - イベントID
@@ -902,11 +921,11 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         if (!event) return;
 
         if (UI.showConfirm(`イベント「${event.title}」を削除してもよろしいですか？`)) {
+            // ログに記録（eventId付き）※ Hub.events から削除する前に呼ぶこと（バックアップデータ取得のため）
+            app.Hub.logs = Storage.addLog('calendar', 'イベント削除', `「${event.title}」（${event.date}）`, logs, { eventId: event.id });
+
             // イベントを削除
             app.Hub.events = events.filter(e => String(e.id) !== String(eventId));
-            
-            // ログに記録（eventId付き）
-            app.Hub.logs = Storage.addLog('calendar', 'イベント削除', `「${event.title}」（${event.date}）`, logs, { eventId: event.id });
             
             // イベントを保存してUIを更新
             Storage.saveEvents(app.Hub.events);
