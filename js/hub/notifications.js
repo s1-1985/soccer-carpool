@@ -53,7 +53,9 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
             return new Date(b.date) - new Date(a.date);
         });
 
-        sorted.forEach(function(n, i) {
+        sorted.forEach(function(n) {
+            // 元の配列でのインデックスを使う（sortedはシャローコピーなので同じオブジェクト参照）
+            var origIndex = notifications.indexOf(n);
             var div = document.createElement('div');
             div.className = 'notification-card';
 
@@ -68,8 +70,8 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
                 '</div>' +
                 '<div class="notification-content">' + textStr + '</div>' +
                 '<div class="notification-actions">' +
-                    '<button type="button" class="secondary-button" data-action="share" data-index="' + i + '">LINEで共有</button>' +
-                    '<button type="button" class="delete-button" data-action="delete" data-index="' + i + '">削除</button>' +
+                    '<button type="button" class="secondary-button" data-action="share" data-index="' + origIndex + '">LINEで共有</button>' +
+                    '<button type="button" class="delete-button" data-action="delete" data-index="' + origIndex + '">削除</button>' +
                 '</div>';
 
             listEl.appendChild(div);
