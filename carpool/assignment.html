@@ -102,9 +102,9 @@
             // モーダル初期化
             FCOjima.UI.initModals();
             
-            // 割り当て機能の初期化
+            // 割り当て機能の初期化（Firestore非同期ロードのためawait必須）
             if (FCOjima.Carpool.Assignment && FCOjima.Carpool.Assignment.init) {
-                FCOjima.Carpool.Assignment.init();
+                await FCOjima.Carpool.Assignment.init();
             } else {
                 console.error('割り当て機能の初期化に失敗しました');
             }
