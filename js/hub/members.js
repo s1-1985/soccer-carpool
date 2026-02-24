@@ -63,6 +63,8 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
      * イベントリスナーの設定
      */
     Members.setupEventListeners = function() {
+        if (Members._listenersSetup) return;
+        Members._listenersSetup = true;
         var addBtn = document.getElementById('add-member');
         if (addBtn) addBtn.addEventListener('click', function() { Members.openAddMemberModal(); });
 
@@ -538,6 +540,7 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
             app.Hub.logs = Storage.addLog('members', 'メンバー追加', '「' + name + '」', logs);
         }
 
+        app.Hub.members = members; // app.Hub.membersを最新状態に保つ
         Storage.saveMembers(members);
         this.renderMembersList();
 

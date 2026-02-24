@@ -42,6 +42,8 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
      * イベントリスナーを設定
      */
     Venues.setupEventListeners = function() {
+        if (Venues._listenersSetup) return;
+        Venues._listenersSetup = true;
         Venues.setupMapListeners();
 
         var addBtn = document.getElementById('add-venue');
@@ -162,12 +164,14 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
 
         if (venueId) {
             var venue = venues.find(function(v) { return String(v.id) === String(venueId); });
-            if (venue) {
-                form.setAttribute('data-venue-id', venue.id);
-                document.getElementById('venue-name').value = venue.name || '';
-                document.getElementById('venue-address').value = venue.address || '';
-                document.getElementById('venue-notes').value = venue.notes || '';
+            if (!venue) {
+                console.warn('編集対象の会場が見つかりません: id=' + venueId);
+                return; // モーダルを開かずに終了
             }
+            form.setAttribute('data-venue-id', venue.id);
+            document.getElementById('venue-name').value = venue.name || '';
+            document.getElementById('venue-address').value = venue.address || '';
+            document.getElementById('venue-notes').value = venue.notes || '';
         } else {
             if (form) form.removeAttribute('data-venue-id');
         }
@@ -200,6 +204,7 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
             if (index !== -1) {
                 var orig = venues[index];
                 venues[index] = { id: orig.id, name: name, address: address, notes: notes, createdBy: orig.createdBy || currentUser };
+                app.Hub.venues = venues; // 編集後もapp.Hub.venuesを最新状態に保つ
                 app.Hub.logs = Storage.addLog('venues', '会場更新', '「' + name + '」', logs);
             }
         } else {
