@@ -697,16 +697,16 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
      */
     Assignment.updateEventInfo = function() {
         console.log('イベント情報を表示します...');
-        
+
         const eventInfo = document.getElementById('assignment-event-info');
         if (!eventInfo) {
             console.log('イベント情報表示領域が見つかりません');
             return;
         }
-        
+
         const event = Storage.getSelectedEvent();
         if (!event) {
-            eventInfo.innerHTML = UI.createAlert('info', 'イベントが選択されていません。');
+            eventInfo.innerHTML = '<div class="alert alert-info">ℹ️ イベントが選択されていません。<br><br><a href="../hub/index.html" style="display:inline-block;margin-top:6px;padding:8px 16px;background:#E8A200;color:#1C1600;border-radius:4px;text-decoration:none;font-weight:bold;">HUBからイベントを選択 →</a></div>';
             console.log('選択されたイベントがありません');
             return;
         }
@@ -740,18 +740,18 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         const carRegistrations = app.Carpool.appData.carRegistrations;
         
         if (!carRegistrations || carRegistrations.length === 0) {
-            carsContainer.innerHTML = UI.createAlert('info', '車両登録がありません。「車提供」タブで車両を登録してください。');
+            carsContainer.innerHTML = '<div class="alert alert-info">ℹ️ 車両登録がありません。<br><br><a href="cars.html" style="display:inline-block;margin-top:6px;padding:8px 16px;background:#E8A200;color:#1C1600;border-radius:4px;text-decoration:none;font-weight:bold;">車提供タブで登録する →</a></div>';
             console.log('車両登録がありません');
             // 車両がなくてもメンバーリストは更新する
             this.updateMembersList();
             return;
         }
-        
+
         // 車両提供者のみフィルタリング
         const availableCars = carRegistrations.filter(car => car.canDrive !== 'no');
-        
+
         if (availableCars.length === 0) {
-            carsContainer.innerHTML = UI.createAlert('info', '車両提供可能な登録がありません。');
+            carsContainer.innerHTML = '<div class="alert alert-info">ℹ️ 車両提供可能な登録がありません。<br><br><a href="cars.html" style="display:inline-block;margin-top:6px;padding:8px 16px;background:#E8A200;color:#1C1600;border-radius:4px;text-decoration:none;font-weight:bold;">車提供タブで変更する →</a></div>';
             console.log('車両提供可能な登録がありません');
             // 車両がなくてもメンバーリストは更新する
             this.updateMembersList();
@@ -937,11 +937,11 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         
         seat.appendChild(label);
         
-        // 座席クリック時の処理
+        // 座席クリック時の処理（PCクリック・モバイルタップ両対応）
         seat.addEventListener('click', () => {
             this.openSeatEditModal(seat);
         });
-        
+
         return seat;
     };
     
@@ -1076,20 +1076,26 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         // 出欠で参加確定している選手の保護者を追加
         const attendance = app.Carpool.appData.attendance;
         if (attendance && attendance.length > 0) {
-            const presentPlayers = attendance
+            const presentPlayerNames = attendance
                 .filter(a => a.status === 'present')
                 .map(a => a.name);
-                
-            const parentMembers = members.filter(m => 
-                (m.role === 'father' || m.role === 'mother') && 
-                members.some(p => 
-                    p.role === 'player' && 
-                    presentPlayers.includes(p.name) && 
-                    p.notes && 
-                    p.notes.includes(m.name)
-                )
+
+            // presentPlayerNames に対応する選手IDを取得
+            const presentPlayerIds = new Set(
+                members
+                    .filter(function(p) { return p.role === 'player' && presentPlayerNames.includes(p.name); })
+                    .map(function(p) { return String(p.id); })
             );
-            
+
+            // childrenIds に参加確定選手が含まれる保護者を追加
+            const existingNames = new Set(filteredMembers.map(function(m) { return m.name; }));
+            const parentMembers = members.filter(function(m) {
+                if (m.role !== 'father' && m.role !== 'mother') return false;
+                if (existingNames.has(m.name)) return false;
+                if (!m.childrenIds || !m.childrenIds.length) return false;
+                return m.childrenIds.some(function(cid) { return presentPlayerIds.has(String(cid)); });
+            });
+
             filteredMembers = [...filteredMembers, ...parentMembers];
         }
         
