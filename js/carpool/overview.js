@@ -32,18 +32,18 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
      * イベントリスナーの設定
      */
     Overview.setupEventListeners = function() {
+        if (Overview._listenersSetup) return;
+        Overview._listenersSetup = true;
         console.log('概要タブのイベントリスナーを設定しています...');
-        
+
         // HUBに戻るボタン
-        document.getElementById('back-to-hub').addEventListener('click', function() {
-            Overview.goToMainPage();
-        });
-        
+        var backBtn = document.getElementById('back-to-hub');
+        if (backBtn) backBtn.addEventListener('click', function() { Overview.goToMainPage(); });
+
         // イベント共有ボタン
-        document.getElementById('share-event-button').addEventListener('click', function() {
-            Overview.shareEventViaLINE();
-        });
-        
+        var shareBtn = document.getElementById('share-event-button');
+        if (shareBtn) shareBtn.addEventListener('click', function() { Overview.shareEventViaLINE(); });
+
         console.log('概要タブのイベントリスナー設定が完了しました');
     };
     
@@ -309,9 +309,9 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         var availableCars = carRegistrations.filter(function(c) { return c.canDrive !== 'no'; }).length;
         var totalSeats = carRegistrations.reduce(function(sum, car) {
             if (car.canDrive === 'no') return sum;
-            return sum + (parseInt(car.frontSeat) || 0) + 
-                   (parseInt(car.middleSeat) || 0) + 
-                   (parseInt(car.backSeat) || 0);
+            return sum + (parseInt(car.frontSeat, 10) || 0) +
+                   (parseInt(car.middleSeat, 10) || 0) +
+                   (parseInt(car.backSeat, 10) || 0);
         }, 0);
         
         // 割り当て状況の集計
