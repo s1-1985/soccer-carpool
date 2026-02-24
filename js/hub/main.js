@@ -54,7 +54,7 @@ FCOjima.Hub.openLogsModal = function(type) {
     if (filtered.length === 0) {
         logsContent.innerHTML = '<p>ログがありません。</p>';
     } else {
-        logsContent.innerHTML = filtered.slice(0, 50).map(function(log) {
+        logsContent.innerHTML = filtered.slice().reverse().slice(0, 50).map(function(log) {
             const dt = new Date(log.datetime).toLocaleString('ja-JP');
             return `<div class="log-item">
                 <span class="log-time">${dt}</span>

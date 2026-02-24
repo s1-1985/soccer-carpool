@@ -921,11 +921,11 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         if (!event) return;
 
         if (UI.showConfirm(`イベント「${event.title}」を削除してもよろしいですか？`)) {
+            // ログに記録（eventId付き）※ Hub.events から削除する前に呼ぶこと（バックアップデータ取得のため）
+            app.Hub.logs = Storage.addLog('calendar', 'イベント削除', `「${event.title}」（${event.date}）`, logs, { eventId: event.id });
+
             // イベントを削除
             app.Hub.events = events.filter(e => String(e.id) !== String(eventId));
-            
-            // ログに記録（eventId付き）
-            app.Hub.logs = Storage.addLog('calendar', 'イベント削除', `「${event.title}」（${event.date}）`, logs, { eventId: event.id });
             
             // イベントを保存してUIを更新
             Storage.saveEvents(app.Hub.events);

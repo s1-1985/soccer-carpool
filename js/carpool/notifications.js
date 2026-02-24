@@ -116,8 +116,10 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
         }
 
         const today = new Date().toISOString().slice(0, 10);
+        const user = (window.FCOjima && FCOjima.Auth && FCOjima.Auth.getDisplayName)
+            ? FCOjima.Auth.getDisplayName() : '';
         const notifications = FCOjima.Carpool.appData.notifications || [];
-        notifications.unshift({ date: today, text: text, type: 'info' });
+        notifications.unshift({ date: today, text: text, type: 'info', user: user });
         FCOjima.Carpool.appData.notifications = notifications;
         FCOjima.Carpool.saveData();
 
@@ -394,11 +396,14 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
      */
     Notifications.searchNotifications = function(keyword) {
         console.log(`連絡事項を検索します: "${keyword}"`);
-        
+
         if (!keyword) {
             this.updateNotifications(); // キーワードがなければ全て表示
             return;
         }
+
+        // 正規表現のメタ文字をエスケープ（例: "(" や "." を含むキーワードでエラーにならないよう）
+        const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         
         const notificationsList = document.getElementById('notificationsList');
         if (!notificationsList) {
@@ -444,7 +449,7 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
             
             // 検索キーワードをハイライト表示
             const highlightedText = UI.escapeHTML(notification.text).replace(
-                new RegExp(keyword, 'gi'),
+                new RegExp(escapedKeyword, 'gi'),
                 match => `<span class="highlight">${match}</span>`
             );
             
@@ -452,12 +457,12 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
             notificationContent.innerHTML = '\
                 <div class="notification-header">\
                     <div class="notification-date">' + notification.date.replace(
-                        new RegExp(keyword, 'gi'),
+                        new RegExp(escapedKeyword, 'gi'),
                         match => `<span class="highlight">${match}</span>`
                     ) + '</div>\
                     <div class="notification-author">' + 
                         (notification.user ? UI.escapeHTML(notification.user).replace(
-                            new RegExp(keyword, 'gi'),
+                            new RegExp(escapedKeyword, 'gi'),
                             match => `<span class="highlight">${match}</span>`
                         ) : '') + 
                     '</div>\
