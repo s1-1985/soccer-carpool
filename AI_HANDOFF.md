@@ -171,7 +171,7 @@ Firebase設定ファイル:
 
 ---
 
-## ✅ 現在の実装状況（最終正常コミット: 936f74c）
+## ✅ 現在の実装状況（最終正常コミット: cd884ca5 / PR #21）
 
 ### 動作確認済み
 - Googleログイン認証
@@ -180,16 +180,18 @@ Firebase設定ファイル:
 - 操作ログ（ユーザー名付き）
 - モーダルのキャンセルボタン
 - メンバー検索・詳細表示
-
-### 直近の修正（座席割り当て関連）
-- `assignment.js` の `init()` を async化、Firestore から直接ロード
-- `overview.js` の `saveData()` を Firestore にも保存するよう修正
-- `assignments.html` で `await Assignment.init()` になっていなかったバグを修正
-- 車両なし時でもメンバーリストが「読込中」のまま固まるバグを修正
+- メンバーソート（監督→コーチ→選手→保護者→その他）
+- 保護者の子ども登録（childrenIds方式）・卒団連動削除
+- 選手の自動卒団（Utils.calculateGrade が null の場合削除）
+- ナイターイベント種別（自動入力・配車ボタン非表示）
+- 会場フォーム簡略化（緯度経度・タイプ削除・地図を開くボタン）
+- 連絡事項・会場削除権限（投稿者本人 or 管理者のみ）
+- 配車管理 概要タブ 会場マップリンク
+- **座席割り当て（assignments.html）- SyntaxError修正により初めて動作可能に**
 
 ### 未解決・要確認
-- 座席割り当て画面がまだ「読込中のまま」との報告あり（修正はデプロイ済みだが本人未確認）
-- 車提供（carprovision.js）もFirestoreから非同期ロードするよう修正が必要
+- 旧ファイル（carpool/assignment.html, carprovision.html 等）が git 上に残存（削除はユーザー確認後）
+- 車提供（carprovision.js）保護者フィルター: childrenIds ベースに今後更新推奨
 
 ---
 
