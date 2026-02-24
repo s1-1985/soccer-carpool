@@ -448,17 +448,21 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         bulkEditContainer.innerHTML = tableHTML;
         document.body.appendChild(bulkEditContainer);
         
-        // イベントリスナーを設定
+        // イベントリスナーを設定（once:true で重複実行を防止）
         const saveButton = document.getElementById('save-bulk-edit');
         const cancelButton = document.getElementById('cancel-bulk-edit');
-        
-        saveButton.addEventListener('click', function() {
-            CarProvision.saveBulkEdit();
-        });
-        
-        cancelButton.addEventListener('click', function() {
-            CarProvision.cancelBulkEdit();
-        });
+
+        if (saveButton) {
+            saveButton.addEventListener('click', function() {
+                CarProvision.saveBulkEdit();
+            }, { once: true });
+        }
+
+        if (cancelButton) {
+            cancelButton.addEventListener('click', function() {
+                CarProvision.cancelBulkEdit();
+            }, { once: true });
+        }
         
         console.log('車両情報一括編集モードを開始しました');
     };
@@ -474,10 +478,10 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         // 編集フィールドから値を取得して更新
         const inputs = document.querySelectorAll('.bulk-edit-table input, .bulk-edit-table select');
         inputs.forEach(input => {
-            const index = parseInt(input.dataset.index);
+            const index = parseInt(input.dataset.index, 10);
             const field = input.dataset.field;
-            
-            if (index >= 0 && index < carRegistrations.length && field) {
+
+            if (!isNaN(index) && index >= 0 && index < carRegistrations.length && field) {
                 carRegistrations[index][field] = input.value;
             }
         });
