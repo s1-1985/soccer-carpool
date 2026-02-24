@@ -1341,3 +1341,4 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         // 配置データを保存
         this.saveAssignments();
     };
+})(window.FCOjima);
