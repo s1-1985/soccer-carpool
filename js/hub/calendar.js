@@ -405,11 +405,11 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         
         // 学年ターゲット表示
         let targetDisplay = '';
-        if (event.target && event.target.length > 0) {
+        if (Array.isArray(event.target) && event.target.length > 0) {
             const targetGrades = event.target.map(grade => Utils.getGradeLabel(grade)).join(', ');
             targetDisplay = `<span class="badge">${targetGrades}</span> `;
         }
-        
+
         const title = document.createElement('div');
         title.className = 'event-title';
         title.innerHTML = `${targetDisplay}${UI.escapeHTML(event.title)}`;
@@ -454,7 +454,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         
         // 学年ターゲット表示
         let targetDisplay = '';
-        if (event.target && event.target.length > 0) {
+        if (Array.isArray(event.target) && event.target.length > 0) {
             const targetGrades = event.target.map(grade => Utils.getGradeLabel(grade)).join(', ');
             targetDisplay = `
             <div class="detail-item">
@@ -681,8 +681,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         const container = document.getElementById('event-target-grades');
         container.innerHTML = '';
         
-        const members = app.Hub.members;
-        
+        const members = app.Hub.members || [];
+
         // メンバーから存在する学年を抽出
         const existingGrades = new Set();
         members.forEach(member => {
@@ -930,7 +930,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         this.generateGradeCheckboxes();
         
         // 対象学年のチェックボックスを設定
-        if (event.target && event.target.length > 0) {
+        if (Array.isArray(event.target) && event.target.length > 0) {
             event.target.forEach(grade => {
                 const checkbox = document.getElementById(`grade-${grade}`);
                 if (checkbox) checkbox.checked = true;
