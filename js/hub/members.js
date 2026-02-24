@@ -189,8 +189,8 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
 
         var gradeOrder = { '年少': -3, '年中': -2, '年長': -1 };
         var sorted = players.slice().sort(function(a, b) {
-            var ga = gradeOrder[a.grade] !== undefined ? gradeOrder[a.grade] : (parseInt(a.grade) || 99);
-            var gb = gradeOrder[b.grade] !== undefined ? gradeOrder[b.grade] : (parseInt(b.grade) || 99);
+            var ga = gradeOrder[a.grade] !== undefined ? gradeOrder[a.grade] : (parseInt(a.grade, 10) || 99);
+            var gb = gradeOrder[b.grade] !== undefined ? gradeOrder[b.grade] : (parseInt(b.grade, 10) || 99);
             if (ga !== gb) return ga - gb;
             return (a.number || 999) - (b.number || 999);
         });
@@ -240,8 +240,8 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
 
         var gradeOrder = { '年少': -3, '年中': -2, '年長': -1 };
         var sorted = Array.from(grades).sort(function(a, b) {
-            var va = gradeOrder[a] !== undefined ? gradeOrder[a] : parseInt(a);
-            var vb = gradeOrder[b] !== undefined ? gradeOrder[b] : parseInt(b);
+            var va = gradeOrder[a] !== undefined ? gradeOrder[a] : (parseInt(a, 10) || 99);
+            var vb = gradeOrder[b] !== undefined ? gradeOrder[b] : (parseInt(b, 10) || 99);
             return va - vb;
         });
 
@@ -530,13 +530,13 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
             var index = members.findIndex(function(m) { return String(m.id) === String(memberFormId); });
             if (index !== -1) {
                 var origId = members[index].id;
-                members[index] = { id: origId, name: name, kana: kana, abbr: abbr, birth: birth, gender: gender, role: role, number: number ? parseInt(number) : null, grade: grade, notes: notes, childrenIds: childrenIds };
+                members[index] = { id: origId, name: name, kana: kana, abbr: abbr, birth: birth, gender: gender, role: role, number: number ? parseInt(number, 10) : null, grade: grade, notes: notes, childrenIds: childrenIds };
                 app.Hub.logs = Storage.addLog('members', 'メンバー更新', '「' + name + '」', logs);
             }
         } else {
-            var ids = members.map(function(m) { return parseInt(m.id) || 0; });
+            var ids = members.map(function(m) { return parseInt(m.id, 10) || 0; });
             var newId = ids.length > 0 ? Math.max.apply(null, ids) + 1 : 1;
-            members.push({ id: newId, name: name, kana: kana, abbr: abbr, birth: birth, gender: gender, role: role, number: number ? parseInt(number) : null, grade: grade, notes: notes, childrenIds: childrenIds });
+            members.push({ id: newId, name: name, kana: kana, abbr: abbr, birth: birth, gender: gender, role: role, number: number ? parseInt(number, 10) : null, grade: grade, notes: notes, childrenIds: childrenIds });
             app.Hub.logs = Storage.addLog('members', 'メンバー追加', '「' + name + '」', logs);
         }
 

@@ -44,6 +44,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
      * イベントリスナーの設定
      */
     Calendar.setupEventListeners = function() {
+        if (Calendar._listenersSetup) return;
+        Calendar._listenersSetup = true;
         console.log('カレンダーのイベントリスナーを設定しています...');
         
         // 表示切り替えボタン
@@ -705,8 +707,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 '年長': -1
             };
             
-            const valA = gradeOrder[a] !== undefined ? gradeOrder[a] : parseInt(a);
-            const valB = gradeOrder[b] !== undefined ? gradeOrder[b] : parseInt(b);
+            const valA = gradeOrder[a] !== undefined ? gradeOrder[a] : (parseInt(a, 10) || 99);
+            const valB = gradeOrder[b] !== undefined ? gradeOrder[b] : (parseInt(b, 10) || 99);
             
             return valA - valB;
         });

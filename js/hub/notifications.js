@@ -84,7 +84,7 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
         listEl.querySelectorAll('button[data-action]').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 var action = this.dataset.action;
-                var index = parseInt(this.dataset.index);
+                var index = parseInt(this.dataset.index, 10);
                 if (action === 'share') {
                     Notifications.shareNotification(index);
                 } else if (action === 'delete') {
@@ -134,18 +134,21 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
         var url = window.location.origin + '/hub/index.html';
         var message = '【FC 尾島ジュニア 連絡事項】\n' + (n.date || '') + '\n\n' + (n.text || '') + '\n\n' + url + '\n※このリンクはSafari/Chromeで開いてください（LINEブラウザ非対応）';
 
-        var copied = false;
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(message).then(function() {
-                UI.showAlert('クリップボードにコピーしました', 'success');
-            });
-            copied = true;
-        }
-
         var lineUrl = 'https://line.me/R/msg/text/?' + encodeURIComponent(message);
         if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+            // モバイル: LINEアプリへ遷移
             window.location.href = lineUrl;
-        } else if (!copied) {
+        } else if (navigator.clipboard) {
+            // PC: クリップボードに非同期コピー
+            navigator.clipboard.writeText(message)
+                .then(function() {
+                    UI.showAlert('クリップボードにコピーしました', 'success');
+                })
+                .catch(function(err) {
+                    console.error('クリップボードコピー失敗:', err);
+                    UI.showAlert('共有テキストを準備しました。手動でコピーしてください。', 'info');
+                });
+        } else {
             UI.showAlert('共有テキストを準備しました。LINEなどに貼り付けてください。', 'info');
         }
     };
