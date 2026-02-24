@@ -197,15 +197,26 @@ FCOjima.DB = FCOjima.DB || {};
 
     DB.loadPendingUsers = async function() {
         const snap = await db.collection('teams').doc(TEAM_ID)
-            .collection('users').where('status', '==', 'pending')
-            .orderBy('registeredAt', 'asc').get();
-        return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+            .collection('users').where('status', '==', 'pending').get();
+        const users = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+        users.sort(function(a, b) {
+            var ta = a.registeredAt ? (a.registeredAt.seconds || 0) : 0;
+            var tb = b.registeredAt ? (b.registeredAt.seconds || 0) : 0;
+            return ta - tb;
+        });
+        return users;
     };
 
     DB.loadAllUsers = async function() {
         const snap = await db.collection('teams').doc(TEAM_ID)
-            .collection('users').orderBy('registeredAt', 'asc').get();
-        return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+            .collection('users').get();
+        const users = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+        users.sort(function(a, b) {
+            var ta = a.registeredAt ? (a.registeredAt.seconds || 0) : 0;
+            var tb = b.registeredAt ? (b.registeredAt.seconds || 0) : 0;
+            return ta - tb;
+        });
+        return users;
     };
 
     DB.approveUser = async function(uid, approvedByUid) {

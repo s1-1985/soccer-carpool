@@ -63,6 +63,10 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
             var userStr = n.user ? UI.escapeHTML(n.user) : '';
             var textStr = UI.escapeHTML(n.text || '').replace(/\n/g, '<br>');
 
+            // 削除ボタンは投稿者本人 or 権限者のみ表示
+            var currentUser = (app.Auth && app.Auth.getDisplayName) ? app.Auth.getDisplayName() : '';
+            var canDelete = (app.Auth && app.Auth.isManager && app.Auth.isManager()) ||
+                            (n.user && currentUser && n.user === currentUser);
             div.innerHTML =
                 '<div class="notification-header">' +
                     '<div class="notification-date">' + dateStr + '</div>' +
@@ -71,7 +75,7 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
                 '<div class="notification-content">' + textStr + '</div>' +
                 '<div class="notification-actions">' +
                     '<button type="button" class="secondary-button" data-action="share" data-index="' + origIndex + '">LINEで共有</button>' +
-                    '<button type="button" class="delete-button" data-action="delete" data-index="' + origIndex + '">削除</button>' +
+                    (canDelete ? '<button type="button" class="delete-button" data-action="delete" data-index="' + origIndex + '">削除</button>' : '') +
                 '</div>';
 
             listEl.appendChild(div);

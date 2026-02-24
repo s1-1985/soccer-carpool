@@ -89,12 +89,20 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             e.preventDefault();
             Calendar.saveEvent();
         });
-        
+
+        // イベント種類変更（ナイター自動設定）
+        var eventTypeSelect = document.getElementById('event-type');
+        if (eventTypeSelect) {
+            eventTypeSelect.addEventListener('change', function() {
+                Calendar.onEventTypeChange(this.value);
+            });
+        }
+
         // 会場選択ボタン
         document.getElementById('select-venue').addEventListener('click', function() {
             app.Hub.Venues.openVenueSelect('venue');
         });
-        
+
         document.getElementById('select-meeting-venue').addEventListener('click', function() {
             app.Hub.Venues.openVenueSelect('meeting');
         });
@@ -577,7 +585,11 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         document.getElementById('manage-event').setAttribute('data-event-id', event.id);
         document.getElementById('edit-event').setAttribute('data-event-id', event.id);
         document.getElementById('delete-event').setAttribute('data-event-id', event.id);
-        
+
+        // ナイターは配車管理ボタンを非表示
+        var manageBtn = document.getElementById('manage-event');
+        if (manageBtn) manageBtn.style.display = (event.type === 'nighter') ? 'none' : '';
+
         // モーダルを表示
         UI.openModal('event-details-modal');
     };
@@ -617,9 +629,49 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         
         // 対象学年のチェックボックスを生成
         this.generateGradeCheckboxes();
-        
+
+        // 出発時間フィールドを有効に戻す
+        var depEl = document.getElementById('event-departure-time');
+        if (depEl) depEl.disabled = false;
+
         // モーダルを表示
         UI.openModal('event-modal');
+    };
+
+    /**
+     * ナイターイベント種類変更時のデフォルト設定
+     * @param {string} type - イベント種類
+     */
+    Calendar.onEventTypeChange = function(type) {
+        var depEl = document.getElementById('event-departure-time');
+        if (type === 'nighter') {
+            // タイトル（未入力時のみ）
+            var titleEl = document.getElementById('event-title');
+            if (titleEl && !titleEl.value) titleEl.value = 'ナイター練習';
+
+            // 集合場所
+            var meetingEl = document.getElementById('event-meeting-place');
+            if (meetingEl && !meetingEl.value) meetingEl.value = '尾島小学校';
+
+            // 会場
+            var venueEl = document.getElementById('event-venue');
+            if (venueEl && !venueEl.value) venueEl.value = '尾島小学校';
+
+            // 開始・終了時間
+            var startEl = document.getElementById('event-start-time');
+            if (startEl && !startEl.value) startEl.value = '18:30';
+            var endEl = document.getElementById('event-end-time');
+            if (endEl && !endEl.value) endEl.value = '20:30';
+
+            // 出発時間を無効化
+            if (depEl) { depEl.value = ''; depEl.disabled = true; }
+
+            // 全学年チェック
+            document.querySelectorAll('input[name="event-target"]').forEach(function(cb) { cb.checked = true; });
+        } else {
+            // 出発時間を有効化
+            if (depEl) depEl.disabled = false;
+        }
     };
     
     /**
