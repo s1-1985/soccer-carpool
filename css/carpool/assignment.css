@@ -164,6 +164,26 @@
     background-color: #28a745;
 }
 
+/* 座席内アイコンの役割別色分け */
+.seat .member-icon.coach,
+.seat .member-icon.assist {
+    background-color: #28a745;
+}
+
+.seat .member-icon.player {
+    background-color: #E8A200;
+}
+
+.seat .member-icon.father,
+.seat .member-icon.mother,
+.seat .member-icon.officer {
+    background-color: #6c757d;
+}
+
+.seat .member-icon.other {
+    background-color: #6f42c1;
+}
+
 /* メンバーリスト */
 .member-group-header {
     font-size: 16px;

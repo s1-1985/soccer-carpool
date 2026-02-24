@@ -953,19 +953,26 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     Assignment.setSeatOccupant = function(seat, personName) {
         seat.classList.add('filled');
         seat.dataset.person = personName;
-        
+
         // 既存のアイコンがあれば削除
         const existingIcon = seat.querySelector('.member-icon');
         if (existingIcon) {
             existingIcon.remove();
         }
-        
+
         const icon = document.createElement('div');
         icon.className = 'member-icon';
+
+        // 役割に応じてクラスを追加（座席内アイコンの色分けのため）
+        const member = app.Carpool.members.find(m => m.name === personName);
+        if (member && member.role) {
+            icon.classList.add(member.role);
+        }
+
         icon.textContent = this.getNameInitials(personName);
         icon.dataset.name = personName;
         icon.title = personName;
-        
+
         seat.insertBefore(icon, seat.firstChild);
     };
     
