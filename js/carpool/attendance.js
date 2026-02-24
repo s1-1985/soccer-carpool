@@ -41,8 +41,7 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
             if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadEventData) {
                 try {
                     const data = await FCOjima.DB.loadEventData(event.id);
-                    if (data && (data.attendance && data.attendance.length > 0 ||
-                                 data.carRegistrations && data.carRegistrations.length > 0)) {
+                    if (data) {
                         FCOjima.Carpool.appData.carRegistrations = data.carRegistrations || [];
                         FCOjima.Carpool.appData.assignments     = data.assignments     || [];
                         FCOjima.Carpool.appData.attendance      = data.attendance      || [];

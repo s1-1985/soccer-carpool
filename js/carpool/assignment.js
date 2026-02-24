@@ -561,10 +561,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadEventData) {
                 try {
                     var data = await FCOjima.DB.loadEventData(event.id);
-                    // Firestoreにデータがある場合（carRegistrationsが存在する）はそれを使う
-                    if (data && (data.carRegistrations && data.carRegistrations.length > 0 ||
-                                 data.assignments && data.assignments.length > 0 ||
-                                 data.attendance && data.attendance.length > 0)) {
+                    // Firestoreにデータがある場合（ドキュメントが存在する）はそれを使う
+                    if (data) {
                         app.Carpool.appData.carRegistrations = data.carRegistrations || [];
                         app.Carpool.appData.assignments     = data.assignments     || [];
                         app.Carpool.appData.attendance      = data.attendance      || [];

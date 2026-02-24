@@ -40,7 +40,7 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
             if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadEventData) {
                 try {
                     const data = await FCOjima.DB.loadEventData(event.id);
-                    if (data && data.notifications && data.notifications.length > 0) {
+                    if (data) {
                         FCOjima.Carpool.appData.notifications = data.notifications || [];
                         FCOjima.Carpool.appData.carRegistrations = data.carRegistrations || [];
                         FCOjima.Carpool.appData.assignments = data.assignments || [];
@@ -253,18 +253,17 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
         
         // 配車情報を整理
         assignments.forEach((assignment, carIndex) => {
-            const car = carRegistrations[assignment.carIndex];
-            if (!car) return;
-            
-            message += `■ ${car.parent}さんの車\n`;
-            
+            if (!assignment.driver) return;
+
+            message += `■ ${assignment.driver}さんの車\n`;
+
             // 乗車メンバーを集計
             const passengers = [];
-            
+
             // 座席タイプごとに乗車メンバーを取得
-            Object.keys(assignment.seats).forEach(seatType => {
+            Object.keys(assignment.seats || {}).forEach(seatType => {
                 Object.values(assignment.seats[seatType]).forEach(passengerName => {
-                    if (passengerName && passengerName !== car.parent) {
+                    if (passengerName && passengerName !== assignment.driver) {
                         passengers.push(passengerName);
                     }
                 });

@@ -17,7 +17,10 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
      */
     Members.init = function() {
         console.log('メンバー管理機能を初期化しています...');
-        app.Hub.members = Storage.loadMembers();
+        // main.js が Firestore からロード済みの場合はそのまま使う
+        if (!app.Hub.members || app.Hub.members.length === 0) {
+            app.Hub.members = Storage.loadMembers();
+        }
         this.renderMembersList();
         this.setupEventListeners();
         console.log('メンバー管理機能の初期化が完了しました');

@@ -65,11 +65,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
             if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadEventData) {
                 try {
                     var data = await FCOjima.DB.loadEventData(event.id);
-                    if (data && (
-                        (data.attendance && data.attendance.length > 0) ||
-                        (data.carRegistrations && data.carRegistrations.length > 0) ||
-                        (data.assignments && data.assignments.length > 0)
-                    )) {
+                    if (data) {
                         app.Carpool.appData.carRegistrations = data.carRegistrations || [];
                         app.Carpool.appData.assignments      = data.assignments      || [];
                         app.Carpool.appData.attendance       = data.attendance       || [];

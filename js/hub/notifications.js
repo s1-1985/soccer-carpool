@@ -105,7 +105,9 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
 
         var user = (app.Auth && app.Auth.getDisplayName) ? app.Auth.getDisplayName() : 'システム';
 
-        var newItem = { date: dateStr, text: text, user: user };
+        // Firestoreの doc パスに使用するためユニークIDを付与（未設定だと全件が "undefined" パスに上書きされる）
+        var newId = Date.now().toString() + Math.floor(Math.random() * 1000);
+        var newItem = { id: newId, date: dateStr, text: text, user: user };
 
         app.Hub.notifications = app.Hub.notifications || [];
         app.Hub.notifications.unshift(newItem);
