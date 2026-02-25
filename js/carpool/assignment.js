@@ -294,6 +294,83 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     };
 
     /**
+     * 座席数変更モーダルを開く
+     * @param {number} carIndex - 車両インデックス
+     */
+    Assignment.openSeatCountModal = function(carIndex) {
+        var availableCars = (app.Carpool.appData.carRegistrations || []).filter(function(c) {
+            return c.canDrive !== 'no';
+        });
+        var car = availableCars[carIndex];
+        if (!car) return;
+
+        var modal = document.getElementById('seat-count-modal');
+        if (!modal) return;
+
+        var carNameEl = document.getElementById('seat-count-car-name');
+        if (carNameEl) carNameEl.textContent = car.parent + 'の車';
+
+        var formRows = document.getElementById('seat-count-form-rows');
+        if (!formRows) return;
+        formRows.innerHTML = '';
+
+        var seatDefs = [
+            { label: '助手席', key: 'frontSeat', max: 2 },
+            { label: '中列',   key: 'middleSeat', max: 4 },
+            { label: '後列',   key: 'backSeat',   max: 4 }
+        ];
+
+        seatDefs.forEach(function(def) {
+            var current = car[def.key] || 0;
+            var row = document.createElement('div');
+            row.style.cssText = 'display:flex;align-items:center;gap:12px;margin-bottom:16px;';
+
+            var lbl = document.createElement('span');
+            lbl.style.cssText = 'min-width:4em;font-size:14px;font-weight:bold;color:#444;';
+            lbl.textContent = def.label;
+
+            var minusBtn = document.createElement('button');
+            minusBtn.type = 'button';
+            minusBtn.className = 'seat-count-btn';
+            minusBtn.textContent = '−';
+
+            var countSpan = document.createElement('span');
+            countSpan.style.cssText = 'min-width:2em;text-align:center;font-size:20px;font-weight:bold;';
+            countSpan.textContent = current;
+            countSpan.dataset.key = def.key;
+            countSpan.dataset.value = String(current);
+
+            var plusBtn = document.createElement('button');
+            plusBtn.type = 'button';
+            plusBtn.className = 'seat-count-btn';
+            plusBtn.textContent = '+';
+
+            var maxLbl = document.createElement('span');
+            maxLbl.style.cssText = 'font-size:11px;color:#999;';
+            maxLbl.textContent = '(最大' + def.max + ')';
+
+            minusBtn.addEventListener('click', function() {
+                var v = parseInt(countSpan.dataset.value, 10);
+                if (v > 0) { v--; countSpan.textContent = v; countSpan.dataset.value = v; }
+            });
+            plusBtn.addEventListener('click', function() {
+                var v = parseInt(countSpan.dataset.value, 10);
+                if (v < def.max) { v++; countSpan.textContent = v; countSpan.dataset.value = v; }
+            });
+
+            row.appendChild(lbl);
+            row.appendChild(minusBtn);
+            row.appendChild(countSpan);
+            row.appendChild(plusBtn);
+            row.appendChild(maxLbl);
+            formRows.appendChild(row);
+        });
+
+        modal.dataset.carIndex = carIndex;
+        UI.openModal('seat-count-modal');
+    };
+
+    /**
      * 車のドライバーを編集（モーダル経由）
      * @param {number} carIndex - 車両インデックス
      */
@@ -909,6 +986,36 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             });
         }
 
+        // 座席数変更モーダル：キャンセルボタン
+        var cancelSeatCountBtn = document.getElementById('cancel-seat-count');
+        if (cancelSeatCountBtn) {
+            cancelSeatCountBtn.addEventListener('click', function() {
+                UI.closeModal('seat-count-modal');
+            });
+        }
+
+        // 座席数変更モーダル：確定ボタン
+        var applySeatCountBtn = document.getElementById('apply-seat-count');
+        if (applySeatCountBtn) {
+            applySeatCountBtn.addEventListener('click', function() {
+                var modal = document.getElementById('seat-count-modal');
+                var carIndex = parseInt(modal.dataset.carIndex, 10);
+                var availableCars = (app.Carpool.appData.carRegistrations || []).filter(function(c) {
+                    return c.canDrive !== 'no';
+                });
+                var car = availableCars[carIndex];
+                if (!car) { UI.closeModal('seat-count-modal'); return; }
+
+                modal.querySelectorAll('[data-key]').forEach(function(span) {
+                    car[span.dataset.key] = parseInt(span.dataset.value, 10) || 0;
+                });
+
+                app.Carpool.saveData();
+                UI.closeModal('seat-count-modal');
+                Assignment.updateAssignments();
+            });
+        }
+
         // 運転手変更モーダル：キャンセルボタン
         var cancelDriverBtn = document.getElementById('cancel-driver-edit');
         if (cancelDriverBtn) {
@@ -1063,50 +1170,20 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         `;
         carLayout.appendChild(carInfo);
 
-        // 座席数調整コントロール
-        const seatAdjuster = document.createElement('div');
-        seatAdjuster.className = 'seat-count-adjuster';
-        var seatRows = [
-            { label: '助手席', key: 'frontSeat' },
-            { label: '中列', key: 'middleSeat' },
-            { label: '後列', key: 'backSeat' }
-        ];
-        seatRows.forEach(function(row) {
-            var count = car[row.key] || 0;
-            var group = document.createElement('div');
-            group.style.cssText = 'display:flex;align-items:center;gap:4px;';
-
-            var lbl = document.createElement('span');
-            lbl.style.cssText = 'font-size:11px;color:#666;min-width:3em;';
-            lbl.textContent = row.label;
-            group.appendChild(lbl);
-
-            var minusBtn = document.createElement('button');
-            minusBtn.className = 'seat-count-btn';
-            minusBtn.textContent = '−';
-            minusBtn.type = 'button';
-            minusBtn.addEventListener('click', (function(k) {
-                return function(e) { e.stopPropagation(); Assignment.adjustCarSeat(carIndex, k, -1); };
-            })(row.key));
-
-            var countSpan = document.createElement('span');
-            countSpan.style.cssText = 'min-width:1.6em;text-align:center;font-size:13px;font-weight:bold;';
-            countSpan.textContent = count;
-
-            var plusBtn = document.createElement('button');
-            plusBtn.className = 'seat-count-btn';
-            plusBtn.textContent = '+';
-            plusBtn.type = 'button';
-            plusBtn.addEventListener('click', (function(k) {
-                return function(e) { e.stopPropagation(); Assignment.adjustCarSeat(carIndex, k, +1); };
-            })(row.key));
-
-            group.appendChild(minusBtn);
-            group.appendChild(countSpan);
-            group.appendChild(plusBtn);
-            seatAdjuster.appendChild(group);
-        });
-        carLayout.appendChild(seatAdjuster);
+        // 座席数変更ボタン（タップでモーダルを開く）
+        var seatCountBtn = document.createElement('button');
+        seatCountBtn.className = 'seat-count-change-btn';
+        seatCountBtn.type = 'button';
+        var seatSummary = [
+            car.frontSeat ? '助手席×' + car.frontSeat : null,
+            car.middleSeat ? '中列×' + car.middleSeat : null,
+            car.backSeat ? '後列×' + car.backSeat : null
+        ].filter(Boolean).join('　');
+        seatCountBtn.textContent = '座席数変更　' + (seatSummary || '未設定');
+        seatCountBtn.addEventListener('click', (function(ci) {
+            return function(e) { e.stopPropagation(); Assignment.openSeatCountModal(ci); };
+        })(carIndex));
+        carLayout.appendChild(seatCountBtn);
         
         // 車両座席レイアウト
         const carSeatLayout = document.createElement('div');
@@ -1742,6 +1819,21 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     };
 
     /**
+     * 画像をダウンロードする（PC Chrome 対応フォールバック）
+     */
+    Assignment._downloadImage = function(blob, fileName) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
+    };
+
+    /**
      * 全車両の座席割り当てを画像として出力
      * html2canvas でキャプチャし、Web Share API または直接ダウンロード
      */
@@ -1758,6 +1850,11 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             UI.showAlert('車両情報が表示されていません。割り当てを保存してから再試行してください。');
             return;
         }
+
+        // 処理中表示
+        var exportBtn = document.getElementById('export-image');
+        var origText = exportBtn ? exportBtn.textContent : '';
+        if (exportBtn) { exportBtn.textContent = '生成中...'; exportBtn.disabled = true; }
 
         var event = Storage.getSelectedEvent();
 
@@ -1855,25 +1952,33 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             windowHeight: wrap.scrollHeight
         }).then(function(canvas) {
             document.body.removeChild(wrap);
+            if (exportBtn) { exportBtn.textContent = origText; exportBtn.disabled = false; }
             canvas.toBlob(function(blob) {
                 var fileName = '乗車割り当て' + (event ? '_' + event.date : '') + '.png';
-                var file = new File([blob], fileName, { type: 'image/png' });
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+
+                // モバイルのWeb Share API（ファイル共有対応）を試みる
+                var canShareFiles = false;
+                try {
+                    var testFile = new File([blob], fileName, { type: 'image/png' });
+                    canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [testFile] }));
+                } catch (e) {}
+
+                if (canShareFiles) {
+                    var file = new File([blob], fileName, { type: 'image/png' });
                     navigator.share({ title: '乗車割り当て', files: [file] })
-                        .catch(function(err) { console.warn('share cancelled:', err); });
+                        .catch(function(err) {
+                            console.warn('share cancelled or failed:', err);
+                            // share失敗時はダウンロードにフォールバック
+                            Assignment._downloadImage(blob, fileName);
+                        });
                 } else {
-                    var url = URL.createObjectURL(blob);
-                    var a = document.createElement('a');
-                    a.href = url;
-                    a.download = fileName;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
+                    // PC Chrome など：直接ダウンロード
+                    Assignment._downloadImage(blob, fileName);
                 }
             }, 'image/png');
         }).catch(function(err) {
             if (document.body.contains(wrap)) document.body.removeChild(wrap);
+            if (exportBtn) { exportBtn.textContent = origText; exportBtn.disabled = false; }
             console.error('html2canvas エラー:', err);
             UI.showAlert('画像の生成に失敗しました。');
         });
