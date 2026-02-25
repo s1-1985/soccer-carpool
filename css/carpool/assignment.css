@@ -14,6 +14,7 @@
     border-radius: 8px;
     padding: 15px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    min-width: 0;
 }
 
 .cars-scroll-area {
@@ -513,19 +514,24 @@
     }
 
     .seat {
-        width: 44px;
-        height: 44px;
+        width: 40px;
+        height: 40px;
     }
 
     .driver-seat {
-        width: 44px;
-        height: 44px;
+        width: 40px;
+        height: 40px;
+    }
+
+    .seat-spacer {
+        width: 40px;
+        height: 40px;
     }
 
     .member-icon {
-        width: 28px;
-        height: 28px;
-        font-size: 11px;
+        width: 26px;
+        height: 26px;
+        font-size: 10px;
     }
 
     .seat-name-tag {
