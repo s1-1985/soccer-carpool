@@ -17,9 +17,10 @@
 }
 
 .cars-scroll-area {
-    max-height: 600px;
+    height: calc(100vh - 290px);
+    min-height: 240px;
     overflow-y: auto;
-    padding-right: 10px;
+    padding-right: 6px;
 }
 
 /* 右側：メンバーリストエリア */
@@ -28,12 +29,14 @@
     border-radius: 8px;
     padding: 15px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    min-width: 0;
 }
 
 .members-scroll-area {
-    max-height: 600px;
+    height: calc(100vh - 290px);
+    min-height: 240px;
     overflow-y: auto;
-    padding-right: 10px;
+    padding-right: 6px;
 }
 
 /* 車のレイアウト */
@@ -388,7 +391,25 @@
     background-color: #6f42c1;
 }
 
-/* 座席数調整コントロール */
+/* 座席数変更ボタン（各車カード内） */
+.seat-count-change-btn {
+    display: block;
+    width: 100%;
+    margin-top: 8px;
+    padding: 5px 8px;
+    background: #f0f4f8;
+    border: 1px solid #ccd5e0;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #555;
+    cursor: pointer;
+    text-align: center;
+}
+.seat-count-change-btn:hover {
+    background: #e2eaf2;
+}
+
+/* 座席数調整コントロール（モーダル内） */
 .seat-count-adjuster {
     display: flex;
     justify-content: space-around;
@@ -463,52 +484,69 @@
     }
 }
 
-/* レスポンシブ対応：スマホでは1カラム */
+/* レスポンシブ対応：スマホでも左右2カラム維持、各パネル独立スクロール */
 @media screen and (max-width: 768px) {
     .assignment-container {
-        grid-template-columns: 1fr;
-        grid-gap: 12px;
+        grid-template-columns: 1fr 1fr;
+        grid-gap: 6px;
+        margin: 8px 0;
     }
 
     .car-seats-container,
     .members-assignment-container {
-        padding: 8px;
+        padding: 6px;
+        min-width: 0;
     }
 
-    .cars-scroll-area {
-        max-height: none;
-        overflow-y: visible;
-    }
-
+    .cars-scroll-area,
     .members-scroll-area {
-        max-height: 240px;
+        height: calc(100vh - 260px);
+        min-height: 200px;
+        overflow-y: auto;
+        padding-right: 2px;
     }
 
     .car-top-view {
         width: 100%;
         max-width: 100%;
-        padding: 10px 4px;
+        padding: 8px 2px;
     }
 
     .seat {
-        width: 56px;
-        height: 56px;
+        width: 44px;
+        height: 44px;
     }
 
     .driver-seat {
-        width: 56px;
-        height: 56px;
+        width: 44px;
+        height: 44px;
+    }
+
+    .member-icon {
+        width: 28px;
+        height: 28px;
+        font-size: 11px;
+    }
+
+    .seat-name-tag {
+        font-size: 9px;
+    }
+
+    .seat-label {
+        font-size: 8px;
     }
 
     .member-item {
         width: 100%;
-        padding: 6px 8px;
-        font-size: 12px;
+        padding: 4px 6px;
+        font-size: 11px;
     }
 
-    .member-item .member-icon {
-        width: 26px;
-        height: 26px;
-        font-size: 11px;
+    .member-group-header {
+        font-size: 13px;
+    }
+
+    .car-header {
+        font-size: 14px;
     }
 }
