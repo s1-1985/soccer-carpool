@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>座席割り当て - FC尾島ジュニア</title>
-    <link rel="stylesheet" href="../css/common.css?v=20260224e">
-    <link rel="stylesheet" href="../css/carpool/common.css?v=20260224e">
-    <link rel="stylesheet" href="../css/carpool/assignment.css?v=20260224e">
+    <link rel="stylesheet" href="../css/common.css?v=20260225a">
+    <link rel="stylesheet" href="../css/carpool/common.css?v=20260225a">
+    <link rel="stylesheet" href="../css/carpool/assignment.css?v=20260225a">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -29,18 +29,18 @@
         </div>
 
         <div class="assignment-container">
-            <!-- 左側：車両座席エリア -->
+            <!-- 車両座席エリア（メイン） -->
             <div class="car-seats-container">
-                <h3>車両座席配置</h3>
+                <h3>車両座席配置 <span style="font-size:12px;font-weight:normal;color:#888;">運転手アイコンをタップで変更</span></h3>
                 <div class="cars-scroll-area" id="cars-container">
                     <!-- 車両情報がJSで動的に生成される -->
                     <div class="loading">読み込み中...</div>
                 </div>
             </div>
-            
-            <!-- 右側：メンバーリストエリア -->
+
+            <!-- メンバーリストエリア（配置待ちパネル） -->
             <div class="members-assignment-container">
-                <h3>配置可能なメンバー</h3>
+                <h3>配置待ちメンバー <span style="font-size:12px;font-weight:normal;color:#888;">ドラッグまたは座席タップで配置</span></h3>
                 <div class="members-scroll-area" id="members-container">
                     <!-- メンバーリストがJSで動的に生成される -->
                     <div class="loading">読み込み中...</div>
@@ -50,28 +50,44 @@
         
         <div class="assignment-action-buttons">
             <button id="generate-random" class="random-assign-button">ランダム配置</button>
+            <button id="reset-assignments" class="reset-button">リセット</button>
             <button id="save-assignments" class="save-button">保存</button>
             <button id="share-assignments" class="share-button">LINEで共有</button>
             <button id="export-image" class="export-image-button">画像で出力</button>
         </div>
     </div>
 
-    <!-- 座席編集モーダル -->
-    <div id="seat-edit-modal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>座席に配置するメンバーを選択</h2>
-            <div id="seat-current-info" style="padding:8px;background:#f5f5f5;border-radius:4px;margin-bottom:10px;font-size:0.9em;"></div>
-            <div id="seat-member-list" style="max-height:300px;overflow-y:auto;border:1px solid #eee;border-radius:4px;">
+    <!-- 座席編集モーダル（スマホではボトムシート風に表示） -->
+    <div id="seat-edit-modal" class="modal seat-modal-bottom">
+        <div class="modal-content seat-modal-content">
+            <div class="modal-drag-handle"></div>
+            <h2 style="font-size:16px;margin-bottom:6px;">座席に配置するメンバーを選択</h2>
+            <div id="seat-current-info" style="padding:6px 8px;background:#f5f5f5;border-radius:4px;margin-bottom:8px;font-size:0.85em;color:#555;"></div>
+            <div id="seat-member-list" style="flex:1;overflow-y:auto;border:1px solid #eee;border-radius:4px;min-height:80px;max-height:45vh;">
                 <!-- メンバーリストがJSで動的に生成される -->
             </div>
             <form id="seat-edit-form">
                 <input type="hidden" id="seat-person">
-                <div class="form-actions" style="margin-top:10px;">
+                <div class="form-actions" style="margin-top:8px;gap:8px;">
                     <button type="button" id="cancel-seat-edit">キャンセル</button>
                     <button type="button" id="clear-seat" class="delete-button">座席をクリア</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- 運転手変更モーダル -->
+    <div id="driver-edit-modal" class="modal seat-modal-bottom">
+        <div class="modal-content seat-modal-content">
+            <div class="modal-drag-handle"></div>
+            <h2 style="font-size:16px;margin-bottom:6px;">運転手を変更</h2>
+            <p id="driver-modal-car-info" style="font-size:13px;color:#666;margin-bottom:8px;"></p>
+            <div id="driver-modal-list" style="flex:1;overflow-y:auto;border:1px solid #eee;border-radius:4px;min-height:60px;max-height:45vh;">
+                <!-- 候補リストがJSで動的に生成される -->
+            </div>
+            <div class="form-actions" style="margin-top:8px;">
+                <button type="button" id="cancel-driver-edit">キャンセル</button>
+            </div>
         </div>
     </div>
 
@@ -88,19 +104,19 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script src="../js/common/firebase-config.js?v=20260224e"></script>
+    <script src="../js/common/firebase-config.js?v=20260225a"></script>
 
     <!-- 共通モジュール -->
-    <script src="../js/common/global.js?v=20260224e"></script>
-    <script src="../js/common/utils.js?v=20260224e"></script>
-    <script src="../js/common/storage.js?v=20260224e"></script>
-    <script src="../js/common/ui.js?v=20260224e"></script>
-    <script src="../js/common/auth.js?v=20260224e"></script>
-    <script src="../js/common/db.js?v=20260224e"></script>
+    <script src="../js/common/global.js?v=20260225a"></script>
+    <script src="../js/common/utils.js?v=20260225a"></script>
+    <script src="../js/common/storage.js?v=20260225a"></script>
+    <script src="../js/common/ui.js?v=20260225a"></script>
+    <script src="../js/common/auth.js?v=20260225a"></script>
+    <script src="../js/common/db.js?v=20260225a"></script>
 
     <!-- 配車管理用モジュール -->
-    <script src="../js/carpool/overview.js?v=20260224e"></script>
-    <script src="../js/carpool/assignment.js?v=20260224e"></script>
+    <script src="../js/carpool/overview.js?v=20260225a"></script>
+    <script src="../js/carpool/assignment.js?v=20260225a"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', async function() {

@@ -388,11 +388,86 @@
     background-color: #6f42c1;
 }
 
-/* レスポンシブ対応（スマホでも左右分割を維持） */
+/* 座席数調整コントロール */
+.seat-count-adjuster {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 6px 10px;
+    background: #f0f4f8;
+    border-top: 1px solid #e0e0e0;
+    border-radius: 0 0 8px 8px;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.seat-count-btn {
+    width: 28px;
+    height: 28px;
+    border: 1px solid #ccc;
+    border-radius: 50%;
+    background: white;
+    font-size: 17px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+    padding: 0;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+.seat-count-btn:active {
+    background: #e9ecef;
+}
+
+/* リセットボタン */
+.reset-button {
+    background-color: #dc3545;
+}
+.reset-button:hover {
+    background-color: #c82333;
+}
+
+/* モーダルドラッグハンドル */
+.modal-drag-handle {
+    width: 40px;
+    height: 4px;
+    background: #ddd;
+    border-radius: 2px;
+    margin: 0 auto 12px;
+}
+
+/* 座席選択・運転手変更モーダルをスマホではボトムシート風に */
+@media screen and (max-width: 768px) {
+    .seat-modal-bottom {
+        align-items: flex-end;
+        overflow: hidden;
+    }
+    .seat-modal-bottom .seat-modal-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        border-radius: 18px 18px 0 0 !important;
+        margin: 0 !important;
+        padding: 14px 16px 24px !important;
+        max-height: 80vh !important;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.18) !important;
+    }
+    .assignment-action-buttons button {
+        min-width: 0;
+        font-size: 12px;
+        padding: 8px 4px;
+    }
+}
+
+/* レスポンシブ対応：スマホでは1カラム */
 @media screen and (max-width: 768px) {
     .assignment-container {
-        grid-template-columns: 1fr 1fr;
-        grid-gap: 8px;
+        grid-template-columns: 1fr;
+        grid-gap: 12px;
     }
 
     .car-seats-container,
@@ -400,28 +475,34 @@
         padding: 8px;
     }
 
-    .car-seats-container {
-        border-right: 2px solid #E8A200;
+    .cars-scroll-area {
+        max-height: none;
+        overflow-y: visible;
     }
 
-    .cars-scroll-area,
     .members-scroll-area {
-        max-height: 60vh;
+        max-height: 240px;
     }
 
     .car-top-view {
         width: 100%;
+        max-width: 100%;
         padding: 10px 4px;
     }
 
     .seat {
-        width: 42px;
-        height: 42px;
+        width: 56px;
+        height: 56px;
+    }
+
+    .driver-seat {
+        width: 56px;
+        height: 56px;
     }
 
     .member-item {
         width: 100%;
-        padding: 6px;
+        padding: 6px 8px;
         font-size: 12px;
     }
 
