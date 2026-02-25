@@ -1921,6 +1921,21 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         // 実際の cars-container をクローン（見た目をそのまま使う）
         var carsClone = carsContainer.cloneNode(true);
         carsClone.style.cssText = 'overflow:visible;max-height:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;';
+        // クローン内のスクロール制限をすべて解除（画像に全車が写るように）
+        carsClone.querySelectorAll('*').forEach(function(el) {
+            var s = el.style;
+            var cs = window.getComputedStyle(el);
+            if (cs.overflow === 'hidden' || cs.overflow === 'auto' || cs.overflowY === 'hidden' || cs.overflowY === 'auto') {
+                s.overflow = 'visible';
+                s.overflowY = 'visible';
+            }
+            if (cs.maxHeight && cs.maxHeight !== 'none') {
+                s.maxHeight = 'none';
+            }
+            if (cs.height && cs.height !== 'auto' && cs.height.indexOf('calc') !== -1) {
+                s.height = 'auto';
+            }
+        });
         // クローン内の不要なボタン類を非表示
         carsClone.querySelectorAll('.seat-clear-btn, .seat-count-adjuster').forEach(function(el) {
             el.style.display = 'none';
@@ -1937,6 +1952,10 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         carsClone.querySelectorAll('.seat-name-tag').forEach(function(t) {
             t.style.fontSize = '12px';
             t.style.padding = '0 6px';
+            t.style.whiteSpace = 'normal';
+            t.style.wordBreak = 'break-all';
+            t.style.overflow = 'visible';
+            t.style.textOverflow = 'clip';
         });
         wrap.appendChild(carsClone);
 

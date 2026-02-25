@@ -536,6 +536,9 @@
 
     .seat-name-tag {
         font-size: 9px;
+        white-space: normal;
+        word-break: break-all;
+        line-height: 1.2;
     }
 
     .seat-label {
