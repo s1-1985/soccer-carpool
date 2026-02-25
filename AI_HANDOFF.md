@@ -296,9 +296,9 @@ gh run list --repo s1-1985/soccer-carpool --limit 3
 
 ## 🔄 最新の作業状況
 
-**最終更新:** 2026-02-24 (Session 6 - carpool各ページスティッキー化完了)
-**更新者:** Claude (branch: claude/review-calendar-seating-9A20d)
-**最終正常コミット:** Session5の16コミット統合 + carpoolスティッキー化
+**最終更新:** 2026-02-25 (Session 7 - 座席割り当てUI大幅改善)
+**更新者:** Claude (branch: claude/review-calendar-seating-QHdbi)
+**最終正常コミット:** PR #25-#34 すべてmainにマージ済み + 本セッション分（未PR）
 
 ### ⚠️ PR未作成の注意
 - Session5（前回）の16コミットは `claude/review-calendar-seating-9A20d` に統合済みだが、**まだmainへのPRが未作成**
@@ -413,12 +413,30 @@ gh run list --repo s1-1985/soccer-carpool --limit 3
    - 全carpool HTML（attendance/cars/assignments/notifications/overview/index）のCSSバージョンを `v=20260224` に更新
 3. **役員ロール付与フロー**: 確認したところすでに実装済み（admin.jsに role selectドロップダウン + 変更ボタンあり）
 
+### Session 7 で行った変更（2026-02-25 / branch: claude/review-calendar-seating-QHdbi）
+
+#### 変更ファイル
+- `js/carpool/assignment.js` (+276行): 以下すべてのバグ修正・機能追加
+- `carpool/assignments.html`: リセットボタン追加、運転手変更モーダル追加、モバイル向けレイアウト改善
+- `css/carpool/assignment.css`: モバイル1カラム、ボトムシート風モーダル、座席数調整ボタン
+
+#### 実装内容
+1. **座席タップ時のメンバーリストをイベント対象学年でフィルタリング** (`openSeatEditModal` + `getEventFilteredMembers`ヘルパー追加)
+2. **ランダム配置もイベント対象学年でフィルタリング** + 出欠参加確定選手を優先
+3. **同学年グループ化ランダム配置**: 同じ学年の選手が同じ車にまとまるよう配置アルゴリズム改善
+4. **運転手変更モーダル**: ドライバー座席をタップ → モーダルから選手以外のメンバーを選択
+5. **選手（player）は運転席に割り当て不可**: 運転手モーダルに選手を表示しない + D&Dで運転席へのドロップを禁止
+6. **座席数をリアルタイム調整**: 各車の助手席/中列/後列それぞれ +/- ボタンで増減可能
+7. **割り振りリセットボタン追加**: 全座席をクリアするボタンを追加
+8. **画像出力の情報拡充**: 日時・イベント名・集合時間・集合場所・会場・参加指導者・参加選手名を表示
+9. **画像横幅拡大**: min 800px確保、座席・アイコンを大きく、名前が見切れにくく
+10. **スマホUI改善**: モバイルで1カラム（車両リストが全幅に）、座席/運転手選択モーダルはボトムシート風
+
 ### 次のAIがすべきこと（優先順）
-1. **ユーザーにPRマージを依頼**: `claude/review-calendar-seating-9A20d` → `main` のPRをGitHub UIで作成・マージしてもらう（このセッションでは gh コマンドなし・トークンなしで PR 作成不可）
-2. **スティッキー動作確認**: carpoolページで header + carpool-nav + action-buttons のスティッキーが正常に動作するか確認
-3. **hub/index.htmlのCSS version更新**: 現在 `v=20260223c` のまま。変更なければ問題なし
+1. **PRを作成**: `claude/review-calendar-seating-QHdbi` → `main` のPRをGitHub UIで作成・マージ
+2. **実機動作確認**: スマホで座席タップ→ボトムシート表示、運転手タップ→モーダル表示を確認
+3. **追加要望があれば対応**
 
 ### 既知の問題
 - 旧ファイル（carpool/assignment.html, carprovision.html 等）が git 上に残存（削除はユーザー確認後）
 - イベント種別`event`（保護者出欠）は新規イベントにのみ適用。既存の`other`種別のイベントは保護者自動追加されない（後方互換のため）
-- Firestore の register.html ブートストラップ: 管理者登録後、Firestore rules の admin/approved 作成許可を残してある（次のAIはルールを再確認すること）
