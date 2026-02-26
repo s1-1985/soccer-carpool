@@ -440,3 +440,73 @@ gh run list --repo s1-1985/soccer-carpool --limit 3
 ### 既知の問題
 - 旧ファイル（carpool/assignment.html, carprovision.html 等）が git 上に残存（削除はユーザー確認後）
 - イベント種別`event`（保護者出欠）は新規イベントにのみ適用。既存の`other`種別のイベントは保護者自動追加されない（後方互換のため）
+
+---
+
+## 💡 将来構想：イベントへのファイル添付機能
+
+> **⚠️ 重要：ユーザーから明示的な実装指示があるまで、この構想に対して一切のコード変更・実装アクションを取ってはならない。**
+
+### 概要
+各イベントに対して、大会要綱・レギュレーション等のファイル（PDF / Excel / Word / JPEG 等）を添付・閲覧DLできる機能を将来的に追加したい。
+
+### Firebase 無料枠に関する認識整理（2026-02-26 確認済み）
+
+Firebase の制限はサービスごとに独立している：
+
+| サービス | 制限内容 | 補足 |
+|---|---|---|
+| **Firestore** | 保存データ **1 GiB**・読み取り5万回/日・書き込み2万回/日 | 転送量ではなく蓄積データ量 |
+| **Firebase Storage** | 保存データ **5 GiB**・DL転送量 **1 GB/日** | ファイルを直接置く場合の制限 |
+| **Firebase Hosting** | 保存 10 GiB・転送 **360 MB/日** | 静的ファイル（HTML/CSS/JS）の配信 |
+
+**ポイント：** ファイルを Firebase Storage に置いた場合、ユーザーがDLするたびに転送量（1 GB/日）を消費する。大人数が大きなファイルをDLすると上限に近づく可能性がある。
+
+### 採用予定アーキテクチャ（Google Drive 案）
+
+```
+【ファイルの流れ】
+
+管理者  →  自分の Google Drive にファイルをアップ（手動）
+              ↓ 「リンクを知っている人が閲覧可」で共有設定
+管理者  →  システムのイベント画面でそのURLを登録 → Firestore に URL・メタ情報のみ保存
+
+ユーザー →  システムでイベント詳細を開く → 添付ファイル一覧を表示
+              ↓ ファイルをクリック
+ユーザー →  Google Drive から直接ダウンロード（Firebase を経由しない）
+```
+
+**このアーキテクチャのメリット：**
+- ファイルの実体が Google Drive にあるため Firebase Storage の転送量制限に一切触れない
+- Firestore に保存するのは URL・ファイル名・サイズ等の数百バイト程度のメタデータのみ
+- ユーザーの Google Drive（2TB プラン）をストレージとして活用できる
+- 実装コストが低い（URL を Firestore に保存するだけ）
+
+**注意点：**
+- Google Drive にも個別ファイルの 1日DL上限がある（目安: 数百件/日）。人気ファイルが大量DLされると一時的に「現在ダウンロードできません」が出る可能性がある
+- ファイル追加・削除は「管理者が Drive とシステムを両方操作する」手動運用になる
+- 共有リンクは URL を知っていれば誰でもアクセス可能（システム外からのアクセスを防げない）
+
+### Firebase はフロントエンドではない（重要な認識整理）
+
+- **フロントエンド** ＝ 自分たちが書いた HTML / CSS / JS コードそのもの
+- **Firebase Hosting** ＝ そのファイルを置いておく配信サーバー（置き場所に過ぎない）
+- Firebase Auth・Firestore はホスティング先に関わらず利用可能
+- 将来的に Firebase Hosting を GitHub Pages / Cloudflare Pages / Netlify 等に移しても、Auth・Firestore はそのまま使い続けられる
+
+### 実装する際の Firestore スキーマ案（参考）
+
+```
+events/{eventId}/
+  attachments: [
+    {
+      name: "大会要綱.pdf",
+      url: "https://drive.google.com/...",
+      size: "512KB",
+      uploadedAt: Timestamp,
+      uploadedBy: "uid"
+    }
+  ]
+```
+
+または `events/{eventId}/attachments/{attachmentId}` のサブコレクション方式も可。
