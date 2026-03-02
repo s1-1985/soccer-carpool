@@ -707,15 +707,102 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     };
     
     /**
-     * コメントを保存
+     * コメントを投稿して履歴に追加
      */
     Assignment.saveComment = function() {
         var textarea = document.getElementById('assignment-comment');
         if (!textarea) return;
-        var comment = textarea.value;
-        app.Carpool.appData.comment = comment;
+        var text = textarea.value.trim();
+        if (!text) return;
+
+        // 投稿者名（ログインユーザー）
+        var author = (app.Auth && app.Auth.getUserName) ? app.Auth.getUserName() : 'ユーザー';
+
+        // 履歴配列に追加
+        if (!Array.isArray(app.Carpool.appData.comments)) {
+            app.Carpool.appData.comments = [];
+        }
+        var entry = { text: text, author: author, timestamp: Date.now() };
+        app.Carpool.appData.comments.unshift(entry); // 最新を先頭に
+
+        // 後方互換: 最新コメントを単一フィールドにもセット（LINEシェア・画像出力用）
+        app.Carpool.appData.comment = text;
+
         app.Carpool.saveData();
-        console.log('コメントを保存しました');
+
+        // テキストエリアをクリア
+        textarea.value = '';
+
+        // 履歴を再描画
+        Assignment.renderCommentHistory();
+
+        // バッジ更新
+        Assignment.updateCommentBadge();
+
+        console.log('コメントを投稿しました');
+    };
+
+    /**
+     * コメント履歴をモーダル内に描画
+     */
+    Assignment.renderCommentHistory = function() {
+        var container = document.getElementById('comment-history');
+        if (!container) return;
+
+        var comments = app.Carpool.appData.comments || [];
+        if (comments.length === 0) {
+            container.innerHTML = '<p style="color:#999;font-size:13px;text-align:center;padding:12px 0;">コメントはまだありません</p>';
+            return;
+        }
+
+        container.innerHTML = '';
+        comments.forEach(function(c) {
+            var item = document.createElement('div');
+            item.className = 'comment-history-item';
+
+            var meta = document.createElement('div');
+            meta.className = 'comment-history-meta';
+            var d = new Date(c.timestamp);
+            var dateStr = (d.getMonth()+1) + '/' + d.getDate() + ' ' +
+                          ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2);
+            meta.textContent = (c.author || '') + '　' + dateStr;
+
+            var textEl = document.createElement('div');
+            textEl.className = 'comment-history-text';
+            textEl.textContent = c.text;
+
+            item.appendChild(meta);
+            item.appendChild(textEl);
+            container.appendChild(item);
+        });
+    };
+
+    /**
+     * コメントボタンの赤丸バッジを更新
+     */
+    Assignment.updateCommentBadge = function() {
+        var btn = document.getElementById('open-comment-btn');
+        if (!btn) return;
+
+        var comments = app.Carpool.appData.comments || [];
+        // 既存の単一コメントも考慮
+        var hasComment = comments.length > 0 || !!(app.Carpool.appData.comment);
+
+        var badge = btn.querySelector('.comment-badge');
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'comment-badge';
+            btn.appendChild(badge);
+        }
+        badge.classList.toggle('has-comment', hasComment);
+    };
+
+    /**
+     * コメントモーダルを開く
+     */
+    Assignment.openCommentModal = function() {
+        Assignment.renderCommentHistory();
+        UI.openModal('comment-modal');
     };
 
     /**
@@ -916,6 +1003,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                         app.Carpool.appData.attendance      = data.attendance      || [];
                         app.Carpool.appData.notifications   = data.notifications   || [];
                         app.Carpool.appData.comment         = data.comment         || '';
+                        app.Carpool.appData.comments        = data.comments        || [];
                         firestoreLoaded = true;
                         console.log('イベントデータをFirestoreからロードしました: 車両=' + app.Carpool.appData.carRegistrations.length + '台');
                     }
@@ -952,11 +1040,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         // イベントリスナーの設定
         this.setupEventListeners();
 
-        // コメントを読み込んで表示
-        var commentTextarea = document.getElementById('assignment-comment');
-        if (commentTextarea && app.Carpool.appData.comment) {
-            commentTextarea.value = app.Carpool.appData.comment;
-        }
+        // コメントバッジ更新（既存コメントがあれば赤丸を表示）
+        Assignment.updateCommentBadge();
 
         console.log('割り当て機能の初期化が完了しました');
     };
@@ -1062,22 +1147,23 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             });
         }
 
-        // コメントボタン：コメントセクションへスクロール＆フォーカス
+        // コメントボタン：コメントモーダルを開く
         var openCommentBtn = document.getElementById('open-comment-btn');
         if (openCommentBtn) {
             openCommentBtn.addEventListener('click', function() {
-                var commentSection = document.getElementById('assignment-comment-section');
-                var textarea = document.getElementById('assignment-comment');
-                if (commentSection) {
-                    commentSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                }
-                if (textarea) {
-                    setTimeout(function() { textarea.focus(); }, 300);
-                }
+                Assignment.openCommentModal();
             });
         }
 
-        // コメント保存ボタン
+        // コメントモーダルの閉じるボタン
+        var closeCommentBtn = document.getElementById('close-comment-modal');
+        if (closeCommentBtn) {
+            closeCommentBtn.addEventListener('click', function() {
+                UI.closeModal('comment-modal');
+            });
+        }
+
+        // コメント投稿ボタン
         var saveCommentBtn = document.getElementById('save-comment-btn');
         if (saveCommentBtn) {
             saveCommentBtn.addEventListener('click', function() {
@@ -1085,11 +1171,13 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             });
         }
 
-        // コメントテキストエリア：blur時に自動保存
+        // コメントテキストエリア：Ctrl+Enter / Cmd+Enter で投稿
         var commentTextarea = document.getElementById('assignment-comment');
         if (commentTextarea) {
-            commentTextarea.addEventListener('blur', function() {
-                Assignment.saveComment();
+            commentTextarea.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    Assignment.saveComment();
+                }
             });
         }
 

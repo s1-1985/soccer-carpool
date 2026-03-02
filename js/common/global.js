@@ -36,7 +36,9 @@ window.FCOjima = window.FCOjima || {};
             carRegistrations: [],
             assignments: [],
             attendance: [],
-            notifications: []
+            notifications: [],
+            comment: '',
+            comments: []
         },
         members: []
     };

@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>座席割り当て - FC尾島ジュニア</title>
-    <link rel="stylesheet" href="../css/common.css?v=20260302b">
-    <link rel="stylesheet" href="../css/carpool/common.css?v=20260302b">
-    <link rel="stylesheet" href="../css/carpool/assignment.css?v=20260302b">
+    <link rel="stylesheet" href="../css/common.css?v=20260302c">
+    <link rel="stylesheet" href="../css/carpool/common.css?v=20260302c">
+    <link rel="stylesheet" href="../css/carpool/assignment.css?v=20260302c">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -74,11 +74,23 @@
                 <button id="export-image" class="export-image-button">画像で出力</button>
             </div>
 
-            <!-- コメントセクション（画面最下部） -->
-            <div class="assignment-comment-section" id="assignment-comment-section">
-                <div class="comment-label">コメント（LINEシェア・画像出力に反映）</div>
-                <textarea id="assignment-comment" placeholder="この配車割り振りについてのコメントを入力..."></textarea>
-                <button type="button" id="save-comment-btn" class="assignment-comment-save-btn">コメントを保存</button>
+        </div>
+    </div>
+
+    <!-- コメントモーダル -->
+    <div id="comment-modal" class="modal seat-modal-bottom">
+        <div class="modal-content seat-modal-content">
+            <div class="modal-drag-handle"></div>
+            <h2 style="font-size:16px;margin-bottom:8px;">コメント</h2>
+            <textarea id="assignment-comment" placeholder="コメントを入力..." style="width:100%;min-height:64px;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box;margin-bottom:6px;"></textarea>
+            <div style="text-align:right;margin-bottom:12px;">
+                <button type="button" id="save-comment-btn" class="assignment-comment-save-btn">投稿</button>
+            </div>
+            <div id="comment-history" style="max-height:38vh;overflow-y:auto;border-top:1px solid #eee;padding-top:8px;">
+                <!-- JSで動的に生成 -->
+            </div>
+            <div class="form-actions" style="margin-top:10px;">
+                <button type="button" id="close-comment-modal">閉じる</button>
             </div>
         </div>
     </div>
@@ -144,19 +156,19 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script src="../js/common/firebase-config.js?v=20260302b"></script>
+    <script src="../js/common/firebase-config.js?v=20260302c"></script>
 
     <!-- 共通モジュール -->
-    <script src="../js/common/global.js?v=20260302b"></script>
-    <script src="../js/common/utils.js?v=20260302b"></script>
-    <script src="../js/common/storage.js?v=20260302b"></script>
-    <script src="../js/common/ui.js?v=20260302b"></script>
-    <script src="../js/common/auth.js?v=20260302b"></script>
-    <script src="../js/common/db.js?v=20260302b"></script>
+    <script src="../js/common/global.js?v=20260302c"></script>
+    <script src="../js/common/utils.js?v=20260302c"></script>
+    <script src="../js/common/storage.js?v=20260302c"></script>
+    <script src="../js/common/ui.js?v=20260302c"></script>
+    <script src="../js/common/auth.js?v=20260302c"></script>
+    <script src="../js/common/db.js?v=20260302c"></script>
 
     <!-- 配車管理用モジュール -->
-    <script src="../js/carpool/overview.js?v=20260302b"></script>
-    <script src="../js/carpool/assignment.js?v=20260302b"></script>
+    <script src="../js/carpool/overview.js?v=20260302c"></script>
+    <script src="../js/carpool/assignment.js?v=20260302c"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', async function() {
