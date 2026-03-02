@@ -6,6 +6,68 @@
 
 ---
 
+## 🔑 基本原則：PR作成・マージは必ずAIが自動で行う
+
+**ユーザーの要望：** PR作成・マージ・デプロイ確認は、エラーで手動操作が必要な場合を除き、すべてAIが自動で実行すること。
+
+### PR自動作成・マージの方法
+
+このリポジトリでは `gh` CLIは使えない（`gh auth login` が設定されていないため）。
+代わりに **GitHub PAT（Personal Access Token）を使った `curl` による GitHub API 直接呼び出し** を使う。
+
+#### セッション開始時の確認
+毎セッションの最初に、過去のセッションで使用したトークンが有効か確認すること：
+```bash
+GH_TOKEN="github_pat_..." # ← ユーザーが提供したトークン
+curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GH_TOKEN" https://api.github.com/user
+# 200 → 有効、401 → 期限切れ → ユーザーに再発行を依頼
+```
+
+#### トークンが切れた場合
+ユーザーに以下を依頼する：
+1. GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens
+2. Repository: `s1-1985/soccer-carpool`、権限: `Contents: Read/Write`、`Pull requests: Read/Write`
+3. 発行されたトークン（`github_pat_...`）をチャットに貼り付けてもらう
+
+#### PR作成・マージの手順（コミット&プッシュ後に実行）
+
+```bash
+GH_TOKEN="github_pat_..."  # ← ユーザー提供トークン
+BRANCH="claude/xxx-yyy"    # ← 現在のブランチ名
+
+# 1. PR作成
+PR_RESPONSE=$(curl -s -X POST \
+  -H "Authorization: token $GH_TOKEN" \
+  -H "Accept: application/vnd.github.v3+json" \
+  "https://api.github.com/repos/s1-1985/soccer-carpool/pulls" \
+  -d "{
+    \"title\": \"PRのタイトル\",
+    \"head\": \"$BRANCH\",
+    \"base\": \"main\",
+    \"body\": \"## 変更内容\\n\\n- 変更1\\n- 変更2\"
+  }")
+PR_NUMBER=$(echo "$PR_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['number'])")
+echo "PR #$PR_NUMBER 作成完了"
+
+# 2. PRマージ
+curl -s -X PUT \
+  -H "Authorization: token $GH_TOKEN" \
+  -H "Accept: application/vnd.github.v3+json" \
+  "https://api.github.com/repos/s1-1985/soccer-carpool/pulls/$PR_NUMBER/merge" \
+  -d "{
+    \"commit_title\": \"PRのタイトル\",
+    \"merge_method\": \"squash\"
+  }"
+echo "PR #$PR_NUMBER マージ完了 → Firebase自動デプロイ開始"
+
+# 3. デプロイ確認（数分後）
+curl -s -H "Authorization: token $GH_TOKEN" \
+  "https://api.github.com/repos/s1-1985/soccer-carpool/actions/runs?per_page=3" \
+  | python3 -c "import sys,json; runs=json.load(sys.stdin)['workflow_runs']; [print(r['status'],r['conclusion'],r['created_at']) for r in runs[:3]]"
+```
+
+---
+
 ## 📋 プロジェクト概要
 
 **アプリ名:** FC尾島ジュニア HUB
@@ -247,11 +309,16 @@ git commit -m "fix: 説明"
 git push -u origin claude/fix-xxx-yyy
 
 # 4. PRを作成してmainにマージ（GitHub Actionsが自動デプロイ）
-gh pr create --repo s1-1985/soccer-carpool --title "..." --head claude/fix-xxx-yyy --base main --body "..."
-gh pr merge <PR番号> --repo s1-1985/soccer-carpool --merge
-
-# 5. デプロイ確認
-gh run list --repo s1-1985/soccer-carpool --limit 3
+# ※ gh CLI は使えない。curl + GitHub PAT でAPI直接呼び出しを行う
+# ※ 詳細な手順は上部「🔑 基本原則：PR作成・マージは必ずAIが自動で行う」を参照
+GH_TOKEN="github_pat_..."  # ← ユーザーが提供したトークンを使用
+curl -X POST -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.github.v3+json" \
+  "https://api.github.com/repos/s1-1985/soccer-carpool/pulls" \
+  -d '{"title":"...","head":"claude/fix-xxx-yyy","base":"main","body":"..."}'
+# → PR番号を取得してマージ
+curl -X PUT -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.github.v3+json" \
+  "https://api.github.com/repos/s1-1985/soccer-carpool/pulls/<PR番号>/merge" \
+  -d '{"merge_method":"squash"}'
 ```
 
 ---
