@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>座席割り当て - FC尾島ジュニア</title>
-    <link rel="stylesheet" href="../css/common.css?v=20260225b">
-    <link rel="stylesheet" href="../css/carpool/common.css?v=20260225b">
-    <link rel="stylesheet" href="../css/carpool/assignment.css?v=20260225b">
+    <link rel="stylesheet" href="../css/common.css?v=20260302a">
+    <link rel="stylesheet" href="../css/carpool/common.css?v=20260302a">
+    <link rel="stylesheet" href="../css/carpool/assignment.css?v=20260302a">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -28,32 +28,51 @@
             <div class="loading">読み込み中...</div>
         </div>
 
-        <div class="assignment-container">
-            <!-- 車両座席エリア（メイン） -->
-            <div class="car-seats-container">
-                <h3>車両座席配置 <span style="font-size:12px;font-weight:normal;color:#888;">運転手アイコンをタップで変更</span></h3>
-                <div class="cars-scroll-area" id="cars-container">
-                    <!-- 車両情報がJSで動的に生成される -->
-                    <div class="loading">読み込み中...</div>
+        <!-- ツールバー（通常モード時表示） -->
+        <div class="assignment-toolbar">
+            <button id="layout-toggle-btn" class="layout-toggle-btn" title="レイアウト切り替え">
+                <span id="layout-btn-label">⇄ 横レイアウトに切り替え</span>
+            </button>
+            <button id="open-fs-btn" class="open-fs-btn">⤢ 全画面で作業</button>
+        </div>
+
+        <!-- 作業エリアラッパー（全画面モード時にここが全画面化される） -->
+        <div id="assignment-work-area">
+            <!-- 全画面モード専用ヘッダー（通常時は非表示） -->
+            <div class="fs-work-header">
+                <span class="fs-title" id="fs-event-title">座席割り当て</span>
+                <div class="fs-controls">
+                    <button id="fs-layout-btn" class="layout-toggle-btn fs-layout-btn" title="レイアウト切り替え">
+                        <span id="fs-layout-label">⇄ 横</span>
+                    </button>
+                    <button id="close-fs-btn" class="close-fs-btn">✕ 閉じる</button>
                 </div>
             </div>
 
-            <!-- メンバーリストエリア（配置待ちパネル） -->
-            <div class="members-assignment-container">
-                <h3>配置待ちメンバー <span style="font-size:12px;font-weight:normal;color:#888;">ドラッグまたは座席タップで配置</span></h3>
-                <div class="members-scroll-area" id="members-container">
-                    <!-- メンバーリストがJSで動的に生成される -->
-                    <div class="loading">読み込み中...</div>
+            <!-- 車両座席エリア＋メンバーリストエリア -->
+            <div class="assignment-container">
+                <div class="car-seats-container">
+                    <h3>車両座席配置 <span style="font-size:12px;font-weight:normal;color:#888;">運転手アイコンをタップで変更</span></h3>
+                    <div class="cars-scroll-area" id="cars-container">
+                        <div class="loading">読み込み中...</div>
+                    </div>
+                </div>
+
+                <div class="members-assignment-container">
+                    <h3>配置待ちメンバー <span style="font-size:12px;font-weight:normal;color:#888;">ドラッグまたは座席タップで配置</span></h3>
+                    <div class="members-scroll-area" id="members-container">
+                        <div class="loading">読み込み中...</div>
+                    </div>
                 </div>
             </div>
-        </div>
-        
-        <div class="assignment-action-buttons">
-            <button id="generate-random" class="random-assign-button">ランダム配置</button>
-            <button id="reset-assignments" class="reset-button">リセット</button>
-            <button id="save-assignments" class="save-button">保存</button>
-            <button id="share-assignments" class="share-button">LINEで共有</button>
-            <button id="export-image" class="export-image-button">画像で出力</button>
+
+            <div class="assignment-action-buttons">
+                <button id="generate-random" class="random-assign-button">ランダム配置</button>
+                <button id="reset-assignments" class="reset-button">リセット</button>
+                <button id="save-assignments" class="save-button">保存</button>
+                <button id="share-assignments" class="share-button">LINEで共有</button>
+                <button id="export-image" class="export-image-button">画像で出力</button>
+            </div>
         </div>
     </div>
 
@@ -118,19 +137,19 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script src="../js/common/firebase-config.js?v=20260225b"></script>
+    <script src="../js/common/firebase-config.js?v=20260302a"></script>
 
     <!-- 共通モジュール -->
-    <script src="../js/common/global.js?v=20260225b"></script>
-    <script src="../js/common/utils.js?v=20260225b"></script>
-    <script src="../js/common/storage.js?v=20260225b"></script>
-    <script src="../js/common/ui.js?v=20260225b"></script>
-    <script src="../js/common/auth.js?v=20260225b"></script>
-    <script src="../js/common/db.js?v=20260225b"></script>
+    <script src="../js/common/global.js?v=20260302a"></script>
+    <script src="../js/common/utils.js?v=20260302a"></script>
+    <script src="../js/common/storage.js?v=20260302a"></script>
+    <script src="../js/common/ui.js?v=20260302a"></script>
+    <script src="../js/common/auth.js?v=20260302a"></script>
+    <script src="../js/common/db.js?v=20260302a"></script>
 
     <!-- 配車管理用モジュール -->
-    <script src="../js/carpool/overview.js?v=20260225b"></script>
-    <script src="../js/carpool/assignment.js?v=20260225b"></script>
+    <script src="../js/carpool/overview.js?v=20260302a"></script>
+    <script src="../js/carpool/assignment.js?v=20260302a"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', async function() {

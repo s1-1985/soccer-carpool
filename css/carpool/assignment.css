@@ -559,3 +559,242 @@
         font-size: 14px;
     }
 }
+
+/* =============================================
+   割り当てツールバー
+   ============================================= */
+.assignment-toolbar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.layout-toggle-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.layout-toggle-btn:hover { background: #5a6268; }
+.layout-toggle-btn.is-active { background: #E8A200; }
+
+.open-fs-btn {
+    background: #343a40;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    margin-left: auto;
+}
+.open-fs-btn:hover { background: #1C1600; }
+
+/* =============================================
+   全画面モード専用ヘッダー（通常時は非表示）
+   ============================================= */
+.fs-work-header {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    background: #1C1600;
+    color: white;
+    padding: 6px 12px;
+    flex-shrink: 0;
+    min-height: 44px;
+    gap: 8px;
+}
+.fs-title {
+    font-size: 13px;
+    font-weight: bold;
+    color: #E8A200;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.fs-controls {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-shrink: 0;
+}
+.fs-layout-btn {
+    font-size: 11px;
+    padding: 5px 10px;
+}
+.close-fs-btn {
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.close-fs-btn:hover { background: rgba(255,255,255,0.25); }
+
+/* =============================================
+   全画面モード
+   ============================================= */
+#assignment-work-area {
+    display: flex;
+    flex-direction: column;
+}
+
+#assignment-work-area.is-fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9500;
+    background: #f0f0f0;
+    overflow: hidden;
+}
+
+#assignment-work-area.is-fullscreen .fs-work-header {
+    display: flex;
+}
+
+/* 全画面時：assignment-containerをflexに切り替えてflex:1で残り全部使う */
+#assignment-work-area.is-fullscreen .assignment-container {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    min-height: 0;
+    gap: 6px;
+    margin: 6px;
+    overflow: hidden;
+}
+
+#assignment-work-area.is-fullscreen .car-seats-container,
+#assignment-work-area.is-fullscreen .members-assignment-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    padding: 8px;
+}
+
+#assignment-work-area.is-fullscreen .cars-scroll-area,
+#assignment-work-area.is-fullscreen .members-scroll-area {
+    flex: 1;
+    height: auto !important;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+#assignment-work-area.is-fullscreen .assignment-action-buttons {
+    flex-shrink: 0;
+    margin: 0 6px 6px;
+    padding: 8px 0 0;
+    border-top: 1px solid #ddd;
+    background: #f0f0f0;
+}
+
+/* =============================================
+   横レイアウトモード (layout-h)
+   ============================================= */
+
+/* 縦→横：コンテナを1カラムに変更（車両が上、メンバーが下） */
+#assignment-work-area.layout-h .assignment-container {
+    grid-template-columns: 1fr;
+}
+
+/* 車両エリア：横スクロール */
+#assignment-work-area.layout-h .cars-scroll-area {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    height: 240px;
+    padding-bottom: 4px;
+}
+
+#assignment-work-area.layout-h .car-layout {
+    flex-shrink: 0;
+}
+
+/* 車両図を90°回転：seat-rowを縦並びにする */
+#assignment-work-area.layout-h .car-top-view {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 8px;
+    width: auto;
+    max-width: none;
+    padding: 10px 20px;
+}
+
+/* 各列（前列・中列・後列）を縦に積む */
+#assignment-work-area.layout-h .seat-row {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 0;
+}
+
+/* 前列：助手席が上、運転席が下（90°左回転後の配置） */
+#assignment-work-area.layout-h .driver-row {
+    justify-content: flex-start;
+}
+
+/* スペーサー不要 */
+#assignment-work-area.layout-h .seat-spacer {
+    display: none;
+}
+
+/* 全画面 + 横レイアウト：コンテナを縦積みに切り替え */
+#assignment-work-area.is-fullscreen.layout-h .assignment-container {
+    flex-direction: column;
+}
+
+#assignment-work-area.is-fullscreen.layout-h .car-seats-container {
+    flex: 1.2;
+}
+
+#assignment-work-area.is-fullscreen.layout-h .members-assignment-container {
+    flex: 0.8;
+}
+
+#assignment-work-area.is-fullscreen.layout-h .cars-scroll-area {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    height: auto;
+    flex: 1;
+}
+
+/* =============================================
+   スマホのグローバルナビを1行に（割り当てページ専用）
+   ============================================= */
+@media screen and (max-width: 768px) {
+    .global-navigation {
+        flex-direction: row !important;
+        gap: 8px;
+        padding: 8px 12px;
+    }
+    .global-navigation button {
+        width: auto !important;
+        flex: 1;
+        font-size: 12px;
+        padding: 8px 4px;
+        white-space: nowrap;
+    }
+}
