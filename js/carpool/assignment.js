@@ -308,7 +308,11 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         if (!modal) return;
 
         var carNameEl = document.getElementById('seat-count-car-name');
-        if (carNameEl) carNameEl.textContent = car.parent + 'の車';
+        if (carNameEl) {
+            var driverMemberModal = (app.Carpool.members || []).find(function(m) { return m.name === car.parent; });
+            var driverDisplayModal = (driverMemberModal && driverMemberModal.abbr) ? driverMemberModal.abbr : car.parent;
+            carNameEl.textContent = driverDisplayModal + '（座席数変更）';
+        }
 
         var formRows = document.getElementById('seat-count-form-rows');
         if (!formRows) return;
@@ -455,8 +459,13 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         // カーヘッダーも更新
         var carLayout = document.querySelector('.car-layout[data-car-index="' + carIndex + '"]');
         if (carLayout) {
-            var header = carLayout.querySelector('.car-header');
-            if (header) header.textContent = newDriver + 'の車 ✏';
+            var headerName = carLayout.querySelector('.car-header-name');
+            if (headerName) {
+                var driverMemberUpd = (app.Carpool.members || []).find(function(m) { return m.name === newDriver; });
+                var driverDisplayUpd = (driverMemberUpd && driverMemberUpd.abbr) ? driverMemberUpd.abbr : newDriver;
+                headerName.textContent = driverDisplayUpd;
+                headerName.title = newDriver;
+            }
         }
         app.Carpool.saveData();
         Assignment.updateMembersList();
@@ -698,6 +707,18 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     };
     
     /**
+     * コメントを保存
+     */
+    Assignment.saveComment = function() {
+        var textarea = document.getElementById('assignment-comment');
+        if (!textarea) return;
+        var comment = textarea.value;
+        app.Carpool.appData.comment = comment;
+        app.Carpool.saveData();
+        console.log('コメントを保存しました');
+    };
+
+    /**
      * 割り当て結果の共有
      */
     Assignment.shareAssignments = function() {
@@ -739,6 +760,16 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             message += '配車割り当てが設定されていません。';
         }
         
+        // コメントを追加
+        var comment = app.Carpool.appData.comment || '';
+        if (!comment) {
+            var commentTextarea = document.getElementById('assignment-comment');
+            if (commentTextarea) comment = commentTextarea.value || '';
+        }
+        if (comment) {
+            message += '\n【コメント】\n' + comment + '\n';
+        }
+
         // 出欠確認・割り当てページのURLを追加
         var baseUrl = window.location.origin;
         message += '\n\n▼ 出欠確認:\n' + baseUrl + '/carpool/attendance.html';
@@ -884,6 +915,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                         app.Carpool.appData.assignments     = data.assignments     || [];
                         app.Carpool.appData.attendance      = data.attendance      || [];
                         app.Carpool.appData.notifications   = data.notifications   || [];
+                        app.Carpool.appData.comment         = data.comment         || '';
                         firestoreLoaded = true;
                         console.log('イベントデータをFirestoreからロードしました: 車両=' + app.Carpool.appData.carRegistrations.length + '台');
                     }
@@ -919,6 +951,12 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
 
         // イベントリスナーの設定
         this.setupEventListeners();
+
+        // コメントを読み込んで表示
+        var commentTextarea = document.getElementById('assignment-comment');
+        if (commentTextarea && app.Carpool.appData.comment) {
+            commentTextarea.value = app.Carpool.appData.comment;
+        }
 
         console.log('割り当て機能の初期化が完了しました');
     };
@@ -1021,6 +1059,37 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         if (cancelDriverBtn) {
             cancelDriverBtn.addEventListener('click', function() {
                 UI.closeModal('driver-edit-modal');
+            });
+        }
+
+        // コメントボタン：コメントセクションへスクロール＆フォーカス
+        var openCommentBtn = document.getElementById('open-comment-btn');
+        if (openCommentBtn) {
+            openCommentBtn.addEventListener('click', function() {
+                var commentSection = document.getElementById('assignment-comment-section');
+                var textarea = document.getElementById('assignment-comment');
+                if (commentSection) {
+                    commentSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+                if (textarea) {
+                    setTimeout(function() { textarea.focus(); }, 300);
+                }
+            });
+        }
+
+        // コメント保存ボタン
+        var saveCommentBtn = document.getElementById('save-comment-btn');
+        if (saveCommentBtn) {
+            saveCommentBtn.addEventListener('click', function() {
+                Assignment.saveComment();
+            });
+        }
+
+        // コメントテキストエリア：blur時に自動保存
+        var commentTextarea = document.getElementById('assignment-comment');
+        if (commentTextarea) {
+            commentTextarea.addEventListener('blur', function() {
+                Assignment.saveComment();
             });
         }
 
@@ -1237,36 +1306,39 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         carLayout.className = 'car-layout';
         carLayout.dataset.carIndex = carIndex;
         
-        // 車両ヘッダー（クリックで運転手変更 — 運転手座席アイコンでも変更可）
+        // 車両ヘッダー（運転手名＋座席数変更ボタンを横並び）
         const carHeader = document.createElement('div');
         carHeader.className = 'car-header';
-        carHeader.textContent = `${car.parent}の車 ✏`;
-        carHeader.title = '運転手アイコンをタップして変更';
-        carLayout.appendChild(carHeader);
-        
-        // 車両詳細情報
-        const carInfo = document.createElement('div');
-        carInfo.className = 'car-info';
-        carInfo.innerHTML = `
-            <div class="car-info-item">提供: ${this.getProvideTypeLabel(car.canDrive)}</div>
-            ${car.notes ? '<div class="car-info-item">備考: ' + UI.escapeHTML(car.notes) + '</div>' : ''}
-        `;
-        carLayout.appendChild(carInfo);
 
-        // 座席数変更ボタン（タップでモーダルを開く）
+        // 運転手の略称を取得
+        var driverMember = (app.Carpool.members || []).find(function(m) { return m.name === car.parent; });
+        var driverDisplayName = (driverMember && driverMember.abbr) ? driverMember.abbr : car.parent;
+
+        var carHeaderName = document.createElement('div');
+        carHeaderName.className = 'car-header-name';
+        carHeaderName.textContent = driverDisplayName;
+        carHeaderName.title = car.parent;
+        carHeader.appendChild(carHeaderName);
+
+        // 座席数変更ボタン（ヘッダー内）
         var seatCountBtn = document.createElement('button');
         seatCountBtn.className = 'seat-count-change-btn';
         seatCountBtn.type = 'button';
-        var seatSummary = [
-            car.frontSeat ? '助手席×' + car.frontSeat : null,
-            car.middleSeat ? '中列×' + car.middleSeat : null,
-            car.backSeat ? '後列×' + car.backSeat : null
-        ].filter(Boolean).join('　');
-        seatCountBtn.textContent = '座席数変更　' + (seatSummary || '未設定');
+        seatCountBtn.textContent = '座席数変更';
         seatCountBtn.addEventListener('click', (function(ci) {
             return function(e) { e.stopPropagation(); Assignment.openSeatCountModal(ci); };
         })(carIndex));
-        carLayout.appendChild(seatCountBtn);
+        carHeader.appendChild(seatCountBtn);
+
+        carLayout.appendChild(carHeader);
+
+        // 車両詳細情報（備考のみコンパクト表示）
+        if (car.notes) {
+            const carInfo = document.createElement('div');
+            carInfo.className = 'car-info';
+            carInfo.textContent = UI.escapeHTML(car.notes);
+            carLayout.appendChild(carInfo);
+        }
         
         // 車両座席レイアウト
         const carSeatLayout = document.createElement('div');
@@ -1999,6 +2071,24 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                 infoSection.appendChild(cell);
             });
             wrap.appendChild(infoSection);
+        }
+
+        // コメントをイベント概要の下に追加（赤太文字）
+        var comment = app.Carpool.appData.comment || '';
+        var commentTextarea = document.getElementById('assignment-comment');
+        if (!comment && commentTextarea) comment = commentTextarea.value || '';
+        if (comment) {
+            var commentDiv = document.createElement('div');
+            commentDiv.style.cssText = 'margin-bottom:12px;padding:8px 12px;background:#fff5f5;border:1px solid #dc3545;border-radius:6px;';
+            var commentLabel = document.createElement('span');
+            commentLabel.style.cssText = 'font-size:12px;color:#dc3545;font-weight:bold;margin-right:6px;';
+            commentLabel.textContent = 'コメント:';
+            var commentText = document.createElement('span');
+            commentText.style.cssText = 'font-size:13px;color:#dc3545;font-weight:bold;white-space:pre-wrap;';
+            commentText.textContent = comment;
+            commentDiv.appendChild(commentLabel);
+            commentDiv.appendChild(commentText);
+            wrap.appendChild(commentDiv);
         }
 
         // 実際の cars-container をクローン（見た目をそのまま使う）
