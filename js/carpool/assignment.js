@@ -1052,7 +1052,90 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             });
         }
 
+        // レイアウト切り替え・全画面ボタンの初期化
+        Assignment.initLayoutAndFullscreen();
+
         console.log('割り当てのイベントリスナー設定が完了しました');
+    };
+
+    /**
+     * レイアウト切り替えと全画面モードの初期化
+     */
+    Assignment.initLayoutAndFullscreen = function() {
+        var workArea = document.getElementById('assignment-work-area');
+        if (!workArea) return;
+
+        // 保存済みレイアウト設定を復元
+        var layout = localStorage.getItem('assignmentLayout') || 'vertical';
+        if (layout === 'horizontal') workArea.classList.add('layout-h');
+        Assignment._updateLayoutBtnLabels(layout);
+
+        // ノーマルモードのレイアウトトグルボタン
+        var layoutBtn = document.getElementById('layout-toggle-btn');
+        if (layoutBtn) layoutBtn.addEventListener('click', Assignment.toggleLayout);
+
+        // 全画面モードのレイアウトトグルボタン
+        var fsLayoutBtn = document.getElementById('fs-layout-btn');
+        if (fsLayoutBtn) fsLayoutBtn.addEventListener('click', Assignment.toggleLayout);
+
+        // 全画面を開くボタン
+        var openFsBtn = document.getElementById('open-fs-btn');
+        if (openFsBtn) openFsBtn.addEventListener('click', Assignment.openFullscreen);
+
+        // 全画面を閉じるボタン
+        var closeFsBtn = document.getElementById('close-fs-btn');
+        if (closeFsBtn) closeFsBtn.addEventListener('click', Assignment.closeFullscreen);
+    };
+
+    /**
+     * レイアウト切り替え（縦 ⇄ 横）
+     */
+    Assignment.toggleLayout = function() {
+        var workArea = document.getElementById('assignment-work-area');
+        if (!workArea) return;
+        var isH = workArea.classList.toggle('layout-h');
+        var layout = isH ? 'horizontal' : 'vertical';
+        localStorage.setItem('assignmentLayout', layout);
+        Assignment._updateLayoutBtnLabels(layout);
+    };
+
+    Assignment._updateLayoutBtnLabels = function(layout) {
+        var isH = (layout === 'horizontal');
+        var normalLabel = document.getElementById('layout-btn-label');
+        if (normalLabel) normalLabel.textContent = isH ? '⇅ 縦レイアウトに切り替え' : '⇄ 横レイアウトに切り替え';
+        var fsLabel = document.getElementById('fs-layout-label');
+        if (fsLabel) fsLabel.textContent = isH ? '⇅ 縦' : '⇄ 横';
+        var layoutBtn = document.getElementById('layout-toggle-btn');
+        if (layoutBtn) layoutBtn.classList.toggle('is-active', isH);
+        var fsLayoutBtn = document.getElementById('fs-layout-btn');
+        if (fsLayoutBtn) fsLayoutBtn.classList.toggle('is-active', isH);
+    };
+
+    /**
+     * 全画面モードを開く
+     */
+    Assignment.openFullscreen = function() {
+        var workArea = document.getElementById('assignment-work-area');
+        if (!workArea) return;
+        workArea.classList.add('is-fullscreen');
+        document.body.style.overflow = 'hidden';
+        // 全画面ヘッダーにイベントタイトルを表示
+        var event = Storage.getSelectedEvent();
+        var fsTitle = document.getElementById('fs-event-title');
+        if (fsTitle && event) {
+            fsTitle.textContent = (event.title || '座席割り当て') +
+                '　' + (Utils.formatDateForDisplay ? Utils.formatDateForDisplay(event.date) : (event.date || ''));
+        }
+    };
+
+    /**
+     * 全画面モードを閉じる
+     */
+    Assignment.closeFullscreen = function() {
+        var workArea = document.getElementById('assignment-work-area');
+        if (!workArea) return;
+        workArea.classList.remove('is-fullscreen');
+        document.body.style.overflow = '';
     };
     
     /**
@@ -1861,9 +1944,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         // 画像用幅（スマホ画面幅に関係なく十分な幅を確保）
         var exportWidth = Math.max(window.innerWidth, 800);
 
-        // エクスポート用ラッパー（画面外に配置）
+        // エクスポート用ラッパー（画面外に配置 — position:absolute+left:-9999pxで縦方向の計測を正確に）
         var wrap = document.createElement('div');
-        wrap.style.cssText = 'position:fixed;top:-9999px;left:0;background:#fff;padding:20px;font-family:sans-serif;box-sizing:border-box;width:' + exportWidth + 'px;';
+        wrap.style.cssText = 'position:absolute;top:0;left:-9999px;background:#fff;padding:20px;font-family:sans-serif;box-sizing:border-box;width:' + exportWidth + 'px;';
 
         // ヘッダー（タイトル）
         var header = document.createElement('div');
@@ -1920,21 +2003,13 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
 
         // 実際の cars-container をクローン（見た目をそのまま使う）
         var carsClone = carsContainer.cloneNode(true);
-        carsClone.style.cssText = 'overflow:visible;max-height:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;';
-        // クローン内のスクロール制限をすべて解除（画像に全車が写るように）
-        carsClone.querySelectorAll('*').forEach(function(el) {
-            var s = el.style;
-            var cs = window.getComputedStyle(el);
-            if (cs.overflow === 'hidden' || cs.overflow === 'auto' || cs.overflowY === 'hidden' || cs.overflowY === 'auto') {
-                s.overflow = 'visible';
-                s.overflowY = 'visible';
-            }
-            if (cs.maxHeight && cs.maxHeight !== 'none') {
-                s.maxHeight = 'none';
-            }
-            if (cs.height && cs.height !== 'auto' && cs.height.indexOf('calc') !== -1) {
-                s.height = 'auto';
-            }
+        // height:auto を明示して固定高さ制約を解除（calcは計算済みpx値になるため直接検出できない）
+        carsClone.style.cssText = 'overflow:visible;max-height:none;height:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;';
+        // クローン内のコンテナ要素のスクロール制限を解除（座席要素の固定サイズはそのまま維持）
+        carsClone.querySelectorAll('.car-layout, .car-seat-layout, .car-top-view, .seat-row, .car-info').forEach(function(el) {
+            el.style.overflow = 'visible';
+            el.style.maxHeight = 'none';
+            el.style.height = 'auto';
         });
         // クローン内の不要なボタン類を非表示
         carsClone.querySelectorAll('.seat-clear-btn, .seat-count-adjuster').forEach(function(el) {
