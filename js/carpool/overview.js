@@ -70,6 +70,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                         app.Carpool.appData.assignments      = data.assignments      || [];
                         app.Carpool.appData.attendance       = data.attendance       || [];
                         app.Carpool.appData.notifications    = data.notifications    || [];
+                        app.Carpool.appData.comment          = data.comment          || '';
                         firestoreLoaded = true;
                         console.log('イベントデータをFirestoreからロードしました');
                     }
@@ -499,6 +500,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         this.appData.assignments     = data.assignments     || [];
         this.appData.attendance      = data.attendance      || [];
         this.appData.notifications   = data.notifications   || [];
+        this.appData.comment         = data.comment         || '';
         console.log('イベントデータをロードしました: eventId=' + event.id);
     };
 
@@ -516,7 +518,8 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
             carRegistrations: this.appData.carRegistrations,
             assignments:      this.appData.assignments,
             attendance:       this.appData.attendance,
-            notifications:    this.appData.notifications
+            notifications:    this.appData.notifications,
+            comment:          this.appData.comment || ''
         };
         // localStorageに保存
         Storage.saveEventData(eventId, data);
