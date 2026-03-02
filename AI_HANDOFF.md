@@ -358,15 +358,15 @@ curl -X PUT -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.gith
 | #16 | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | カレンダーUI・出欠確認・登録フロー・会場地図対応 | 47ef18b |
 | hotfix | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | register.html SyntaxError修正・初回登録者自動管理者承認 | 5199da4 |
 | **未PR** | 2026-02-24 | claude/review-calendar-seating-9A20d | Session5前回分16コミット統合（下記参照） | - |
-| **未PR** | 2026-03-02 | claude/review-calendar-seating-QHdbi | Session8: 割り当てUI改善・コメント機能 | 9e2cc70 |
+| #39 | 2026-03-02 | claude/review-calendar-seating-QHdbi | Session8: 割り当てUI改善・コメント機能・PR自動化 | bba285a |
 
 ---
 
 ## 🔄 最新の作業状況
 
-**最終更新:** 2026-03-02 (Session 8 - 割り当て画面UI改善・コメント機能追加)
+**最終更新:** 2026-03-02 (Session 8 - 割り当て画面UI改善・コメント機能追加・PR自動化確立)
 **更新者:** Claude (branch: claude/review-calendar-seating-QHdbi)
-**最終正常コミット:** 9e2cc70（未PR・main未マージ）
+**最終正常コミット:** bba285a（PR #39 squash merge済み・mainデプロイ済み）
 
 ### ⚠️ PR未作成の注意
 - Session5（前回）の16コミットは `claude/review-calendar-seating-9A20d` に統合済みだが、**まだmainへのPRが未作成**
@@ -530,10 +530,10 @@ curl -X PUT -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.gith
 10. **横画面（landscape）対応**: `orientation: landscape` and `max-height: 500px` 時にメンバーエリアも横スクロール、アイコン幅 72px に縮小、名前2行折り返し、グループヘッダー非表示
 
 ### 次のAIがすべきこと（優先順）
-1. **PRを作成・マージ**: `claude/review-calendar-seating-QHdbi` → `main` のPRを作成・マージ
-2. **Firebase自動デプロイ確認**: PRマージ後、GitHub Actionsが自動デプロイ → `https://fc-ojimajr-hub.web.app` で確認
-3. **実機動作確認**: スナップスクロール・コメント保存・画像出力にコメント反映
-4. **追加要望があれば対応**
+1. **PR #39 はマージ済み**: `claude/review-calendar-seating-QHdbi` → `main` squash merge 完了（2026-03-02）
+2. **Firebase自動デプロイ済み**: GitHub Actions success 確認済み → `https://fc-ojimajr-hub.web.app`
+3. **PR自動化確立済み**: 上部「🔑 基本原則」セクションを参照。GitHub PAT + curl で対応
+4. **次の要望があれば対応**: ユーザーからの次の要望を待つ
 
 ### 既知の問題
 - 旧ファイル（carpool/assignment.html, carprovision.html 等）が git 上に残存（削除はユーザー確認後）
