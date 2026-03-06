@@ -56,6 +56,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         var event = Storage.getSelectedEvent();
         if (event) {
             this.displayEventData(event);
+            this.initFileAttachment(event.id);
 
             // イベントIDを保存
             app.Carpool.appData.eventId = event.id;
@@ -526,6 +527,78 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
             });
         }
         console.log('イベントデータを保存しました: eventId=' + eventId);
+    };
+
+    /**
+     * ファイル添付機能の初期化
+     */
+    Overview.initFileAttachment = async function(eventId) {
+        var section = document.getElementById('overview-files-section');
+        var list = document.getElementById('overview-files-list');
+        var uploadBtn = document.getElementById('overview-file-upload-btn');
+        var fileInput = document.getElementById('overview-file-input');
+        if (!section || !list) return;
+        section.style.display = 'block';
+        await Overview.loadEventFiles(eventId, list);
+        if (uploadBtn && fileInput) {
+            var newBtn = uploadBtn.cloneNode(true);
+            uploadBtn.parentNode.replaceChild(newBtn, uploadBtn);
+            newBtn.addEventListener('click', function() {
+                fileInput.value = '';
+                fileInput.click();
+            });
+            fileInput.onchange = async function() {
+                if (!fileInput.files.length) return;
+                newBtn.textContent = 'アップロード中...';
+                newBtn.disabled = true;
+                await Overview.uploadEventFiles(eventId, fileInput.files, list);
+                newBtn.textContent = 'ファイルを追加';
+                newBtn.disabled = false;
+            };
+        }
+    };
+
+    Overview.loadEventFiles = async function(eventId, list) {
+        list.innerHTML = '<p style="color:#999;font-size:12px;">読み込み中...</p>';
+        try {
+            var storage = firebase.storage();
+            var ref = storage.ref('teams/' + FCOjimaFirebase.TEAM_ID + '/events/' + eventId);
+            var result = await ref.listAll();
+            if (result.items.length === 0) {
+                list.innerHTML = '<p style="color:#999;font-size:12px;">ファイルなし</p>';
+                return;
+            }
+            list.innerHTML = '';
+            for (var i = 0; i < result.items.length; i++) {
+                var item = result.items[i];
+                var url = await item.getDownloadURL();
+                var a = document.createElement('a');
+                a.href = url;
+                a.target = '_blank';
+                a.style.cssText = 'display:block;padding:6px 10px;background:#f0f4ff;border-radius:6px;font-size:13px;color:#2563eb;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+                a.textContent = item.name;
+                list.appendChild(a);
+            }
+        } catch(e) {
+            list.innerHTML = '<p style="color:#c00;font-size:12px;">読み込みエラー</p>';
+            console.warn('ファイル読み込みエラー:', e);
+        }
+    };
+
+    Overview.uploadEventFiles = async function(eventId, files, list) {
+        try {
+            var storage = firebase.storage();
+            var basePath = 'teams/' + FCOjimaFirebase.TEAM_ID + '/events/' + eventId + '/';
+            for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+                var ref = storage.ref(basePath + file.name);
+                await ref.put(file);
+            }
+            await Overview.loadEventFiles(eventId, list);
+        } catch(e) {
+            console.error('ファイルアップロードエラー:', e);
+            UI.showAlert('ファイルのアップロードに失敗しました。');
+        }
     };
 
     /**
