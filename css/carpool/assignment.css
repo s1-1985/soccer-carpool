@@ -742,9 +742,10 @@
     align-items: flex-start;
     gap: 12px;
     overflow-x: scroll;
-    overflow-y: hidden;
-    height: 240px;
-    padding-bottom: 4px;
+    overflow-y: visible;
+    height: auto;
+    min-height: 260px;
+    padding-bottom: 8px;
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
 }
@@ -775,8 +776,9 @@
     margin-bottom: 0;
 }
 
-/* 前列：助手席が上、運転席が下（90°左回転後の配置） */
+/* 前列：運転席が上・助手席が下（右ハンドル車の正しい配置） */
 #assignment-work-area.layout-h .driver-row {
+    flex-direction: column-reverse;
     justify-content: flex-start;
 }
 
@@ -1124,8 +1126,9 @@
     margin-bottom: 0;
 }
 
-/* 前列：助手席が上、運転席が下（90°左回転後の配置） */
+/* 前列：運転席が上・助手席が下（右ハンドル車の正しい配置） */
 #assignment-work-area.layout-h .driver-row {
+    flex-direction: column-reverse;
     justify-content: flex-start;
 }
 
