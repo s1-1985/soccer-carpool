@@ -91,8 +91,22 @@
         }
         .attendance-matrix .mx-present { color: #27ae60; font-weight: bold; }
         .attendance-matrix .mx-absent  { color: #e74c3c; }
-        .attendance-matrix .mx-unknown { color: #e67e22; }
-        .attendance-matrix .mx-none    { color: #ccc; }
+        .attendance-matrix .mx-unknown { color: #aaa; }
+        .attendance-matrix .mx-title-btn:hover { background: #ccd8f0; text-decoration: underline; }
+        /* ファイルリンク */
+        .event-file-link {
+            display: block;
+            padding: 6px 10px;
+            background: #f0f4ff;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #2563eb;
+            text-decoration: none;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .event-file-link:hover { background: #dde8ff; }
         /* 偶数行に薄い背景 */
         .attendance-matrix tbody tr:nth-child(even) td { background: #fafafa; }
         .attendance-matrix tbody tr:nth-child(even) .mx-col-grade,
@@ -258,6 +272,22 @@
             <section style="margin-top:24px;">
                 <button id="btn-attendance-matrix" class="primary-button" style="width:100%;max-width:320px;">出欠状況</button>
             </section>
+        </div>
+    </div>
+
+    <!-- イベント詳細モーダル -->
+    <div id="event-detail-modal" class="modal">
+        <div class="modal-content" style="max-width:480px;">
+            <span class="close" id="event-detail-modal-close">&times;</span>
+            <div id="event-detail-modal-body"></div>
+            <div style="margin-top:16px;">
+                <h3 style="font-size:14px;margin:0 0 8px;color:#555;">添付ファイル</h3>
+                <div id="event-files-list" style="margin-bottom:10px;display:flex;flex-direction:column;gap:6px;"></div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <input type="file" id="event-file-input" multiple style="display:none;">
+                    <button id="event-file-upload-btn" class="primary-button" style="font-size:13px;padding:8px 16px;">ファイルを追加</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -514,6 +544,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
     <script src="../js/common/firebase-config.js?v=20260224a"></script>
 
     <!-- 共通モジュール -->
