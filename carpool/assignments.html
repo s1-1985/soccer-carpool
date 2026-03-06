@@ -96,6 +96,19 @@
     </div>
 
     <!-- 座席編集モーダル（スマホではボトムシート風に表示） -->
+    <!-- メンバー外乗員 編集モーダル -->
+    <div id="extra-passenger-modal" class="modal seat-modal-bottom" style="z-index:9600;">
+        <div class="modal-content seat-modal-content" style="max-width:320px;">
+            <div class="modal-drag-handle"></div>
+            <h2 style="font-size:16px;margin-bottom:10px;">メンバー外乗員</h2>
+            <div id="ep-modal-name" style="font-size:15px;font-weight:bold;margin-bottom:16px;color:#333;"></div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                <button id="ep-modal-edit" class="primary-button" style="padding:12px;">名前を修正</button>
+                <button id="ep-modal-delete" style="padding:12px;background:#dc3545;color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer;">削除</button>
+            </div>
+        </div>
+    </div>
+
     <div id="seat-edit-modal" class="modal seat-modal-bottom">
         <div class="modal-content seat-modal-content">
             <div class="modal-drag-handle"></div>

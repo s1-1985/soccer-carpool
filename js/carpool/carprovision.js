@@ -61,6 +61,7 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
 
         this.updateEventInfo();
         this.updateCarRegistrations();
+        this.initExtraPassengerUI();
         console.log('車提供機能の初期化が完了しました');
     };
 
@@ -97,8 +98,16 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
             return;
         }
 
+        // メンバー外乗員を収集
+        var extraPassengers = [];
+        var epInputs = document.querySelectorAll('.ep-confirmed-name');
+        epInputs.forEach(function(el) {
+            var name = el.dataset.name;
+            if (name) extraPassengers.push({ name: name });
+        });
+
         const carRegistrations = FCOjima.Carpool.appData.carRegistrations || [];
-        carRegistrations.push({ parent: parentName, canDrive, frontSeat, middleSeat, backSeat, notes });
+        carRegistrations.push({ parent: parentName, canDrive, frontSeat, middleSeat, backSeat, notes, extraPassengers: extraPassengers });
         FCOjima.Carpool.appData.carRegistrations = carRegistrations;
         FCOjima.Carpool.saveData();
 
@@ -109,6 +118,7 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         document.getElementById('middleSeat').value  = '3';
         document.getElementById('backSeat').value    = '0';
         document.getElementById('carNotes').value    = '';
+        CarProvision.resetExtraPassengerInputs();
         const carDetails = document.getElementById('carDetails');
         if (carDetails) carDetails.style.display = 'block';
 
@@ -181,6 +191,8 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
                         '</div>' +
                         '<div class="car-card-seats">助手席 ' + (car.frontSeat || 0) + ' ＋ 中列 ' + (car.middleSeat || 0) + ' ＋ 後列 ' + (car.backSeat || 0) + ' ＝ 合計 <strong>' + total + '</strong> 席</div>' +
                         (car.notes ? '<div class="car-card-notes">📝 ' + UI.escapeHTML(car.notes) + '</div>' : '') +
+                        ((car.extraPassengers && car.extraPassengers.length > 0) ?
+                            '<div class="car-card-notes">👤 メンバー外: ' + car.extraPassengers.map(function(ep) { return UI.escapeHTML(ep.name); }).join('、') + '</div>' : '') +
                         '<button type="button" class="car-card-delete" onclick="FCOjima.Carpool.CarProvision.deleteCarRegistration(' + index + ')">削除</button>';
                     cardList.appendChild(card);
                 });
@@ -543,13 +555,127 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
      */
     CarProvision.cancelBulkEdit = function() {
         console.log('車両情報一括編集をキャンセルします...');
-        
-        // 一括編集コンテナを削除
         const bulkEditContainer = document.querySelector('.bulk-edit-overlay');
-        if (bulkEditContainer) {
-            document.body.removeChild(bulkEditContainer);
-        }
-        
+        if (bulkEditContainer) document.body.removeChild(bulkEditContainer);
         console.log('車両情報一括編集をキャンセルしました');
+    };
+
+    // =============================================
+    // メンバー外乗員 UI
+    // =============================================
+
+    CarProvision.initExtraPassengerUI = function() {
+        var group = document.getElementById('extra-passenger-group');
+        if (!group) return;
+
+        // 座席数変更時に再描画
+        ['frontSeat', 'middleSeat', 'backSeat'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('change', function() {
+                CarProvision.refreshExtraPassengerInputs();
+            });
+        });
+
+        this.refreshExtraPassengerInputs();
+    };
+
+    /** 総座席数を返す（運転席除く） */
+    CarProvision._getTotalSeats = function() {
+        var f = parseInt((document.getElementById('frontSeat') || {}).value) || 0;
+        var m = parseInt((document.getElementById('middleSeat') || {}).value) || 0;
+        var b = parseInt((document.getElementById('backSeat') || {}).value) || 0;
+        return f + m + b;
+    };
+
+    /** 現在確定済みメンバー外乗員の数を返す */
+    CarProvision._getConfirmedCount = function() {
+        return document.querySelectorAll('.ep-confirmed-name').length;
+    };
+
+    /** メンバー外乗員の入力欄を再描画 */
+    CarProvision.refreshExtraPassengerInputs = function() {
+        var group = document.getElementById('extra-passenger-group');
+        var container = document.getElementById('extra-passenger-inputs');
+        if (!container) return;
+
+        var totalSeats = CarProvision._getTotalSeats();
+        // 座席がない場合は非表示
+        if (totalSeats === 0) { group.style.display = 'none'; return; }
+        group.style.display = '';
+
+        var confirmed = CarProvision._getConfirmedCount();
+
+        // 超過分の確定行を除去
+        var confirmedRows = container.querySelectorAll('.ep-row.ep-done');
+        confirmedRows.forEach(function(row, i) {
+            if (i >= totalSeats) row.remove();
+        });
+
+        // 空の入力欄が既にあれば何もしない（または席が満杯なら消す）
+        var emptyRow = container.querySelector('.ep-row:not(.ep-done)');
+        confirmed = CarProvision._getConfirmedCount();
+        if (confirmed >= totalSeats) {
+            if (emptyRow) emptyRow.remove();
+            return;
+        }
+        if (!emptyRow) CarProvision._addEmptyEpRow(container);
+    };
+
+    CarProvision._addEmptyEpRow = function(container) {
+        var row = document.createElement('div');
+        row.className = 'ep-row';
+        row.style.cssText = 'display:flex;gap:6px;align-items:center;';
+
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = '名前を入力';
+        input.style.cssText = 'flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;';
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = '決定';
+        btn.style.cssText = 'background:#E8A200;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;white-space:nowrap;';
+
+        btn.addEventListener('click', function() {
+            var name = input.value.trim();
+            if (!name) return;
+            // 行を確定済みに変換
+            row.innerHTML = '';
+            row.classList.add('ep-done');
+            row.style.cssText = 'display:flex;gap:6px;align-items:center;background:#f0fff4;border:1px solid #28a745;border-radius:6px;padding:5px 10px;';
+
+            var nameSpan = document.createElement('span');
+            nameSpan.className = 'ep-confirmed-name';
+            nameSpan.dataset.name = name;
+            nameSpan.style.cssText = 'flex:1;font-size:13px;color:#155724;';
+            nameSpan.textContent = name;
+
+            var cancelBtn = document.createElement('button');
+            cancelBtn.type = 'button';
+            cancelBtn.textContent = '取消';
+            cancelBtn.style.cssText = 'background:transparent;border:1px solid #dc3545;color:#dc3545;border-radius:4px;padding:2px 8px;font-size:12px;cursor:pointer;';
+            cancelBtn.addEventListener('click', function() {
+                row.remove();
+                CarProvision.refreshExtraPassengerInputs();
+            });
+
+            row.appendChild(nameSpan);
+            row.appendChild(cancelBtn);
+
+            // 次の入力欄を追加（席数に余裕があれば）
+            CarProvision.refreshExtraPassengerInputs();
+        });
+
+        row.appendChild(input);
+        row.appendChild(btn);
+        container.appendChild(row);
+        input.focus();
+    };
+
+    /** フォームリセット時にメンバー外乗員もリセット */
+    CarProvision.resetExtraPassengerInputs = function() {
+        var container = document.getElementById('extra-passenger-inputs');
+        if (container) container.innerHTML = '';
+        CarProvision.refreshExtraPassengerInputs();
     };
 })();

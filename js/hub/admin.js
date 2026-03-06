@@ -353,7 +353,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 th.style.cursor = 'pointer';
                 (function(ev, evData) {
                     th.addEventListener('click', function() {
-                        Admin.openEventDetailModal(ev, evData);
+                        Admin.openEventDetailModal(ev, evData, false);
                     });
                 })(ev, dataArr[i]);
                 tr3.appendChild(th);
@@ -421,7 +421,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
     //  イベント詳細モーダル & ファイル添付
     // =============================================
 
-    Admin.openEventDetailModal = function(ev, evData) {
+    Admin.openEventDetailModal = function(ev, evData, showFiles) {
         var modal = document.getElementById('event-detail-modal');
         if (!modal) return;
         var body = document.getElementById('event-detail-modal-body');
@@ -485,7 +485,9 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
 
         body.innerHTML = html;
         modal.style.display = 'flex';
-        Admin.loadEventFiles(ev.id);
+        var filesWrapper = document.getElementById('event-files-wrapper');
+        if (filesWrapper) filesWrapper.style.display = (showFiles === false) ? 'none' : '';
+        if (showFiles !== false) Admin.loadEventFiles(ev.id);
 
         // ファイルアップロードボタン
         var uploadBtn = document.getElementById('event-file-upload-btn');
