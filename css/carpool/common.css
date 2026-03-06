@@ -190,24 +190,26 @@ header {
     }
     
     .global-navigation {
-        flex-direction: column;
-        gap: 6px;
-        padding: 8px 16px;
+        flex-direction: row;
+        gap: 8px;
+        padding: 8px 12px;
     }
 
     .global-navigation button {
-        width: 100%;
-        padding: 10px 16px;
+        flex: 1;
+        padding: 8px 6px;
+        font-size: 13px;
+        white-space: nowrap;
     }
 
-    /* コンテナの下余白をモバイル縦並びナビ分に拡大（約100px） */
+    /* コンテナの下余白（横並びナビ高さ約52px） */
     .container {
-        padding-bottom: 120px;
+        padding-bottom: 80px;
     }
 
-    /* アクションボタンの上浮きもナビ高さに合わせて調整 */
+    /* アクションボタンのbottom値もナビ高さに合わせる */
     .card > .action-buttons,
     .container > .action-buttons {
-        bottom: 100px;
+        bottom: 60px;
     }
 }
