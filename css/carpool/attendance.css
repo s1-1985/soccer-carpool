@@ -203,11 +203,21 @@
     }
 
     .action-buttons {
-        flex-direction: column;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 6px;
     }
 
     .action-buttons button {
-        width: 100%;
-        margin-bottom: 8px;
+        flex: 1 1 calc(50% - 3px);
+        min-width: calc(50% - 3px);
+        width: auto;
+        margin-bottom: 0;
+        font-size: 12px;
+        padding: 8px 4px;
+        white-space: normal;
+        word-break: keep-all;
+        text-align: center;
+        line-height: 1.3;
     }
 }
