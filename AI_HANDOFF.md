@@ -357,43 +357,48 @@ curl -X PUT -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.gith
 | #15 | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | メンバー管理・カレンダー・認証・登録フロー改善 | 228787a |
 | #16 | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | カレンダーUI・出欠確認・登録フロー・会場地図対応 | 47ef18b |
 | hotfix | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | register.html SyntaxError修正・初回登録者自動管理者承認 | 5199da4 |
-| **未PR** | 2026-02-24 | claude/review-calendar-seating-9A20d | Session5前回分16コミット統合（下記参照） | - |
-| **未PR** | 2026-03-02 | claude/review-calendar-seating-QHdbi | Session8: 割り当てUI改善・コメント機能 | 9e2cc70 |
+| **未PR** | 2026-02-24 | claude/review-calendar-seating-9A20d | Session5前回分16コミット統合 | - |
+| #38 | 2026-03-02 | claude/review-calendar-seating-QHdbi | Session7-8: 割り当てUI改善・全画面・横レイアウト・コメント機能 | bba285a |
+| #47 | 2026-03-06 | - | 出欠ボタン2×2グリッド化・グローバルナビ横並びコンパクト | 0286b48 |
+| #48 | 2026-03-06 | - | 車提供テーブルをモバイルではカード形式に変更 | c96b36d |
+| **未PR** | 2026-03-06 | claude/resume-previous-work-0TxY8 | Session9: 割り当て画面さらなる改善・モバイルバグ修正多数 | fd60e2d |
 
 ---
 
 ## 🔄 最新の作業状況
 
-**最終更新:** 2026-03-02 (Session 8 - 割り当て画面UI改善・コメント機能追加)
-**更新者:** Claude (branch: claude/review-calendar-seating-QHdbi)
-**最終正常コミット:** 9e2cc70（未PR・main未マージ）
+**最終更新:** 2026-03-06 (Session 9 - 割り当て画面追加改善・モバイルバグ修正多数)
+**更新者:** Claude (branch: claude/resume-previous-work-0TxY8)
+**最終正常コミット:** fd60e2d（未PR・main未マージ）
 
-### ⚠️ PR未作成の注意
-- Session5（前回）の16コミットは `claude/review-calendar-seating-9A20d` に統合済みだが、**まだmainへのPRが未作成**
-- このセッションの作業終了後、ユーザーがGitHub上で `claude/review-calendar-seating-9A20d` → `main` のPRを作成してマージすること
-- GitHub URL: https://github.com/s1-1985/soccer-carpool/compare/main...claude/review-calendar-seating-9A20d
+### Session 9 で行った変更（2026-03-06 / branch: claude/resume-previous-work-0TxY8）
 
-### Session5 で行った変更（前セッション・未マージ16コミット）
-1. `7f7166a` **フリガナ追加・FABバグ修正・LINEリンク案内文追加・ドライバー表示順修正**
-   - members.js: フリガナ（furigana）フィールド追加・ソート対応
-   - assignment.js: FABボタン（浮動アクションボタン）バグ修正
-2. `0a94970` **座席割り振りバグ修正 + Firestore対応強化**
-   - assignment.js: Firestoreから直接ロード・保存
-3. `7028ced` **座席割り当てメンバーアイコンの色分け修正**
-4. `4dc4591` **membersContainerへの重複ドロップリスナー問題を修正**
-5. `ee12dde` **全carpoolページでFirestore優先ロードに統一**
-   - overview.js, attendance.js, carprovision.js: Firestore非同期ロード対応
-6. `435db2a` **editCarDriver のcarIndex参照バグ修正**
-7. `42484ca` **イベント編集時にextraPlayersが消えるバグを修正**
-8. `ed78c80` **extraPlayersが出欠・座席割り当てに反映されないバグを修正**
-9. `0686c5e` **shareAssignments の不使用変数削除（carIndex→carRegistrations誤参照）**
-10. `20de329` **連絡事項のシェア/削除ボタンの誤インデックスバグを修正**
-11. `846dbb9` **Firestoreロード条件・通知IDなし問題・誤carIndex参照を修正**
-12. `2198617` **座席間ドラッグ後にメンバーリストが更新されないバグを修正**
-13. `2f5ecd9` **座席内メンバーアイコンに役割別色分けを追加**
-14. `36f7033` **座席編集モーダルに seat-current-info と seat-member-list を追加**
-15. `b455d5c` **Storage.addLog が Firestore にログを保存しないバグを修正**
-16. `40dddb1` **イベント削除時のログバックアップ損失・ログ順序・検索正規表現を修正**
+#### コミット一覧
+- `2d93dd1`: feat: 割り当て画面改善（コメントモーダル化・メンバー1列・横レイアウト）
+- `73012ea`: fix: 全体デバッグ・モバイルレイアウト改善
+- `e44b23e`: fix: 出欠ボタンをコンパクトに・メンバーリストを半幅縦長表示に
+- `0286b48`: fix: 出欠ボタン2×2グリッド化・グローバルナビ横並びコンパクト (**PR #47 マージ済み**)
+- `c96b36d`: fix: 車提供テーブルをモバイルではカード形式に変更 (**PR #48 マージ済み**)
+- `861af22`: fix: 横レイアウト改善（運転席位置・車両高さ・メンバー横スクロール）
+- `0bc18b6`: fix: メンバースクロールエリアの下余白を増やしスクロールしやすく
+- `fd60e2d`: fix: 全画面モード時にモーダルが隠れる問題を修正
+
+#### 実装内容
+1. **コメントをモーダルに移動**: ボタン押下で開く、投稿・履歴表示。コメントあり時は赤丸バッジ
+2. **メンバーリストを縦1列に変更**: 名前が2行対応、幅55%で右45%がスクロール余白
+3. **横レイアウト(layout-h)のメンバーエリアを横スクロールに変更**
+4. **comments配列をFirestore/localStorageで永続化**
+5. **全体デバッグ**: `openSeatEditModal`/`saveSeatEdit`/`clearSelectedSeat` で null チェック追加
+6. **CSS `calc(100vh)` → `calc(100dvh)`**: iPhoneアドレスバー表示時の高さズレを解消
+7. **モーダルに `overscroll-behavior:contain`**: iOS スクロールチェーン防止
+8. **`-webkit-overflow-scrolling:touch`**: iOS 慣性スクロール有効化
+9. **grade-badge フォントサイズ**: 9px → 11px（視認性向上）
+10. **出欠ボタン2×2グリッド化**: `flex-basis:50%` で2列×2行レイアウト
+11. **グローバルナビを横並びコンパクト化**: モバイルで `flex-direction: row`
+12. **車提供テーブルをモバイルでカード形式に**: `.car-card-list` 動的生成（運転者・往復バッジ・席数・備考・削除ボタン）
+13. **横レイアウト改善**: `driver-row` を `column-reverse` で運転席を上側（右ハンドル対応）、`cars-scroll-area` 高さを `auto` に
+14. **メンバースクロール改善**: `padding-bottom 4px → 14px`、`flex-direction:row` で横スクロール確立
+15. **全画面モーダルz-index修正**: `is-fullscreen` の z-index(9500) より高い 9600 を各モーダルに設定
 
 ### PR #15 (228787a) で行った変更
 1. **storage.js**: ダミーデータ削除・Firestore優先ロードに変更
@@ -530,9 +535,9 @@ curl -X PUT -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.gith
 10. **横画面（landscape）対応**: `orientation: landscape` and `max-height: 500px` 時にメンバーエリアも横スクロール、アイコン幅 72px に縮小、名前2行折り返し、グループヘッダー非表示
 
 ### 次のAIがすべきこと（優先順）
-1. **PRを作成・マージ**: `claude/review-calendar-seating-QHdbi` → `main` のPRを作成・マージ
+1. **PRを作成・マージ**: `claude/resume-previous-work-0TxY8` → `main` のPRを作成・マージ
 2. **Firebase自動デプロイ確認**: PRマージ後、GitHub Actionsが自動デプロイ → `https://fc-ojimajr-hub.web.app` で確認
-3. **実機動作確認**: スナップスクロール・コメント保存・画像出力にコメント反映
+3. **実機動作確認**: コメントモーダル・横レイアウト・全画面モーダル表示・カード形式車提供
 4. **追加要望があれば対応**
 
 ### 既知の問題

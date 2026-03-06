@@ -24,6 +24,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
     Admin.init = function() {
         console.log('管理タブを初期化しています...');
         Admin.refresh();
+        Admin.loadAttendanceMatrix();
     };
 
     /**
@@ -204,6 +205,178 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             if (UI) UI.showAlert((name || uid) + ' の役割を「' + (ROLE_LABELS[newRole] || newRole) + '」に変更しました', 'success');
         } catch(e) {
             if (UI) UI.showAlert('変更に失敗しました: ' + e.message, 'error');
+        }
+    };
+
+    // =============================================
+    //  出欠マトリクス
+    // =============================================
+
+    var DOW_LABELS = ['日','月','火','水','木','金','土'];
+    var GRADE_ORDER = { '年少': -3, '年中': -2, '年長': -1 };
+
+    function gradeNum(g) {
+        return GRADE_ORDER[g] !== undefined ? GRADE_ORDER[g] : (parseInt(g, 10) || 99);
+    }
+
+    /**
+     * 出欠マトリクスを構築して表示
+     */
+    Admin.loadAttendanceMatrix = async function() {
+        var el = document.getElementById('attendance-matrix-container');
+        if (!el) return;
+        el.innerHTML = '<p class="loading">読み込み中...</p>';
+
+        try {
+            var Utils = FCOjima.Utils;
+
+            // 1. イベント取得（ナイター除外・日付昇順）
+            var events = await FCOjima.DB.loadEvents();
+            var targetEvents = events.filter(function(ev) { return ev.type !== 'nighter'; });
+
+            // 2. 選手のみ・学年→名前順にソート
+            var members = (FCOjima.Hub.members || [])
+                .filter(function(m) { return m.role === 'player'; })
+                .slice()
+                .sort(function(a, b) {
+                    var d = gradeNum(a.grade) - gradeNum(b.grade);
+                    if (d !== 0) return d;
+                    return (a.name || '').localeCompare(b.name || '', 'ja');
+                });
+
+            if (targetEvents.length === 0) {
+                el.innerHTML = '<p style="color:#999;padding:8px;">イベントがありません。</p>';
+                return;
+            }
+
+            // 3. 各イベントの出欠データを並列取得
+            var dataArr = await Promise.all(
+                targetEvents.map(function(ev) { return FCOjima.DB.loadEventData(ev.id); })
+            );
+
+            // 4. マップ構築: eventId → { memberId → status }
+            var statusMap = {};
+            var presentCount = [];
+            targetEvents.forEach(function(ev, i) {
+                statusMap[ev.id] = {};
+                var list = (dataArr[i] && dataArr[i].attendance) ? dataArr[i].attendance : [];
+                var cnt = 0;
+                list.forEach(function(item) {
+                    statusMap[ev.id][String(item.memberId)] = item.status;
+                    if (item.status === 'present') cnt++;
+                });
+                presentCount.push(cnt);
+            });
+
+            // 5. テーブル生成
+            var table = document.createElement('table');
+            table.className = 'attendance-matrix';
+            var thead = document.createElement('thead');
+            var tbody = document.createElement('tbody');
+
+            // ─── 列ヘッダー行1: 日付 ───
+            var tr1 = document.createElement('tr');
+            // 左固定ヘッダー（rowspan=4）
+            var thGrade = document.createElement('th');
+            thGrade.className = 'mx-col mx-col-grade mx-corner';
+            thGrade.rowSpan = 4;
+            thGrade.textContent = '学年';
+            var thName = document.createElement('th');
+            thName.className = 'mx-col mx-col-name mx-corner';
+            thName.rowSpan = 4;
+            thName.textContent = '氏名';
+            tr1.appendChild(thGrade);
+            tr1.appendChild(thName);
+            targetEvents.forEach(function(ev) {
+                var th = document.createElement('th');
+                th.className = 'mx-h mx-date';
+                var d = new Date(ev.date + 'T00:00:00');
+                th.textContent = (d.getMonth() + 1) + '/' + d.getDate();
+                tr1.appendChild(th);
+            });
+            thead.appendChild(tr1);
+
+            // ─── 列ヘッダー行2: 曜日 ───
+            var tr2 = document.createElement('tr');
+            targetEvents.forEach(function(ev) {
+                var th = document.createElement('th');
+                th.className = 'mx-h mx-dow';
+                var d = new Date(ev.date + 'T00:00:00');
+                var dow = d.getDay();
+                th.textContent = DOW_LABELS[dow];
+                if (dow === 0) th.style.color = '#e74c3c';
+                else if (dow === 6) th.style.color = '#2980b9';
+                tr2.appendChild(th);
+            });
+            thead.appendChild(tr2);
+
+            // ─── 列ヘッダー行3: イベント名 ───
+            var tr3 = document.createElement('tr');
+            targetEvents.forEach(function(ev) {
+                var th = document.createElement('th');
+                th.className = 'mx-h mx-title';
+                th.textContent = ev.title || Utils.getEventTypeLabel(ev.type);
+                th.title = ev.title || '';
+                tr3.appendChild(th);
+            });
+            thead.appendChild(tr3);
+
+            // ─── 列ヘッダー行4: 参加人数 ───
+            var tr4 = document.createElement('tr');
+            targetEvents.forEach(function(ev, i) {
+                var th = document.createElement('th');
+                th.className = 'mx-h mx-count';
+                th.textContent = presentCount[i] + '人';
+                tr4.appendChild(th);
+            });
+            thead.appendChild(tr4);
+
+            table.appendChild(thead);
+
+            // ─── データ行: 選手1人1行 ───
+            var STATUS_DISP = {
+                'present': { text: '○', cls: 'mx-present' },
+                'absent':  { text: '×', cls: 'mx-absent'  },
+                'unknown': { text: '△', cls: 'mx-unknown' }
+            };
+            members.forEach(function(member) {
+                var tr = document.createElement('tr');
+                var tdGrade = document.createElement('td');
+                tdGrade.className = 'mx-col mx-col-grade';
+                tdGrade.textContent = Utils.getGradeLabel(member.grade);
+                var tdName = document.createElement('td');
+                tdName.className = 'mx-col mx-col-name';
+                tdName.textContent = member.name || '';
+                tr.appendChild(tdGrade);
+                tr.appendChild(tdName);
+
+                targetEvents.forEach(function(ev) {
+                    var td = document.createElement('td');
+                    td.className = 'mx-cell';
+                    var status = (statusMap[ev.id] || {})[String(member.id)];
+                    if (status && STATUS_DISP[status]) {
+                        td.textContent = STATUS_DISP[status].text;
+                        td.classList.add(STATUS_DISP[status].cls);
+                    } else {
+                        td.textContent = '―';
+                        td.classList.add('mx-none');
+                    }
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+
+            table.appendChild(tbody);
+
+            var wrap = document.createElement('div');
+            wrap.className = 'matrix-wrap';
+            wrap.appendChild(table);
+            el.innerHTML = '';
+            el.appendChild(wrap);
+
+        } catch(e) {
+            el.innerHTML = '<p style="color:#c00;">読み込みエラー: ' + e.message + '</p>';
+            console.error('出欠マトリクスエラー:', e);
         }
     };
 

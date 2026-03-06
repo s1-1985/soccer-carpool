@@ -1176,7 +1176,7 @@
     height: auto;
     min-height: 80px;
     max-height: 180px;
-    padding-bottom: 4px;
+    padding-bottom: 14px;
 }
 
 #assignment-work-area.layout-h .members-assignment-container .member-group-header {
@@ -1208,6 +1208,17 @@
     text-align: center;
     word-break: break-all;
     line-height: 1.3;
+}
+
+/* =============================================
+   全画面モード時のモーダルを全画面より前面に表示
+   ============================================= */
+
+#seat-count-modal,
+#seat-edit-modal,
+#driver-edit-modal,
+#comment-modal {
+    z-index: 9600;
 }
 
 /* =============================================
