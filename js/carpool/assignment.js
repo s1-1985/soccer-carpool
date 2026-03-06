@@ -456,8 +456,12 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         var driverSeat = document.querySelector('.seat.driver-seat[data-car-index="' + carIndex + '"]');
         if (driverSeat) {
             driverSeat.dataset.person = newDriver;
-            var icon = driverSeat.querySelector('.member-icon');
-            if (icon) { icon.textContent = Assignment.getNameInitials(newDriver); icon.dataset.name = newDriver; }
+            var driverMemberUpd2 = (app.Carpool.members || []).find(function(m) { return m.name === newDriver; });
+            var driverDisplayUpd2 = driverMemberUpd2 ? ((driverMemberUpd2.abbr != null && driverMemberUpd2.abbr !== '') ? driverMemberUpd2.abbr : driverMemberUpd2.name) : (newDriver.length > 4 ? newDriver.substring(0, 4) : newDriver);
+            var gcUpd2 = (driverMemberUpd2 && driverMemberUpd2.role === 'player') ? Assignment.getGradeColor(driverMemberUpd2.grade) : null;
+            var nameTag = driverSeat.querySelector('.seat-name-tag');
+            if (nameTag) { nameTag.textContent = driverDisplayUpd2; nameTag.title = newDriver; nameTag.style.color = gcUpd2 || ''; }
+            driverSeat.style.background = gcUpd2 ? Assignment._hexToRgba(gcUpd2, 0.12) : '';
         }
         // カーヘッダーも更新
         var carLayout = document.querySelector('.car-layout[data-car-index="' + carIndex + '"]');
@@ -1550,16 +1554,23 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         driverSeat.dataset.person = driverName;
         driverSeat.title = 'タップして運転手を変更';
 
-        const icon = document.createElement('div');
-        icon.className = 'member-icon driver-icon';
-        icon.textContent = this.getNameInitials(driverName);
-        icon.dataset.name = driverName;
+        // メンバー情報を取得して表示名を決定（メンバー座席と同じロジック）
+        var member = (app.Carpool.members || []).find(function(m) { return m.name === driverName; });
+        var displayName = member ? ((member.abbr != null && member.abbr !== '') ? member.abbr : member.name) : (driverName.length > 4 ? driverName.substring(0, 4) : driverName);
+        var gc = (member && member.role === 'player') ? Assignment.getGradeColor(member.grade) : null;
+        if (gc) driverSeat.style.background = Assignment._hexToRgba(gc, 0.12);
+
+        const nameTag = document.createElement('div');
+        nameTag.className = 'seat-name-tag';
+        nameTag.textContent = displayName;
+        nameTag.title = driverName;
+        if (gc) nameTag.style.color = gc;
 
         const label = document.createElement('div');
         label.className = 'seat-label';
         label.textContent = '運転手 ✏';
 
-        driverSeat.appendChild(icon);
+        driverSeat.appendChild(nameTag);
         driverSeat.appendChild(label);
 
         // タップ/クリックで運転手変更モーダルを開く
