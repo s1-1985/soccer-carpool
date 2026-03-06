@@ -258,13 +258,14 @@
     background-color: white;
     border: 1px solid #ddd;
     border-radius: 6px;
-    padding: 5px 8px;
+    padding: 8px 10px;
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
     cursor: grab;
     transition: background 0.15s, box-shadow 0.15s;
-    width: calc(50% - 3px);
+    width: 100%;
+    min-height: 44px;
     box-sizing: border-box;
 }
 
@@ -291,9 +292,9 @@
 
 .member-name {
     font-size: 13px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-all;
+    line-height: 1.4;
     flex: 1;
 }
 
@@ -559,9 +560,10 @@
     }
 
     .member-item {
-        width: calc(50% - 3px);
-        padding: 4px 6px;
-        font-size: 11px;
+        width: 100%;
+        padding: 6px 8px;
+        font-size: 12px;
+        min-height: 40px;
     }
 
     .member-group-header {
@@ -824,56 +826,61 @@
 }
 
 /* =============================================
-   コメントセクション
+   コメントボタン・バッジ
    ============================================= */
-.assignment-comment-section {
-    margin-top: 12px;
-    padding: 12px;
-    background: #fffbef;
-    border: 1px solid #E8A200;
-    border-radius: 8px;
+
+/* コメントボタン */
+.comment-button {
+    background-color: #6f42c1;
+    position: relative;
+}
+.comment-button:hover {
+    background-color: #5a32a3;
 }
 
-.assignment-comment-section .comment-label {
-    font-size: 13px;
-    font-weight: bold;
-    color: #E8A200;
-    margin-bottom: 6px;
+/* 未読コメントがある場合の赤丸バッジ */
+.comment-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 10px;
+    height: 10px;
+    background: #dc3545;
+    border-radius: 50%;
+    border: 2px solid white;
+    pointer-events: none;
+    display: none;
+}
+.comment-badge.has-comment {
+    display: block;
 }
 
-.assignment-comment-section textarea {
-    width: 100%;
-    min-height: 70px;
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 13px;
-    font-family: inherit;
-    resize: vertical;
-    box-sizing: border-box;
-    line-height: 1.5;
-}
-
-.assignment-comment-section textarea:focus {
-    outline: none;
-    border-color: #E8A200;
-    box-shadow: 0 0 0 2px rgba(232,162,0,0.2);
-}
-
+/* コメント保存（投稿）ボタン */
 .assignment-comment-save-btn {
-    margin-top: 6px;
     font-size: 12px;
     padding: 5px 14px;
     background: #E8A200;
     color: #1C1600;
 }
 
-/* コメントボタン */
-.comment-button {
-    background-color: #6f42c1;
+/* コメント履歴アイテム */
+.comment-history-item {
+    padding: 8px 10px;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 13px;
 }
-.comment-button:hover {
-    background-color: #5a32a3;
+.comment-history-item:last-child {
+    border-bottom: none;
+}
+.comment-history-meta {
+    font-size: 11px;
+    color: #999;
+    margin-bottom: 3px;
+}
+.comment-history-text {
+    color: #333;
+    white-space: pre-wrap;
+    line-height: 1.5;
 }
 
 /* =============================================
@@ -1145,6 +1152,54 @@
     overflow-y: hidden;
     height: auto;
     flex: 1;
+}
+
+/* =============================================
+   横レイアウト: メンバーエリアを横スクロールに
+   ============================================= */
+
+#assignment-work-area.layout-h .members-scroll-area {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    gap: 0;
+    height: auto;
+    min-height: 80px;
+    max-height: 180px;
+    padding-bottom: 4px;
+}
+
+#assignment-work-area.layout-h .members-assignment-container .member-group-header {
+    display: none;
+}
+
+#assignment-work-area.layout-h .members-assignment-container .members-list {
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+    margin-bottom: 0;
+    gap: 6px;
+}
+
+#assignment-work-area.layout-h .members-assignment-container .member-item {
+    flex-shrink: 0;
+    width: 72px;
+    min-height: 64px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 4px;
+    text-align: center;
+    gap: 4px;
+}
+
+#assignment-work-area.layout-h .members-assignment-container .member-name {
+    font-size: 11px;
+    text-align: center;
+    word-break: break-all;
+    line-height: 1.3;
 }
 
 /* =============================================
