@@ -358,22 +358,50 @@ curl -X PUT -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.gith
 | #16 | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | カレンダーUI・出欠確認・登録フロー・会場地図対応 | 47ef18b |
 | hotfix | 2026-02-23 | claude/fix-calendar-seating-bugs-fjK5Z | register.html SyntaxError修正・初回登録者自動管理者承認 | 5199da4 |
 | **未PR** | 2026-02-24 | claude/review-calendar-seating-9A20d | Session5前回分16コミット統合（下記参照） | - |
-| **未PR** | 2026-03-02 | claude/review-calendar-seating-QHdbi | Session8: 割り当てUI改善・コメント機能 | 9e2cc70 |
+| #39 | 2026-03-02 | claude/review-calendar-seating-QHdbi | Session8: 割り当てUI改善・コメント機能 | bba285a |
+| #41 | 2026-03-06 | claude/resume-previous-work-0TxY8 | Session9: コメントモーダル化・メンバー1列・横レイアウト改善 | 7a74be4 |
 
 ---
 
 ## 🔄 最新の作業状況
 
-**最終更新:** 2026-03-02 (Session 8 - 割り当て画面UI改善・コメント機能追加)
-**更新者:** Claude (branch: claude/review-calendar-seating-QHdbi)
-**最終正常コミット:** 9e2cc70（未PR・main未マージ）
+**最終更新:** 2026-03-06 (Session 9 - コメントモーダル化・メンバーリスト縦1列・横レイアウト改善)
+**更新者:** Claude (branch: claude/resume-previous-work-0TxY8)
+**最終正常コミット:** PR#41 squash merge済み・mainデプロイ済み
 
-### ⚠️ PR未作成の注意
-- Session5（前回）の16コミットは `claude/review-calendar-seating-9A20d` に統合済みだが、**まだmainへのPRが未作成**
-- このセッションの作業終了後、ユーザーがGitHub上で `claude/review-calendar-seating-9A20d` → `main` のPRを作成してマージすること
-- GitHub URL: https://github.com/s1-1985/soccer-carpool/compare/main...claude/review-calendar-seating-9A20d
+### Session 9 で行った変更（2026-03-06 / branch: claude/resume-previous-work-0TxY8）
 
-### Session5 で行った変更（前セッション・未マージ16コミット）
+前セッション（Session 9）がエラーで中断後、本セッションで引き継ぎ・PR#41作成・マージを完了した。
+
+#### 変更ファイル（cherry-pick: 7552cb5）
+- `carpool/assignments.html`: コメントモーダルHTMLを追加
+- `css/carpool/assignment.css`: コメントモーダル・メンバー1列・横レイアウト対応CSS
+- `js/carpool/assignment.js`: コメントモーダル機能・メンバー1列表示
+- `js/carpool/overview.js`: comments配列のFirestore保存対応
+- `js/common/global.js`: 微調整
+
+#### 実装内容
+1. **コメントモーダル化**: コメント入力をモーダル方式に変更（ボタン押下で開く・投稿・履歴表示）
+2. **コメントバッジ**: コメントがある場合、ボタン角に赤丸バッジを表示
+3. **メンバーリスト縦1列**: メンバーアイコンを縦1列表示（名前が2行折り返し対応）
+4. **横レイアウト改善**: layout-hのメンバーエリアを横スクロールに変更
+5. **コメント永続化**: comments配列をFirestore・localStorageの双方向で保存
+
+#### デプロイ状況
+- PR#41 squash merge → main → Firebase自動デプロイ成功（2026-03-06）
+- https://fc-ojimajr-hub.web.app で動作中
+
+### 次のAIがすべきこと
+1. **追加要望があれば対応**（現在mainは最新・デプロイ済み）
+2. AIハンドオフMDを作業の都度更新すること
+
+### 既知の問題
+- 旧ファイル（carpool/assignment.html, carprovision.html 等）が git 上に残存（削除はユーザー確認後）
+- イベント種別`event`（保護者出欠）は新規イベントにのみ適用
+
+---
+
+### Session5 で行った変更（前セッション・マージ済み統合分）
 1. `7f7166a` **フリガナ追加・FABバグ修正・LINEリンク案内文追加・ドライバー表示順修正**
    - members.js: フリガナ（furigana）フィールド追加・ソート対応
    - assignment.js: FABボタン（浮動アクションボタン）バグ修正
