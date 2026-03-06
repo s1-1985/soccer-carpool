@@ -19,6 +19,7 @@
 
 .cars-scroll-area {
     height: calc(100vh - 290px);
+    height: calc(100dvh - 290px);
     min-height: 240px;
     overflow-y: scroll;
     padding-right: 6px;
@@ -37,6 +38,7 @@
 
 .members-scroll-area {
     height: calc(100vh - 290px);
+    height: calc(100dvh - 290px);
     min-height: 240px;
     overflow-y: auto;
     padding-right: 6px;
@@ -279,13 +281,13 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 24px;
-    height: 18px;
-    border-radius: 9px;
-    font-size: 9px;
+    min-width: 26px;
+    height: 20px;
+    border-radius: 10px;
+    font-size: 11px;
     font-weight: bold;
     color: white;
-    padding: 0 4px;
+    padding: 0 5px;
     flex-shrink: 0;
     white-space: nowrap;
 }
@@ -516,6 +518,7 @@
     .cars-scroll-area,
     .members-scroll-area {
         height: calc(100vh - 260px);
+        height: calc(100dvh - 260px);
         min-height: 200px;
         overflow-y: scroll;
         padding-right: 2px;
@@ -556,14 +559,14 @@
     }
 
     .seat-label {
-        font-size: 8px;
+        font-size: 9px;
     }
 
     .member-item {
         width: 100%;
         padding: 6px 8px;
-        font-size: 12px;
-        min-height: 40px;
+        font-size: 13px;
+        min-height: 44px;
     }
 
     .member-group-header {

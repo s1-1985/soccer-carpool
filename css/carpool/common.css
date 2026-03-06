@@ -191,10 +191,23 @@ header {
     
     .global-navigation {
         flex-direction: column;
-        gap: 10px;
+        gap: 6px;
+        padding: 8px 16px;
     }
-    
+
     .global-navigation button {
         width: 100%;
+        padding: 10px 16px;
+    }
+
+    /* コンテナの下余白をモバイル縦並びナビ分に拡大（約100px） */
+    .container {
+        padding-bottom: 120px;
+    }
+
+    /* アクションボタンの上浮きもナビ高さに合わせて調整 */
+    .card > .action-buttons,
+    .container > .action-buttons {
+        bottom: 100px;
     }
 }

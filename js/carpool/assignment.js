@@ -48,6 +48,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         if (!seatEditModal) return;
 
         const seatEditForm = document.getElementById('seat-edit-form');
+        if (!seatEditForm) return;
         seatEditForm.dataset.carIndex = seat.dataset.carIndex;
         seatEditForm.dataset.seatType = seat.dataset.seatType;
         seatEditForm.dataset.seatIndex = seat.dataset.seatIndex;
@@ -125,8 +126,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
      */
     Assignment.saveSeatEdit = function() {
         console.log('座席編集を保存します...');
-        
+
         const seatEditForm = document.getElementById('seat-edit-form');
+        if (!seatEditForm) return;
         const carIndex = seatEditForm.dataset.carIndex;
         const seatType = seatEditForm.dataset.seatType;
         const seatIndex = seatEditForm.dataset.seatIndex;
@@ -167,8 +169,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
      */
     Assignment.clearSelectedSeat = function() {
         console.log('選択した座席をクリアします...');
-        
+
         const seatEditForm = document.getElementById('seat-edit-form');
+        if (!seatEditForm) return;
         const carIndex = seatEditForm.dataset.carIndex;
         const seatType = seatEditForm.dataset.seatType;
         const seatIndex = seatEditForm.dataset.seatIndex;
