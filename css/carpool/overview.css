@@ -228,6 +228,7 @@
 /* 状況サマリー（新デザイン） */
 .status-summary {
     margin-top: 0;
+    margin-bottom: 16px;
 }
 
 .ov-grid {
