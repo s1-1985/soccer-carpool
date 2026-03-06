@@ -195,6 +195,7 @@ tr:hover {
     width: 100%;
     height: 100%;
     overflow: auto;
+    overscroll-behavior: contain;
     background-color: rgba(0, 0, 0, 0.5);
     animation: fadeIn 0.3s;
 }
@@ -214,6 +215,8 @@ tr:hover {
     max-width: 800px;
     max-height: 90vh;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -288,6 +291,8 @@ tr:hover {
 .select-list {
     max-height: 400px;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
 }
 
 .list-item {
