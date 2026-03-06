@@ -1492,23 +1492,47 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         carLayout.appendChild(carSeatLayout);
         
         // 既存の配置データを反映
+        var epNames = new Set((car.extraPassengers || []).map(function(ep) { return ep.name; }));
         const carAssignment = existingAssignments.find(a => a.carIndex === carIndex);
         if (carAssignment && carAssignment.seats) {
             Object.keys(carAssignment.seats).forEach(seatType => {
                 const seatIndices = Object.keys(carAssignment.seats[seatType]);
-                
                 seatIndices.forEach(seatIndex => {
                     const person = carAssignment.seats[seatType][seatIndex];
                     if (person) {
                         const seat = carLayout.querySelector(`.seat[data-seat-type="${seatType}"][data-seat-index="${seatIndex}"]`);
                         if (seat) {
+                            if (epNames.has(person)) seat.dataset.isExtraPassenger = 'true';
                             this.setSeatOccupant(seat, person);
                         }
                     }
                 });
             });
         }
-        
+
+        // メンバー外乗員をまだ未配置なら自動配置（後列→中列→助手席の順）
+        if (car.extraPassengers && car.extraPassengers.length > 0) {
+            var alreadyInSeats = new Set();
+            carLayout.querySelectorAll('.seat.filled[data-person]').forEach(function(s) {
+                if (s.dataset.person) alreadyInSeats.add(s.dataset.person);
+            });
+            // 空き座席を後→中→前の順で収集
+            var emptySeats = [];
+            ['後列', '中列', '助手席'].forEach(function(type) {
+                carLayout.querySelectorAll('.seat[data-seat-type="' + type + '"]:not(.filled)').forEach(function(s) {
+                    emptySeats.push(s);
+                });
+            });
+            var self = this;
+            car.extraPassengers.forEach(function(ep) {
+                if (!alreadyInSeats.has(ep.name) && emptySeats.length > 0) {
+                    var seat = emptySeats.shift();
+                    seat.dataset.isExtraPassenger = 'true';
+                    self.setSeatOccupant(seat, ep.name);
+                }
+            });
+        }
+
         return carLayout;
     };
     
@@ -1574,7 +1598,11 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         
         // 座席クリック時の処理（PCクリック・モバイルタップ両対応）
         seat.addEventListener('click', () => {
-            this.openSeatEditModal(seat);
+            if (seat.dataset.isExtraPassenger === 'true') {
+                Assignment.openExtraPassengerModal(seat);
+            } else {
+                this.openSeatEditModal(seat);
+            }
         });
 
         // HTML5ドラッグ（PC）
@@ -1617,8 +1645,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         var displayName = member ? ((member.abbr != null && member.abbr !== '') ? member.abbr : member.name) : (personName.length > 4 ? personName.substring(0, 4) : personName);
         var gc = (member && member.role === 'player') ? Assignment.getGradeColor(member.grade) : null;
 
-        // 学年色で座席背景を薄く色づけ
-        seat.style.background = gc ? Assignment._hexToRgba(gc, 0.12) : '';
+        // 学年色で座席背景を薄く色づけ（メンバー外乗員はグレー）
+        var isEP = seat.dataset.isExtraPassenger === 'true';
+        seat.style.background = isEP ? '#f0f0f0' : (gc ? Assignment._hexToRgba(gc, 0.12) : '');
 
         // × 解除ボタン（座席左上）
         var clearBtn = document.createElement('button');
@@ -2265,5 +2294,67 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             console.error('html2canvas エラー:', err);
             UI.showAlert('画像の生成に失敗しました。');
         });
+    };
+
+    // =============================================
+    // メンバー外乗員 編集モーダル
+    // =============================================
+    Assignment.openExtraPassengerModal = function(seat) {
+        var modal = document.getElementById('extra-passenger-modal');
+        if (!modal) return;
+        var nameEl = document.getElementById('ep-modal-name');
+        if (nameEl) nameEl.textContent = seat.dataset.person || '';
+
+        var editBtn = document.getElementById('ep-modal-edit');
+        var deleteBtn = document.getElementById('ep-modal-delete');
+
+        // クローン差し替えでリスナー重複防止
+        if (editBtn) {
+            var newEdit = editBtn.cloneNode(true);
+            editBtn.parentNode.replaceChild(newEdit, editBtn);
+            newEdit.addEventListener('click', function() {
+                var newName = prompt('新しい名前を入力してください', seat.dataset.person || '');
+                if (!newName || !newName.trim()) return;
+                newName = newName.trim();
+                var oldName = seat.dataset.person;
+                // carRegistrationsのextraPassengersも更新
+                var carIndex = parseInt(seat.dataset.carIndex);
+                var cars = app.Carpool.appData.carRegistrations || [];
+                var car = cars.filter(function(c) { return c.canDrive !== 'no'; })[carIndex];
+                if (car && car.extraPassengers) {
+                    car.extraPassengers.forEach(function(ep) {
+                        if (ep.name === oldName) ep.name = newName;
+                    });
+                }
+                seat.dataset.person = newName;
+                // setSeatOccupantで表示更新
+                Assignment.clearSeat(seat);
+                seat.dataset.isExtraPassenger = 'true';
+                Assignment.setSeatOccupant(seat, newName);
+                Assignment.saveAssignments();
+                app.Carpool.saveData();
+                UI.closeModal('extra-passenger-modal');
+            });
+        }
+
+        if (deleteBtn) {
+            var newDelete = deleteBtn.cloneNode(true);
+            deleteBtn.parentNode.replaceChild(newDelete, deleteBtn);
+            newDelete.addEventListener('click', function() {
+                var oldName = seat.dataset.person;
+                var carIndex = parseInt(seat.dataset.carIndex);
+                var cars = app.Carpool.appData.carRegistrations || [];
+                var car = cars.filter(function(c) { return c.canDrive !== 'no'; })[carIndex];
+                if (car && car.extraPassengers) {
+                    car.extraPassengers = car.extraPassengers.filter(function(ep) { return ep.name !== oldName; });
+                }
+                Assignment.clearSeat(seat);
+                Assignment.saveAssignments();
+                app.Carpool.saveData();
+                UI.closeModal('extra-passenger-modal');
+            });
+        }
+
+        UI.openModal('extra-passenger-modal');
     };
 })(window.FCOjima);
