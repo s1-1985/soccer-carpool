@@ -25,6 +25,15 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         console.log('管理タブを初期化しています...');
         Admin.refresh();
         Admin.initAttendanceMatrixModal();
+        Admin.initEventDetailModal();
+    };
+
+    Admin.initEventDetailModal = function() {
+        var modal = document.getElementById('event-detail-modal');
+        var closeBtn = document.getElementById('event-detail-modal-close');
+        if (!modal) return;
+        closeBtn && closeBtn.addEventListener('click', function() { modal.style.display = 'none'; });
+        modal.addEventListener('click', function(e) { if (e.target === modal) modal.style.display = 'none'; });
     };
 
     Admin.initAttendanceMatrixModal = function() {
@@ -334,13 +343,19 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             });
             thead.appendChild(tr2);
 
-            // ─── 列ヘッダー行3: イベント名 ───
+            // ─── 列ヘッダー行3: イベント名（タップでモーダル） ───
             var tr3 = document.createElement('tr');
-            targetEvents.forEach(function(ev) {
+            targetEvents.forEach(function(ev, i) {
                 var th = document.createElement('th');
-                th.className = 'mx-h mx-title';
+                th.className = 'mx-h mx-title mx-title-btn';
                 th.textContent = ev.title || Utils.getEventTypeLabel(ev.type);
                 th.title = ev.title || '';
+                th.style.cursor = 'pointer';
+                (function(ev, evData) {
+                    th.addEventListener('click', function() {
+                        Admin.openEventDetailModal(ev, evData);
+                    });
+                })(ev, dataArr[i]);
                 tr3.appendChild(th);
             });
             thead.appendChild(tr3);
@@ -359,9 +374,9 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
 
             // ─── データ行: 選手1人1行 ───
             var STATUS_DISP = {
-                'present': { text: '○', cls: 'mx-present' },
-                'absent':  { text: '×', cls: 'mx-absent'  },
-                'unknown': { text: '△', cls: 'mx-unknown' }
+                'present': { text: '◯', cls: 'mx-present' },
+                'absent':  { text: '✖', cls: 'mx-absent'  },
+                'unknown': { text: '未', cls: 'mx-unknown' }
             };
             members.forEach(function(member) {
                 var tr = document.createElement('tr');
@@ -379,13 +394,10 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                     td.className = 'mx-cell';
                     var evMap = statusMap[ev.id] || {};
                     var status = evMap[member.name] || evMap[String(member.id)];
-                    if (status && STATUS_DISP[status]) {
-                        td.textContent = STATUS_DISP[status].text;
-                        td.classList.add(STATUS_DISP[status].cls);
-                    } else {
-                        td.textContent = '―';
-                        td.classList.add('mx-none');
-                    }
+                    if (!status) status = 'unknown';
+                    var disp = STATUS_DISP[status] || STATUS_DISP['unknown'];
+                    td.textContent = disp.text;
+                    td.classList.add(disp.cls);
                     tr.appendChild(td);
                 });
                 tbody.appendChild(tr);
@@ -402,6 +414,93 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         } catch(e) {
             el.innerHTML = '<p style="color:#c00;">読み込みエラー: ' + e.message + '</p>';
             console.error('出欠マトリクスエラー:', e);
+        }
+    };
+
+    // =============================================
+    //  イベント詳細モーダル & ファイル添付
+    // =============================================
+
+    Admin.openEventDetailModal = function(ev, evData) {
+        var modal = document.getElementById('event-detail-modal');
+        if (!modal) return;
+        var body = document.getElementById('event-detail-modal-body');
+        var Utils = FCOjima.Utils;
+        var d = new Date(ev.date + 'T00:00:00');
+        var DOW = ['日','月','火','水','木','金','土'];
+        body.innerHTML = [
+            '<h2 style="margin:0 0 8px;">' + (ev.title || Utils.getEventTypeLabel(ev.type)) + '</h2>',
+            '<p style="color:#666;margin:0 0 12px;font-size:13px;">',
+                d.getFullYear() + '/' + (d.getMonth()+1) + '/' + d.getDate() + '（' + DOW[d.getDay()] + '）',
+                ev.startTime ? '　' + ev.startTime + '〜' : '',
+            '</p>',
+            ev.venue ? '<p style="margin:0 0 6px;font-size:13px;">📍 ' + ev.venue + '</p>' : '',
+            ev.description ? '<p style="margin:0 0 6px;font-size:13px;white-space:pre-wrap;">' + ev.description + '</p>' : '',
+        ].join('');
+        modal.style.display = 'flex';
+        Admin.loadEventFiles(ev.id);
+
+        // ファイルアップロードボタン
+        var uploadBtn = document.getElementById('event-file-upload-btn');
+        var fileInput = document.getElementById('event-file-input');
+        if (uploadBtn && fileInput) {
+            var newBtn = uploadBtn.cloneNode(true);
+            uploadBtn.parentNode.replaceChild(newBtn, uploadBtn);
+            newBtn.addEventListener('click', function() {
+                fileInput.value = '';
+                fileInput.click();
+            });
+            fileInput.onchange = function() {
+                if (!fileInput.files.length) return;
+                Admin.uploadEventFiles(ev.id, fileInput.files);
+            };
+        }
+    };
+
+    Admin.loadEventFiles = async function(eventId) {
+        var list = document.getElementById('event-files-list');
+        if (!list) return;
+        list.innerHTML = '<p style="color:#999;font-size:12px;">読み込み中...</p>';
+        try {
+            var storage = firebase.storage();
+            var ref = storage.ref('teams/' + FCOjimaFirebase.TEAM_ID + '/events/' + eventId);
+            var result = await ref.listAll();
+            if (result.items.length === 0) {
+                list.innerHTML = '<p style="color:#999;font-size:12px;">ファイルなし</p>';
+                return;
+            }
+            list.innerHTML = '';
+            for (var i = 0; i < result.items.length; i++) {
+                var item = result.items[i];
+                var url = await item.getDownloadURL();
+                var a = document.createElement('a');
+                a.href = url;
+                a.target = '_blank';
+                a.className = 'event-file-link';
+                a.textContent = item.name;
+                list.appendChild(a);
+            }
+        } catch(e) {
+            list.innerHTML = '<p style="color:#c00;font-size:12px;">読み込みエラー</p>';
+            console.error('ファイル読み込みエラー:', e);
+        }
+    };
+
+    Admin.uploadEventFiles = async function(eventId, files) {
+        var list = document.getElementById('event-files-list');
+        var storage = firebase.storage();
+        var basePath = 'teams/' + FCOjimaFirebase.TEAM_ID + '/events/' + eventId + '/';
+        try {
+            for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+                var ref = storage.ref(basePath + file.name);
+                if (list) list.innerHTML = '<p style="color:#999;font-size:12px;">アップロード中... (' + (i+1) + '/' + files.length + ')</p>';
+                await ref.put(file);
+            }
+            await Admin.loadEventFiles(eventId);
+        } catch(e) {
+            if (list) list.innerHTML = '<p style="color:#c00;font-size:12px;">アップロードエラー: ' + e.message + '</p>';
+            console.error('アップロードエラー:', e);
         }
     };
 

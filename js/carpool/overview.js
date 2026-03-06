@@ -332,55 +332,48 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
             });
         });
         
-        // サマリーを表示
+        var attendanceOk = respondedMembers >= totalMembers && totalMembers > 0;
+        var carsOk = availableCars > 0 && totalSeats >= presentMembers;
+        var assignOk = presentMembers > 0 && assignedMembers >= presentMembers;
+
         statusSummary.innerHTML = `
-            <div class="status-cards">
-                <div class="status-card">
-                    <h3>出欠状況</h3>
-                    <div class="status-stats">
-                        <div class="stat-item">
-                            <div class="stat-value">${respondedMembers}/${totalMembers}</div>
-                            <div class="stat-label">回答済み</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">${presentMembers}</div>
-                            <div class="stat-label">参加者</div>
-                        </div>
+            <div class="ov-grid">
+                <a href="attendance.html" class="ov-card ${attendanceOk ? 'ok' : (respondedMembers > 0 ? 'partial' : '')}">
+                    <div class="ov-icon">👥</div>
+                    <div class="ov-body">
+                        <div class="ov-title">出欠</div>
+                        <div class="ov-main">${respondedMembers}<span class="ov-of">/${totalMembers}</span></div>
+                        <div class="ov-sub">参加 <strong>${presentMembers}</strong>人</div>
                     </div>
-                    <div class="status-actions">
-                        <a href="attendance.html" class="button">出欠確認へ</a>
+                    <div class="ov-arrow">›</div>
+                </a>
+                <a href="cars.html" class="ov-card ${carsOk ? 'ok' : (availableCars > 0 ? 'partial' : '')}">
+                    <div class="ov-icon">🚗</div>
+                    <div class="ov-body">
+                        <div class="ov-title">車両</div>
+                        <div class="ov-main">${availableCars}<span class="ov-of">/${totalCars}</span></div>
+                        <div class="ov-sub">座席 <strong>${totalSeats}</strong>席</div>
                     </div>
-                </div>
-                
-                <div class="status-card">
-                    <h3>車両状況</h3>
-                    <div class="status-stats">
-                        <div class="stat-item">
-                            <div class="stat-value">${availableCars}/${totalCars}</div>
-                            <div class="stat-label">提供可能車両</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">${totalSeats}</div>
-                            <div class="stat-label">座席数</div>
-                        </div>
+                    <div class="ov-arrow">›</div>
+                </a>
+                <a href="assignments.html" class="ov-card ${assignOk ? 'ok' : (assignedMembers > 0 ? 'partial' : '')}">
+                    <div class="ov-icon">🗂</div>
+                    <div class="ov-body">
+                        <div class="ov-title">割り当て</div>
+                        <div class="ov-main">${assignedMembers}<span class="ov-of">/${presentMembers}</span></div>
+                        <div class="ov-sub">人割り当て済み</div>
                     </div>
-                    <div class="status-actions">
-                        <a href="cars.html" class="button">車提供へ</a>
+                    <div class="ov-arrow">›</div>
+                </a>
+                <a href="notifications.html" class="ov-card">
+                    <div class="ov-icon">📣</div>
+                    <div class="ov-body">
+                        <div class="ov-title">連絡</div>
+                        <div class="ov-main">${(eventData.notifications || []).length}<span class="ov-of">件</span></div>
+                        <div class="ov-sub">連絡事項</div>
                     </div>
-                </div>
-                
-                <div class="status-card">
-                    <h3>割り当て状況</h3>
-                    <div class="status-stats">
-                        <div class="stat-item">
-                            <div class="stat-value">${assignedMembers}/${presentMembers}</div>
-                            <div class="stat-label">割り当て済み</div>
-                        </div>
-                    </div>
-                    <div class="status-actions">
-                        <a href="assignments.html" class="button">割り当てへ</a>
-                    </div>
-                </div>
+                    <div class="ov-arrow">›</div>
+                </a>
             </div>
         `;
         

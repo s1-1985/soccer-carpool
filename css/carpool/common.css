@@ -125,18 +125,14 @@ header {
     padding-bottom: 90px;
 }
 
-/* メインアクションボタンを下部スティッキー固定 */
-/* .card内・.container直下の action-buttons が対象。overview.htmlの.step-content内は対象外 */
+/* アクションボタン（通常フロー） */
 .card > .action-buttons,
 .container > .action-buttons {
-    position: sticky;
-    bottom: 60px; /* グローバルナビ（~60px）の上 */
-    background: #f8f9fa;
-    border-top: 2px solid #E8A200;
-    padding: 10px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
     margin-top: 16px;
-    z-index: 100;
-    box-shadow: 0 -2px 6px rgba(0,0,0,0.1);
+    padding: 0;
 }
 
 /* 配車管理フッター */
