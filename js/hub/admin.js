@@ -426,17 +426,64 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         if (!modal) return;
         var body = document.getElementById('event-detail-modal-body');
         var Utils = FCOjima.Utils;
+        var UI = FCOjima.UI;
         var d = new Date(ev.date + 'T00:00:00');
         var DOW = ['日','月','火','水','木','金','土'];
-        body.innerHTML = [
-            '<h2 style="margin:0 0 8px;">' + (ev.title || Utils.getEventTypeLabel(ev.type)) + '</h2>',
-            '<p style="color:#666;margin:0 0 12px;font-size:13px;">',
-                d.getFullYear() + '/' + (d.getMonth()+1) + '/' + d.getDate() + '（' + DOW[d.getDay()] + '）',
-                ev.startTime ? '　' + ev.startTime + '〜' : '',
-            '</p>',
-            ev.venue ? '<p style="margin:0 0 6px;font-size:13px;">📍 ' + ev.venue + '</p>' : '',
-            ev.description ? '<p style="margin:0 0 6px;font-size:13px;white-space:pre-wrap;">' + ev.description + '</p>' : '',
-        ].join('');
+
+        // タイトル & イベント種別バッジ
+        var typeLabel = Utils.getEventTypeLabel(ev.type);
+        var html = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">'
+            + '<h2 style="margin:0;font-size:18px;flex:1;">' + UI.escapeHTML(ev.title || typeLabel) + '</h2>'
+            + '<span style="background:#E8A200;color:#fff;border-radius:12px;padding:2px 10px;font-size:11px;white-space:nowrap;">' + typeLabel + '</span>'
+            + '</div>';
+
+        // 日時グリッド
+        html += '<div style="display:flex;flex-wrap:wrap;gap:10px 20px;margin-bottom:12px;padding:10px 14px;background:#fffbef;border:1px solid #E8A200;border-radius:8px;">';
+        html += '<div><div style="font-size:11px;color:#888;">日付</div><div style="font-weight:bold;font-size:14px;">'
+            + Utils.formatDateForDisplay(ev.date) + '（' + DOW[d.getDay()] + '）</div></div>';
+        if (ev.startTime) {
+            html += '<div><div style="font-size:11px;color:#888;">時間</div><div style="font-weight:bold;font-size:14px;">'
+                + ev.startTime + (ev.endTime ? ' 〜 ' + ev.endTime : '') + '</div></div>';
+        }
+        if (ev.departureTime) {
+            html += '<div><div style="font-size:11px;color:#888;">出発時間</div><div style="font-weight:bold;font-size:14px;">' + ev.departureTime + '</div></div>';
+        }
+        html += '</div>';
+
+        // 場所情報
+        var venues = (FCOjima.Storage && FCOjima.Storage.loadVenues) ? FCOjima.Storage.loadVenues() : [];
+        if (ev.meetingPlace) {
+            var mv = venues.find(function(v) { return v.name === ev.meetingPlace; });
+            var mq = encodeURIComponent((mv && mv.address) ? mv.address : ev.meetingPlace);
+            html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px;">'
+                + '<span style="color:#888;min-width:52px;">集合場所</span>'
+                + '<span>' + UI.escapeHTML(ev.meetingPlace) + '</span>'
+                + '<button onclick="window.open(\'https://www.google.com/maps/search/?api=1&query=' + mq + '\',\'_blank\')" style="margin-left:auto;background:#E8A200;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">地図を開く</button>'
+                + '</div>';
+        }
+        if (ev.venue) {
+            var vv = venues.find(function(v) { return v.name === ev.venue; });
+            var vq = encodeURIComponent((vv && vv.address) ? vv.address : ev.venue);
+            html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px;">'
+                + '<span style="color:#888;min-width:52px;">会場</span>'
+                + '<span>' + UI.escapeHTML(ev.venue) + '</span>'
+                + '<button onclick="window.open(\'https://www.google.com/maps/search/?api=1&query=' + vq + '\',\'_blank\')" style="margin-left:auto;background:#E8A200;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">地図を開く</button>'
+                + '</div>';
+        }
+
+        // 対象学年
+        if (ev.target && ev.target.length > 0) {
+            var grades = ev.target.map(function(g) { return Utils.getGradeLabel(g); }).join('、');
+            html += '<div style="margin-bottom:8px;font-size:13px;"><span style="color:#888;">対象: </span>' + grades + '</div>';
+        }
+
+        // 説明
+        if (ev.description) {
+            html += '<div style="margin-top:8px;padding:8px 12px;background:#f5f5f5;border-radius:6px;font-size:13px;white-space:pre-wrap;">'
+                + UI.escapeHTML(ev.description) + '</div>';
+        }
+
+        body.innerHTML = html;
         modal.style.display = 'flex';
         Admin.loadEventFiles(ev.id);
 

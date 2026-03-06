@@ -2104,23 +2104,25 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
 
         var event = Storage.getSelectedEvent();
 
-        // 画像用幅（スマホ画面幅に関係なく十分な幅を確保）
-        var exportWidth = Math.max(window.innerWidth, 800);
+        // 台数に応じて画像幅を決定（16:9横向き）
+        var carCount = carsContainer.children.length;
+        var exportWidth = Math.max(960, carCount * 300 + 48);
+        var exportHeight = Math.round(exportWidth * 9 / 16);
 
-        // エクスポート用ラッパー（画面外に配置 — position:absolute+left:-9999pxで縦方向の計測を正確に）
+        // エクスポート用ラッパー（16:9固定サイズ、画面外に配置）
         var wrap = document.createElement('div');
-        wrap.style.cssText = 'position:absolute;top:0;left:-9999px;background:#fff;padding:20px;font-family:sans-serif;box-sizing:border-box;width:' + exportWidth + 'px;';
+        wrap.style.cssText = 'position:absolute;top:0;left:-9999px;background:#fff;padding:14px 16px;font-family:sans-serif;box-sizing:border-box;width:' + exportWidth + 'px;height:' + exportHeight + 'px;overflow:hidden;display:flex;flex-direction:column;';
 
-        // ヘッダー（タイトル）
+        // ヘッダー（コンパクト）
         var header = document.createElement('div');
-        header.style.cssText = 'margin-bottom:12px;padding-bottom:10px;border-bottom:3px solid #E8A200;';
-        header.innerHTML = '<div style="font-size:18px;font-weight:bold;color:#E8A200;">FC尾島ジュニア　乗車割り当て</div>';
+        header.style.cssText = 'margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #E8A200;display:flex;align-items:baseline;gap:12px;flex-shrink:0;';
+        header.innerHTML = '<span style="font-size:15px;font-weight:bold;color:#E8A200;">FC尾島ジュニア　乗車割り当て</span>';
         wrap.appendChild(header);
 
-        // イベント情報サマリー
+        // イベント情報サマリー（コンパクト）
         if (event) {
             var infoSection = document.createElement('div');
-            infoSection.style.cssText = 'background:#fffbef;border:1px solid #E8A200;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#333;display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;';
+            infoSection.style.cssText = 'background:#fffbef;border:1px solid #E8A200;border-radius:6px;padding:5px 10px;margin-bottom:8px;font-size:12px;color:#333;display:flex;flex-wrap:wrap;gap:2px 14px;flex-shrink:0;';
 
             var infoRows = [
                 { label: '日時', value: Utils.formatDateForDisplay(event.date) + (event.startTime ? '　' + event.startTime + '〜' : '') },
@@ -2157,37 +2159,41 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
 
             infoRows.forEach(function(row) {
                 var cell = document.createElement('div');
-                cell.style.cssText = 'display:flex;gap:4px;';
-                cell.innerHTML = '<span style="color:#E8A200;font-weight:bold;white-space:nowrap;">' + row.label + ':</span><span>' + UI.escapeHTML(String(row.value)) + '</span>';
+                cell.style.cssText = 'display:flex;gap:3px;white-space:nowrap;';
+                cell.innerHTML = '<span style="color:#E8A200;font-weight:bold;">' + row.label + ':</span><span>' + UI.escapeHTML(String(row.value)) + '</span>';
                 infoSection.appendChild(cell);
             });
             wrap.appendChild(infoSection);
         }
 
-        // コメントをイベント概要の下に追加（赤太文字）
+        // コメント（コンパクト）
         var comment = app.Carpool.appData.comment || '';
         var commentTextarea = document.getElementById('assignment-comment');
         if (!comment && commentTextarea) comment = commentTextarea.value || '';
         if (comment) {
             var commentDiv = document.createElement('div');
-            commentDiv.style.cssText = 'margin-bottom:12px;padding:8px 12px;background:#fff5f5;border:1px solid #dc3545;border-radius:6px;';
+            commentDiv.style.cssText = 'margin-bottom:6px;padding:5px 10px;background:#fff5f5;border:1px solid #dc3545;border-radius:6px;flex-shrink:0;';
             var commentLabel = document.createElement('span');
-            commentLabel.style.cssText = 'font-size:12px;color:#dc3545;font-weight:bold;margin-right:6px;';
+            commentLabel.style.cssText = 'font-size:11px;color:#dc3545;font-weight:bold;margin-right:4px;';
             commentLabel.textContent = 'コメント:';
             var commentText = document.createElement('span');
-            commentText.style.cssText = 'font-size:13px;color:#dc3545;font-weight:bold;white-space:pre-wrap;';
+            commentText.style.cssText = 'font-size:12px;color:#dc3545;font-weight:bold;white-space:pre-wrap;';
             commentText.textContent = comment;
             commentDiv.appendChild(commentLabel);
             commentDiv.appendChild(commentText);
             wrap.appendChild(commentDiv);
         }
 
-        // 実際の cars-container をクローン（見た目をそのまま使う）
+        // 実際の cars-container をクローン（全車両を横1列で表示）
         var carsClone = carsContainer.cloneNode(true);
-        // height:auto を明示して固定高さ制約を解除（calcは計算済みpx値になるため直接検出できない）
-        carsClone.style.cssText = 'overflow:visible;max-height:none;height:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;';
-        // クローン内のコンテナ要素のスクロール制限を解除（座席要素の固定サイズはそのまま維持）
-        carsClone.querySelectorAll('.car-layout, .car-seat-layout, .car-top-view, .seat-row, .car-info').forEach(function(el) {
+        carsClone.style.cssText = 'overflow:visible;max-height:none;height:auto;display:flex;flex-direction:row;flex-wrap:nowrap;gap:12px;flex:1;min-height:0;';
+        // 各car-layoutを横並び用にリセット
+        carsClone.querySelectorAll('.car-layout').forEach(function(el) {
+            el.style.flexShrink = '0';
+            el.style.marginBottom = '0';
+        });
+        // クローン内のコンテナ要素のスクロール制限を解除
+        carsClone.querySelectorAll('.car-seat-layout, .car-top-view, .seat-row, .car-info').forEach(function(el) {
             el.style.overflow = 'visible';
             el.style.maxHeight = 'none';
             el.style.height = 'auto';
@@ -2223,8 +2229,10 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             backgroundColor: '#ffffff',
             scrollX: 0,
             scrollY: 0,
-            windowWidth: wrap.scrollWidth,
-            windowHeight: wrap.scrollHeight
+            windowWidth: exportWidth,
+            windowHeight: exportHeight,
+            width: exportWidth,
+            height: exportHeight
         }).then(function(canvas) {
             document.body.removeChild(wrap);
             if (exportBtn) { exportBtn.textContent = origText; exportBtn.disabled = false; }
