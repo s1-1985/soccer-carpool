@@ -1184,6 +1184,7 @@
 }
 
 #assignment-work-area.layout-h .members-assignment-container .members-list {
+    flex-direction: row;
     flex-wrap: nowrap;
     flex-shrink: 0;
     margin-bottom: 0;
