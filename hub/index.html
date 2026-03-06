@@ -28,6 +28,72 @@
             margin-top: 16px;
             z-index: 100;
         }
+
+        /* ── 出欠マトリクス ── */
+        .matrix-wrap {
+            overflow: auto;
+            max-height: calc(100dvh - 200px);
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .attendance-matrix {
+            border-collapse: collapse;
+            white-space: nowrap;
+            font-size: 13px;
+        }
+        /* 列ヘッダー各行のスティッキー top */
+        .attendance-matrix .mx-date  { position: sticky; top: 0;    z-index: 3; height: 26px; background: #e8f0ff; }
+        .attendance-matrix .mx-dow   { position: sticky; top: 26px; z-index: 3; height: 22px; background: #e8f0ff; }
+        .attendance-matrix .mx-title { position: sticky; top: 48px; z-index: 3; height: 38px; background: #dde8ff; max-width: 60px; overflow: hidden; text-overflow: ellipsis; }
+        .attendance-matrix .mx-count { position: sticky; top: 86px; z-index: 3; height: 26px; background: #dde8ff; font-weight: bold; }
+        /* 共通ヘッダースタイル */
+        .attendance-matrix .mx-h {
+            text-align: center;
+            padding: 2px 6px;
+            border: 1px solid #c0cfe8;
+        }
+        /* 左固定列 */
+        .attendance-matrix .mx-col-grade {
+            position: sticky; left: 0; z-index: 2;
+            width: 40px; min-width: 40px;
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            text-align: center;
+            padding: 3px 4px;
+        }
+        .attendance-matrix .mx-col-name {
+            position: sticky; left: 40px; z-index: 2;
+            min-width: 72px; max-width: 88px;
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 3px 6px;
+        }
+        /* 角（左上）の交差セル */
+        .attendance-matrix .mx-corner {
+            z-index: 4 !important;
+            background: #d8e8ff !important;
+            text-align: center;
+            font-weight: bold;
+            padding: 4px;
+            border: 1px solid #c0cfe8;
+            vertical-align: middle;
+        }
+        /* データセル */
+        .attendance-matrix .mx-cell {
+            text-align: center;
+            padding: 3px 6px;
+            border: 1px solid #eee;
+            min-width: 36px;
+        }
+        .attendance-matrix .mx-present { color: #27ae60; font-weight: bold; }
+        .attendance-matrix .mx-absent  { color: #e74c3c; }
+        .attendance-matrix .mx-unknown { color: #e67e22; }
+        .attendance-matrix .mx-none    { color: #ccc; }
+        /* 偶数行に薄い背景 */
+        .attendance-matrix tbody tr:nth-child(even) td { background: #fafafa; }
+        .attendance-matrix tbody tr:nth-child(even) .mx-col-grade,
+        .attendance-matrix tbody tr:nth-child(even) .mx-col-name { background: #f3f3f3; }
     </style>
 </head>
 <body>
@@ -182,6 +248,13 @@
             <section style="margin-top:24px;">
                 <h3>登録済みユーザー一覧</h3>
                 <div id="all-users-list">
+                    <p class="loading">読み込み中...</p>
+                </div>
+            </section>
+
+            <section style="margin-top:24px;">
+                <h3>出欠マトリクス <span style="font-size:12px;font-weight:normal;color:#888;">（ナイター除く・選手のみ）</span></h3>
+                <div id="attendance-matrix-container">
                     <p class="loading">読み込み中...</p>
                 </div>
             </section>
@@ -446,7 +519,7 @@
     <script src="../js/hub/members.js?v=20260224a"></script>
     <script src="../js/hub/notifications.js?v=20260224a"></script>
     <script src="../js/hub/venues.js?v=20260224a"></script>
-    <script src="../js/hub/admin.js?v=20260224a"></script>
+    <script src="../js/hub/admin.js?v=20260306b"></script>
 
     <script>
         // タブの切り替えに応じてフローティングボタンの表示を制御
