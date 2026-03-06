@@ -32,7 +32,7 @@
         /* ── 出欠マトリクス ── */
         .matrix-wrap {
             overflow: auto;
-            max-height: calc(100dvh - 160px);
+            max-height: calc(100dvh - 200px);
             border: 1px solid #ddd;
             border-radius: 6px;
             -webkit-overflow-scrolling: touch;
@@ -40,36 +40,34 @@
         .attendance-matrix {
             border-collapse: collapse;
             white-space: nowrap;
-            font-size: 11px;
+            font-size: 13px;
         }
         /* 列ヘッダー各行のスティッキー top */
-        .attendance-matrix .mx-date  { position: sticky; top: 0;    z-index: 3; height: 22px; background: #e8f0ff; }
-        .attendance-matrix .mx-dow   { position: sticky; top: 22px; z-index: 3; height: 18px; background: #e8f0ff; }
-        .attendance-matrix .mx-title { position: sticky; top: 40px; z-index: 3; height: 34px; background: #dde8ff; max-width: 52px; overflow: hidden; text-overflow: ellipsis; }
-        .attendance-matrix .mx-count { position: sticky; top: 74px; z-index: 3; height: 22px; background: #dde8ff; font-weight: bold; }
+        .attendance-matrix .mx-date  { position: sticky; top: 0;    z-index: 3; height: 26px; background: #e8f0ff; }
+        .attendance-matrix .mx-dow   { position: sticky; top: 26px; z-index: 3; height: 22px; background: #e8f0ff; }
+        .attendance-matrix .mx-title { position: sticky; top: 48px; z-index: 3; height: 38px; background: #dde8ff; max-width: 60px; overflow: hidden; text-overflow: ellipsis; }
+        .attendance-matrix .mx-count { position: sticky; top: 86px; z-index: 3; height: 26px; background: #dde8ff; font-weight: bold; }
         /* 共通ヘッダースタイル */
         .attendance-matrix .mx-h {
             text-align: center;
-            padding: 2px 4px;
+            padding: 2px 6px;
             border: 1px solid #c0cfe8;
         }
         /* 左固定列 */
         .attendance-matrix .mx-col-grade {
             position: sticky; left: 0; z-index: 2;
-            width: 28px; min-width: 28px;
+            width: 40px; min-width: 40px;
             background: #f9f9f9;
             border: 1px solid #ddd;
             text-align: center;
-            padding: 2px 2px;
-            font-size: 10px;
+            padding: 3px 4px;
         }
         .attendance-matrix .mx-col-name {
-            position: sticky; left: 28px; z-index: 2;
-            min-width: 48px; max-width: 64px;
+            position: sticky; left: 40px; z-index: 2;
+            min-width: 72px; max-width: 88px;
             background: #f9f9f9;
             border: 1px solid #ddd;
-            padding: 2px 4px;
-            font-size: 10px;
+            padding: 3px 6px;
         }
         /* 角（左上）の交差セル */
         .attendance-matrix .mx-corner {
@@ -77,17 +75,16 @@
             background: #d8e8ff !important;
             text-align: center;
             font-weight: bold;
-            padding: 3px 2px;
+            padding: 4px;
             border: 1px solid #c0cfe8;
             vertical-align: middle;
-            font-size: 10px;
         }
         /* データセル */
         .attendance-matrix .mx-cell {
             text-align: center;
-            padding: 2px 4px;
+            padding: 3px 6px;
             border: 1px solid #eee;
-            min-width: 32px;
+            min-width: 36px;
         }
         .attendance-matrix .mx-present { color: #27ae60; font-weight: bold; }
         .attendance-matrix .mx-absent  { color: #e74c3c; }
@@ -256,19 +253,11 @@
             </section>
 
             <section style="margin-top:24px;">
-                <button id="btn-attendance-matrix" class="primary-button" style="width:100%;max-width:320px;">出欠状況</button>
+                <h3>出欠マトリクス <span style="font-size:12px;font-weight:normal;color:#888;">（ナイター除く・選手のみ）</span></h3>
+                <div id="attendance-matrix-container">
+                    <p class="loading">読み込み中...</p>
+                </div>
             </section>
-        </div>
-    </div>
-
-    <!-- 出欠状況モーダル -->
-    <div id="attendance-matrix-modal" class="modal">
-        <div class="modal-content" style="max-width:95vw;width:95vw;padding:12px;">
-            <span class="close" id="attendance-matrix-modal-close">&times;</span>
-            <h2 style="font-size:16px;margin-bottom:8px;">出欠状況 <span style="font-size:11px;font-weight:normal;color:#888;">（ナイター除く・選手のみ）</span></h2>
-            <div id="attendance-matrix-container">
-                <p class="loading">読み込み中...</p>
-            </div>
         </div>
     </div>
 

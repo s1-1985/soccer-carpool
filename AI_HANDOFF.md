@@ -534,31 +534,15 @@ curl -X PUT -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.gith
 9. **メンバーアイコン幅縮小・左詰め**: item 幅を少し縮小、padding・gap 調整
 10. **横画面（landscape）対応**: `orientation: landscape` and `max-height: 500px` 時にメンバーエリアも横スクロール、アイコン幅 72px に縮小、名前2行折り返し、グループヘッダー非表示
 
-### Session 10 で行った変更（2026-03-06 / branch: claude/resume-previous-work-0TxY8）
-
-#### 変更ファイル
-- `js/hub/admin.js`: 出欠マトリクスのバグ修正・略称表示・モーダル化
-- `hub/index.html`: 出欠マトリクスを「出欠状況」ボタン→モーダル表示に変更・CSS縮小
-
-#### バグ修正
-- **出欠データが表示されなかった根本原因**: 出欠データは `{ name: "選手名", status: "..." }` で保存されているのに、マトリクスは `item.memberId` で検索していた。`item.name` → `statusMap[ev.id][item.name]` に修正。互換性のため memberId も同時に登録する。
-- **メンバー行のルックアップ**: `statusMap[ev.id][String(member.id)]` → `evMap[member.name] || evMap[String(member.id)]` に変更
-
-#### UI変更
-- 管理タブの「出欠マトリクス（ナイター除く・選手のみ）」セクションを削除し、「出欠状況」ボタンに置き換え
-- ボタンタップ → モーダル（`attendance-matrix-modal`）が開く、初回タップ時のみデータ取得
-- 学年列: `40px` → `28px`、名前列: `72-88px` → `48-64px`、フォント: 13px → 11px（学年・名前は10px）
-- 名前列に `member.abbr`（略称）を優先表示（略称なければ `member.name`）
-
 ### 次のAIがすべきこと（優先順）
 1. **PRを作成・マージ**: `claude/resume-previous-work-0TxY8` → `main` のPRを作成・マージ
 2. **Firebase自動デプロイ確認**: PRマージ後、GitHub Actionsが自動デプロイ → `https://fc-ojimajr-hub.web.app` で確認
-3. **実機動作確認**: 出欠状況ボタン→モーダル・出欠データ反映・略称表示
+3. **実機動作確認**: コメントモーダル・横レイアウト・全画面モーダル表示・カード形式車提供
+4. **追加要望があれば対応**
 
 ### 既知の問題
 - 旧ファイル（carpool/assignment.html, carprovision.html 等）が git 上に残存（削除はユーザー確認後）
 - イベント種別`event`（保護者出欠）は新規イベントにのみ適用
-- 出欠データは `name` で保存されており、将来的に `memberId` への移行を検討（現状は両方でルックアップする互換コードあり）
 
 ---
 

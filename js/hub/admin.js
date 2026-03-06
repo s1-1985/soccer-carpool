@@ -24,29 +24,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
     Admin.init = function() {
         console.log('管理タブを初期化しています...');
         Admin.refresh();
-        Admin.initAttendanceMatrixModal();
-    };
-
-    Admin.initAttendanceMatrixModal = function() {
-        var btn = document.getElementById('btn-attendance-matrix');
-        var modal = document.getElementById('attendance-matrix-modal');
-        var closeBtn = document.getElementById('attendance-matrix-modal-close');
-        if (!btn || !modal) return;
-
-        var loaded = false;
-        btn.addEventListener('click', function() {
-            modal.style.display = 'flex';
-            if (!loaded) {
-                loaded = true;
-                Admin.loadAttendanceMatrix();
-            }
-        });
-        closeBtn && closeBtn.addEventListener('click', function() {
-            modal.style.display = 'none';
-        });
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) modal.style.display = 'none';
-        });
+        Admin.loadAttendanceMatrix();
     };
 
     /**
@@ -276,8 +254,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 targetEvents.map(function(ev) { return FCOjima.DB.loadEventData(ev.id); })
             );
 
-            // 4. マップ構築: eventId → { name → status }
-            // ※ 出欠データは memberId ではなく name で保存されているため name キーで管理
+            // 4. マップ構築: eventId → { memberId → status }
             var statusMap = {};
             var presentCount = [];
             targetEvents.forEach(function(ev, i) {
@@ -285,9 +262,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 var list = (dataArr[i] && dataArr[i].attendance) ? dataArr[i].attendance : [];
                 var cnt = 0;
                 list.forEach(function(item) {
-                    // name キーで保存（memberId があれば両方登録して互換性を保つ）
-                    if (item.name) statusMap[ev.id][item.name] = item.status;
-                    if (item.memberId) statusMap[ev.id][String(item.memberId)] = item.status;
+                    statusMap[ev.id][String(item.memberId)] = item.status;
                     if (item.status === 'present') cnt++;
                 });
                 presentCount.push(cnt);
@@ -371,16 +346,14 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 tdGrade.textContent = Utils.getGradeLabel(member.grade);
                 var tdName = document.createElement('td');
                 tdName.className = 'mx-col mx-col-name';
-                tdName.textContent = member.abbr || member.name || '';
+                tdName.textContent = member.name || '';
                 tr.appendChild(tdGrade);
                 tr.appendChild(tdName);
 
                 targetEvents.forEach(function(ev) {
                     var td = document.createElement('td');
                     td.className = 'mx-cell';
-                    var evMap = statusMap[ev.id] || {};
-                    // name キー優先、なければ memberId キーでフォールバック
-                    var status = evMap[member.name] || evMap[String(member.id)];
+                    var status = (statusMap[ev.id] || {})[String(member.id)];
                     if (status && STATUS_DISP[status]) {
                         td.textContent = STATUS_DISP[status].text;
                         td.classList.add(STATUS_DISP[status].cls);
