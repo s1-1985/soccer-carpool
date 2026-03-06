@@ -123,14 +123,15 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
     CarProvision.updateCarRegistrations = function() {
         const tbody = document.querySelector('#registeredCars tbody');
         const carRegistrations = FCOjima.Carpool.appData.carRegistrations || [];
+        const provideLabels = { both: '往復', to: '行き', from: '帰り', no: '不可' };
+        const provideClass  = { both: 'both', to: 'to', from: 'from', no: 'no' };
 
+        // テーブル（デスクトップ）
         if (tbody) {
             if (carRegistrations.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" class="empty-table-message">登録された車両はありません</td></tr>';
             } else {
                 tbody.innerHTML = '';
-                const provideLabels = { both: '行き帰り可', to: '行きのみ', from: '帰りのみ', no: '不可' };
-
                 carRegistrations.forEach(function(car, index) {
                     const total = (parseInt(car.frontSeat) || 0) +
                                   (parseInt(car.middleSeat) || 0) +
@@ -148,6 +149,43 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
                     tbody.appendChild(row);
                 });
             }
+        }
+
+        // カードリスト（モバイル）
+        var tableContainer = document.querySelector('.table-container');
+        if (tableContainer) {
+            var existingCards = tableContainer.querySelector('.car-card-list');
+            if (existingCards) existingCards.remove();
+
+            var cardList = document.createElement('div');
+            cardList.className = 'car-card-list';
+
+            if (carRegistrations.length === 0) {
+                var empty = document.createElement('p');
+                empty.style.cssText = 'text-align:center;color:#999;padding:16px 0;';
+                empty.textContent = '登録された車両はありません';
+                cardList.appendChild(empty);
+            } else {
+                carRegistrations.forEach(function(car, index) {
+                    const total = (parseInt(car.frontSeat) || 0) +
+                                  (parseInt(car.middleSeat) || 0) +
+                                  (parseInt(car.backSeat) || 0);
+                    const label = provideLabels[car.canDrive] || car.canDrive;
+                    const cls   = provideClass[car.canDrive]  || '';
+                    var card = document.createElement('div');
+                    card.className = 'car-card';
+                    card.innerHTML =
+                        '<div class="car-card-header">' +
+                            '<span class="car-card-name">' + UI.escapeHTML(car.parent) + '</span>' +
+                            '<span class="car-card-badge ' + cls + '">' + label + '</span>' +
+                        '</div>' +
+                        '<div class="car-card-seats">助手席 ' + (car.frontSeat || 0) + ' ＋ 中列 ' + (car.middleSeat || 0) + ' ＋ 後列 ' + (car.backSeat || 0) + ' ＝ 合計 <strong>' + total + '</strong> 席</div>' +
+                        (car.notes ? '<div class="car-card-notes">📝 ' + UI.escapeHTML(car.notes) + '</div>' : '') +
+                        '<button type="button" class="car-card-delete" onclick="FCOjima.Carpool.CarProvision.deleteCarRegistration(' + index + ')">削除</button>';
+                    cardList.appendChild(card);
+                });
+            }
+            tableContainer.appendChild(cardList);
         }
 
         // 統計更新
