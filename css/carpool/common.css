@@ -200,7 +200,7 @@ header {
 
     /* コンテナの下余白（横並びナビ高さ約52px） */
     .container {
-        padding-bottom: 80px;
+        padding-bottom: 100px;
     }
 
     /* アクションボタンのbottom値もナビ高さに合わせる */
