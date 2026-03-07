@@ -502,28 +502,14 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             return;
         }
         
-        // イベント対象学年でフィルタリングされた選手リスト
-        const eventFilteredPlayers = Assignment.getEventFilteredMembers()
-            .filter(function(m) { return m.role === 'player'; })
-            .map(function(m) { return m.name; });
-
-        // 出欠で参加確定している選手（イベント対象内のみ）
+        // イベント対象学年でフィルタリングされた選手リスト（欠席確定者を除く）
         const attendance = app.Carpool.appData.attendance;
-        const presentPlayers = [];
-        if (attendance && attendance.length > 0) {
-            attendance
-                .filter(a => a.status === 'present')
-                .forEach(a => {
-                    if (eventFilteredPlayers.includes(a.name)) {
-                        presentPlayers.push(a.name);
-                    }
-                });
-        }
-
-        console.log(`参加確定している対象選手数: ${presentPlayers.length}人`);
-
-        // 参加確定選手がいない場合はイベント対象全選手を使う
-        let targetPlayers = presentPlayers.length > 0 ? presentPlayers : eventFilteredPlayers;
+        const absentNames = new Set(
+            (attendance || []).filter(function(a) { return a.status === 'absent'; }).map(function(a) { return a.name; })
+        );
+        let targetPlayers = Assignment.getEventFilteredMembers()
+            .filter(function(m) { return m.role === 'player' && !absentNames.has(m.name); })
+            .map(function(m) { return m.name; });
         console.log(`ランダム配置対象選手数: ${targetPlayers.length}人`);
         
         // 監督・コーチのリスト
@@ -1833,6 +1819,16 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             filteredMembers = [...filteredMembers, ...parentMembers];
         }
         
+        // 欠席確定の選手を配置待ちから除外
+        const absentNamesInList = new Set(
+            (app.Carpool.appData.attendance || [])
+                .filter(function(a) { return a.status === 'absent'; })
+                .map(function(a) { return a.name; })
+        );
+        filteredMembers = filteredMembers.filter(function(m) {
+            return m.role !== 'player' || !absentNamesInList.has(m.name);
+        });
+
         // 既に座席に配置されているメンバーを除外（ドライバー座席も含む）
         const assignedMembers = [];
         document.querySelectorAll('.seat.filled, .seat.driver-seat').forEach(seat => {
@@ -1840,8 +1836,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                 assignedMembers.push(seat.dataset.person);
             }
         });
-        
-        filteredMembers = filteredMembers.filter(m => 
+
+        filteredMembers = filteredMembers.filter(m =>
             !assignedMembers.includes(m.name)
         );
         
