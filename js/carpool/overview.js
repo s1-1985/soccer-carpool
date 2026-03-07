@@ -317,21 +317,22 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                    (parseInt(car.backSeat, 10) || 0);
         }, 0);
         
-        // 割り当て状況の集計
+        // 割り当て状況の集計（ユニークな人数）
         var assignments = eventData.assignments || [];
-        var assignedMembers = 0;
-        
+        var assignedNames = new Set();
+
         assignments.forEach(function(assignment) {
             if (!assignment.seats) return;
-            
+
             Object.keys(assignment.seats).forEach(function(seatType) {
                 Object.keys(assignment.seats[seatType]).forEach(function(seatIndex) {
-                    if (assignment.seats[seatType][seatIndex]) {
-                        assignedMembers++;
-                    }
+                    var name = assignment.seats[seatType][seatIndex];
+                    if (name) assignedNames.add(name);
                 });
             });
         });
+
+        var assignedMembers = assignedNames.size;
         
         var attendanceOk = respondedMembers >= totalMembers && totalMembers > 0;
         var carsOk = availableCars > 0 && totalSeats >= presentMembers;
@@ -561,9 +562,15 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
     Overview.loadEventFiles = async function(eventId, list) {
         list.innerHTML = '<p style="color:#999;font-size:12px;">読み込み中...</p>';
         try {
+            if (!firebase.storage || typeof firebase.storage !== 'function') {
+                throw new Error('Storage SDK未読み込み');
+            }
             var storage = firebase.storage();
             var ref = storage.ref('teams/' + FCOjimaFirebase.TEAM_ID + '/events/' + eventId);
-            var result = await ref.listAll();
+            var timeout = new Promise(function(_, reject) {
+                setTimeout(function() { reject(new Error('タイムアウト(10秒)')); }, 10000);
+            });
+            var result = await Promise.race([ref.listAll(), timeout]);
             if (result.items.length === 0) {
                 list.innerHTML = '<p style="color:#999;font-size:12px;">ファイルなし</p>';
                 return;
@@ -580,13 +587,16 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                 list.appendChild(a);
             }
         } catch(e) {
-            list.innerHTML = '<p style="color:#c00;font-size:12px;">読み込みエラー</p>';
-            console.warn('ファイル読み込みエラー:', e);
+            list.innerHTML = '<p style="color:#c00;font-size:12px;">読み込みエラー: ' + e.message + '</p>';
+            console.error('ファイル読み込みエラー:', e);
         }
     };
 
     Overview.uploadEventFiles = async function(eventId, files, list) {
         try {
+            if (!firebase.storage || typeof firebase.storage !== 'function') {
+                throw new Error('Storage SDK未読み込み');
+            }
             var storage = firebase.storage();
             var basePath = 'teams/' + FCOjimaFirebase.TEAM_ID + '/events/' + eventId + '/';
             for (var i = 0; i < files.length; i++) {
@@ -597,7 +607,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
             await Overview.loadEventFiles(eventId, list);
         } catch(e) {
             console.error('ファイルアップロードエラー:', e);
-            UI.showAlert('ファイルのアップロードに失敗しました。');
+            UI.showAlert('ファイルのアップロードに失敗しました: ' + e.message);
         }
     };
 
