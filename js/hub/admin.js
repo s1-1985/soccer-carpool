@@ -376,7 +376,8 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             var STATUS_DISP = {
                 'present': { text: '◯', cls: 'mx-present' },
                 'absent':  { text: '✖', cls: 'mx-absent'  },
-                'unknown': { text: '未', cls: 'mx-unknown' }
+                'unknown': { text: '未', cls: 'mx-unknown' },
+                'na':      { text: '－', cls: 'mx-na'      }
             };
             members.forEach(function(member) {
                 var tr = document.createElement('tr');
@@ -392,9 +393,21 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 targetEvents.forEach(function(ev) {
                     var td = document.createElement('td');
                     td.className = 'mx-cell';
-                    var evMap = statusMap[ev.id] || {};
-                    var status = evMap[member.name] || evMap[String(member.id)];
-                    if (!status) status = 'unknown';
+
+                    // 対象学年チェック
+                    var evTargets = (ev.target && ev.target.length > 0) ? ev.target : null;
+                    var extraPlayers = ev.extraPlayers || [];
+                    var isTarget = !evTargets
+                        || (member.grade && evTargets.includes(member.grade))
+                        || extraPlayers.includes(member.name);
+
+                    var status;
+                    if (!isTarget) {
+                        status = 'na';
+                    } else {
+                        var evMap = statusMap[ev.id] || {};
+                        status = evMap[member.name] || evMap[String(member.id)] || 'unknown';
+                    }
                     var disp = STATUS_DISP[status] || STATUS_DISP['unknown'];
                     td.textContent = disp.text;
                     td.classList.add(disp.cls);
