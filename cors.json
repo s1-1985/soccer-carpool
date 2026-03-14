@@ -1,0 +1,11 @@
+[
+  {
+    "origin": [
+      "https://fc-ojimajr-hub.web.app",
+      "https://fc-ojimajr-hub.firebaseapp.com"
+    ],
+    "method": ["GET", "HEAD", "PUT", "POST", "DELETE", "OPTIONS"],
+    "responseHeader": ["Content-Type", "Authorization", "Content-Length"],
+    "maxAgeSeconds": 3600
+  }
+]

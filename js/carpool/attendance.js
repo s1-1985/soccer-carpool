@@ -189,8 +189,29 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
             return;
         }
 
+        // 高学年→低学年の降順ソート。同学年内はメンバー一覧の並び順を優先
+        var gradeOrderDesc = { '6': 0, '5': 1, '4': 2, '3': 3, '2': 4, '1': 5, '年長': 6, '年中': 7, '年少': 8 };
+        var sortedIndices = attendance.map(function(_, i) { return i; }).sort(function(ia, ib) {
+            var a = attendance[ia], b = attendance[ib];
+            var mA = members.find(function(m) { return m.name === a.name; });
+            var mB = members.find(function(m) { return m.name === b.name; });
+            var isPlayerA = mA && mA.role === 'player';
+            var isPlayerB = mB && mB.role === 'player';
+            // 選手を先、それ以外（コーチ・保護者）を後
+            if (isPlayerA && !isPlayerB) return -1;
+            if (!isPlayerA && isPlayerB) return 1;
+            if (!isPlayerA && !isPlayerB) return 0;
+            // 両方選手: 高学年→低学年
+            var grA = mA && gradeOrderDesc[mA.grade] !== undefined ? gradeOrderDesc[mA.grade] : 99;
+            var grB = mB && gradeOrderDesc[mB.grade] !== undefined ? gradeOrderDesc[mB.grade] : 99;
+            if (grA !== grB) return grA - grB;
+            // 同学年: メンバー一覧の並び順
+            return members.indexOf(mA) - members.indexOf(mB);
+        });
+
         tbody.innerHTML = '';
-        attendance.forEach(function(item, index) {
+        sortedIndices.forEach(function(index) {
+            var item = attendance[index];
             const member = members.find(function(m) { return m.name === item.name; });
             const grade = member && member.grade ? FCOjima.Utils.getGradeLabel(member.grade) : '-';
 

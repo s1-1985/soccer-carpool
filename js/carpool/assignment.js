@@ -623,6 +623,23 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             });
         }
 
+        // ── Step4b: スキップされた空席に未割り当てメンバーを埋める ──
+        // Step4で同学年まとめのために車をスキップした際に生まれた空席を活用する
+        if (unassigned.length > 0) {
+            var allEmptySlots = [];
+            for (var ci2 = 0; ci2 < carSeatsList.length; ci2++) {
+                carSeatsList[ci2].forEach(function(slot) {
+                    allEmptySlots.push({ carIdx: ci2, slot: slot });
+                });
+            }
+            while (unassigned.length > 0 && allEmptySlots.length > 0) {
+                var playerName2 = unassigned.shift();
+                var ri2 = Math.floor(Math.random() * allEmptySlots.length);
+                var target = allEmptySlots.splice(ri2, 1)[0];
+                carSeatsAssigned[target.carIdx][target.slot.type][target.slot.index] = playerName2;
+            }
+        }
+
         // ── Step5: 結果を保存 ──
         drivers.forEach(function(driver, ci) {
             app.Carpool.appData.assignments.push({

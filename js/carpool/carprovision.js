@@ -209,10 +209,13 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
                              (parseInt(car.middleSeat) || 0) +
                              (parseInt(car.backSeat) || 0);
             }, 0);
+            const presentCount = (FCOjima.Carpool.appData.attendance || [])
+                .filter(function(a) { return a.status === 'present'; }).length;
+            const requiredSeatsLabel = presentCount > 0 ? ' / 必要 ' + presentCount + '席' : '';
             statsDiv.innerHTML =
                 '<div class="stat-item"><span class="stat-label">車両数</span><span class="stat-value">' + carRegistrations.length + '台</span></div>' +
                 '<div class="stat-item"><span class="stat-label">提供可能</span><span class="stat-value">' + available.length + '台</span></div>' +
-                '<div class="stat-item"><span class="stat-label">総座席数</span><span class="stat-value">' + totalSeats + '席</span></div>';
+                '<div class="stat-item"><span class="stat-label">総座席数</span><span class="stat-value">' + totalSeats + '席' + requiredSeatsLabel + '</span></div>';
         }
     };
 
