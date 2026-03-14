@@ -367,9 +367,28 @@ curl -X PUT -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.gith
 
 ## 🔄 最新の作業状況
 
-**最終更新:** 2026-03-06 (Session 9 - 割り当て画面追加改善・モバイルバグ修正多数)
+**最終更新:** 2026-03-14 (Session 10 - CORS・出欠並び順・車提供・ランダム配置バグ修正)
 **更新者:** Claude (branch: claude/resume-previous-work-0TxY8)
-**最終正常コミット:** fd60e2d（未PR・main未マージ）
+**最終正常コミット:** （本セッションコミット後に更新）
+
+### Session 10 で行った変更（2026-03-14 / branch: claude/resume-previous-work-0TxY8）
+
+#### 変更ファイル
+- `cors.json` (新規): Firebase Storage CORS設定
+- `.github/workflows/firebase-deploy.yml`: mainへのマージ時にgsutilでCORSを自動適用するステップ追加
+- `js/carpool/attendance.js`: 出欠一覧を高学年→低学年降順にソート（同学年内はメンバー一覧の並び順）
+- `js/carpool/carprovision.js`: 総座席数の後に「/ 必要 XX席」（出欠参加人数）を表示
+- `js/carpool/assignment.js`: ランダム配置バグ修正（同学年まとめでスキップした空席に未割り当てメンバーを再配置するStep4bを追加）
+- `css/carpool/overview.css`: 概要画面の下余白修正（@media 480px の `padding:10px` → `padding:10px 10px 140px`）
+- `js/carpool/overview.js`: 割り当てサマリーをユニーク人数でカウント・ファイル読込に10秒タイムアウト追加
+- `carpool/attendance.html`, `cars.html`, `assignments.html`: バージョン文字列更新（キャッシュバスト）
+
+#### 修正内容
+1. **Firebase Storage CORS**: `cors.json` 作成 + デプロイ時に `gsutil cors set` を自動実行。ファイル添付機能のCORSエラーを解消
+2. **出欠並び順**: 6年→5年→4年→3年→2年→1年→年長→年少の降順。同学年はメンバー一覧の並び順
+3. **車提供 必要座席数**: 総座席数の後に「/ 必要 X席」（出欠で参加登録した人数）を表示
+4. **ランダム配置バグ**: 学年グループを次の車に移す際にスキップされた空席が永久に使われない問題を修正（Step4b追加）
+5. **概要カード見切れ**: `padding: 10px` が `padding-bottom: 140px` を上書きしていたバグを修正
 
 ### Session 9 で行った変更（2026-03-06 / branch: claude/resume-previous-work-0TxY8）
 

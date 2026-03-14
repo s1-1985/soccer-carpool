@@ -19,6 +19,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FC_OJIMAJR_HUB }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Apply Firebase Storage CORS (main branch only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: gsutil cors set cors.json gs://fc-ojimajr-hub.firebasestorage.app
+
       - name: Deploy to Firebase Hosting (Preview - PR only)
         if: github.event_name == 'pull_request'
         uses: FirebaseExtended/action-hosting-deploy@v0
