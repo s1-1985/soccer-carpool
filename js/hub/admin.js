@@ -42,13 +42,9 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         var closeBtn = document.getElementById('attendance-matrix-modal-close');
         if (!btn || !modal) return;
 
-        var loaded = false;
         btn.addEventListener('click', function() {
             modal.style.display = 'flex';
-            if (!loaded) {
-                loaded = true;
-                Admin.loadAttendanceMatrix();
-            }
+            Admin.loadAttendanceMatrix();
         });
         closeBtn && closeBtn.addEventListener('click', function() {
             modal.style.display = 'none';

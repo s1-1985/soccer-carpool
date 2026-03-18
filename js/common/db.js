@@ -169,6 +169,10 @@ FCOjima.DB = FCOjima.DB || {};
         await Collections.eventData(eventId).set(data, { merge: true });
     };
 
+    DB.deleteEventData = async function(eventId) {
+        await Collections.eventData(eventId).delete();
+    };
+
     // ========== 全データ一括ロード ==========
 
     DB.loadAllData = async function() {

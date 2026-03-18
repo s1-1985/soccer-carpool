@@ -508,21 +508,43 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         }
         
         // 出欠一覧（イベントの対象学年メンバー）
+        // ※ autoPopulateFromTargetGrades と同じロジックで対象メンバーを決定
         let attendanceDisplay = '';
         const members = app.Hub.members || [];
-        const targetGradeValues = event.target || [];
+        const targetGradeValues = (event.target && event.target.length > 0) ? event.target : null;
         const extraPlayers = event.extraPlayers || [];
+        const isEventType = event.type === 'event';
         let targetMembers = [];
-        if (targetGradeValues.length > 0) {
-            targetMembers = members.filter(m => m.role === 'player' && targetGradeValues.includes(m.grade));
-        }
-        // 学年外追加選手
-        extraPlayers.forEach(name => {
-            if (!targetMembers.find(m => m.name === name)) {
-                const m = members.find(m => m.name === name);
+
+        // 選手を追加（学年指定あり: 対象学年のみ, なし: 全選手）
+        const players = members.filter(function(m) {
+            if (m.role !== 'player') return false;
+            if (targetGradeValues) {
+                return m.grade && targetGradeValues.includes(m.grade);
+            }
+            return true;
+        });
+        targetMembers = players.slice();
+
+        // 学年外追加選手を追加（重複除く）
+        const addedNames = new Set(players.map(function(p) { return p.name; }));
+        extraPlayers.forEach(function(name) {
+            if (!addedNames.has(name)) {
+                const m = members.find(function(mem) { return mem.name === name; });
                 if (m) targetMembers.push(m);
+                addedNames.add(name);
             }
         });
+
+        // イベント種別「イベント」の場合は保護者も表示
+        if (isEventType) {
+            members.forEach(function(m) {
+                if (m.role === 'mother' || m.role === 'father' || m.role === 'officer') {
+                    targetMembers.push(m);
+                }
+            });
+        }
+
         if (targetMembers.length > 0) {
             const eventData = Storage.loadEventData(event.id);
             const attendance = eventData.attendance || [];
@@ -813,8 +835,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             }
         }
 
-        // 新しいイベントID
-        const newId = events.length > 0 ? Math.max(...events.map(e => e.id)) + 1 : 1;
+        // 新しいイベントID（タイムスタンプベースでユニーク）
+        const newId = Date.now();
 
         // 追加選手
         const extraPlayersVal = document.getElementById('event-extra-players');
@@ -980,12 +1002,21 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
 
             // イベントを削除
             app.Hub.events = events.filter(e => String(e.id) !== String(eventId));
-            
+
             // イベントを保存してUIを更新
             Storage.saveEvents(app.Hub.events);
+
+            // イベント固有データ（出欠・配車等）も削除
+            Storage.deleteEventData(eventId);
+            if (window.FCOjima && FCOjima.DB && FCOjima.DB.deleteEventData) {
+                FCOjima.DB.deleteEventData(eventId).catch(function(e) {
+                    console.warn('Firestoreイベントデータ削除失敗:', e);
+                });
+            }
+
             this.renderCalendar();
             this.renderEventsList();
-            
+
             // モーダルを閉じる
             UI.closeModal('event-details-modal');
         }

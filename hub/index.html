@@ -30,15 +30,21 @@
         }
 
         /* ── 出欠マトリクス ── */
+        /* matrix-wrap のみがスクロールするよう modal-content のスクロールを無効化 */
+        #attendance-matrix-modal .modal-content {
+            overflow: hidden;
+        }
         .matrix-wrap {
             overflow: auto;
-            max-height: calc(100dvh - 160px);
+            max-height: calc(90vh - 80px);
             border: 1px solid #ddd;
             border-radius: 6px;
             -webkit-overflow-scrolling: touch;
         }
         .attendance-matrix {
-            border-collapse: collapse;
+            /* separate + border-spacing:0 でないと position:sticky がモバイルChromeで効かない */
+            border-collapse: separate;
+            border-spacing: 0;
             white-space: nowrap;
             font-size: 11px;
         }
@@ -71,8 +77,10 @@
             padding: 2px 4px;
             font-size: 10px;
         }
-        /* 角（左上）の交差セル */
+        /* 角（左上）の交差セル — 縦横両方向にスティッキー */
         .attendance-matrix .mx-corner {
+            position: sticky !important;
+            top: 0 !important;
             z-index: 4 !important;
             background: #d8e8ff !important;
             text-align: center;
