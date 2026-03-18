@@ -274,7 +274,15 @@ FCOjima.Storage = FCOjima.Storage || {};
     Storage.saveEventData = function(eventId, data) {
         localStorage.setItem(this.PREFIX + 'event_' + eventId, JSON.stringify(data));
     };
-    
+
+    /**
+     * イベント固有のデータをローカルストレージから削除
+     * @param {number} eventId - イベントID
+     */
+    Storage.deleteEventData = function(eventId) {
+        localStorage.removeItem(this.PREFIX + 'event_' + eventId);
+    };
+
     /**
      * 選択されたイベントをセッションストレージに保存
      * @param {Object} event - イベントオブジェクト

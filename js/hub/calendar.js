@@ -835,8 +835,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             }
         }
 
-        // 新しいイベントID
-        const newId = events.length > 0 ? Math.max(...events.map(e => e.id)) + 1 : 1;
+        // 新しいイベントID（タイムスタンプベースでユニーク）
+        const newId = Date.now();
 
         // 追加選手
         const extraPlayersVal = document.getElementById('event-extra-players');
@@ -1002,12 +1002,21 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
 
             // イベントを削除
             app.Hub.events = events.filter(e => String(e.id) !== String(eventId));
-            
+
             // イベントを保存してUIを更新
             Storage.saveEvents(app.Hub.events);
+
+            // イベント固有データ（出欠・配車等）も削除
+            Storage.deleteEventData(eventId);
+            if (window.FCOjima && FCOjima.DB && FCOjima.DB.deleteEventData) {
+                FCOjima.DB.deleteEventData(eventId).catch(function(e) {
+                    console.warn('Firestoreイベントデータ削除失敗:', e);
+                });
+            }
+
             this.renderCalendar();
             this.renderEventsList();
-            
+
             // モーダルを閉じる
             UI.closeModal('event-details-modal');
         }
