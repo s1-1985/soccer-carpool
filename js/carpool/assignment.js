@@ -1923,8 +1923,114 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         });
         
         console.log('メンバーリストの更新が完了しました');
+        this.updateStatsBar();
     };
-    
+
+    /**
+     * 統計バーを更新（参加人数/座席数・配置済・空席・配置前）
+     */
+    Assignment.updateStatsBar = function() {
+        var bars = [
+            document.getElementById('assignment-stats-bar-fs'),
+            document.getElementById('assignment-stats-bar-nav')
+        ];
+        if (!bars[0] && !bars[1]) return;
+
+        var members = app.Carpool.members || [];
+        var event = Storage.getSelectedEvent();
+        var targetGrades = (event && event.target && event.target.length > 0) ? event.target : [];
+
+        // 参加人数：指導者+選手+保護者（欠席者除く、運転手除く、メンバー外乗員除く）
+        var staffMembers = members.filter(function(m) { return m.role === 'coach' || m.role === 'assist'; });
+        var eligiblePlayers = [];
+        if (targetGrades.length > 0) {
+            eligiblePlayers = members.filter(function(m) {
+                return m.role === 'player' && m.grade && targetGrades.includes(m.grade);
+            });
+        } else {
+            eligiblePlayers = members.filter(function(m) { return m.role === 'player'; });
+        }
+        // 学年外追加選手
+        if (event && event.extraPlayers && event.extraPlayers.length > 0) {
+            var seen = new Set(eligiblePlayers.map(function(m) { return m.name; }));
+            event.extraPlayers.forEach(function(name) {
+                if (!seen.has(name)) {
+                    var m = members.find(function(x) { return x.name === name; });
+                    if (m) { eligiblePlayers.push(m); seen.add(name); }
+                }
+            });
+        }
+        // 欠席者除外
+        var absentNames = new Set(
+            (app.Carpool.appData.attendance || [])
+                .filter(function(a) { return a.status === 'absent'; })
+                .map(function(a) { return a.name; })
+        );
+        eligiblePlayers = eligiblePlayers.filter(function(m) { return !absentNames.has(m.name); });
+
+        // 参加確定選手の保護者
+        var presentPlayerNames = new Set(
+            (app.Carpool.appData.attendance || [])
+                .filter(function(a) { return a.status === 'present'; })
+                .map(function(a) { return a.name; })
+        );
+        var presentPlayerIds = new Set(
+            members.filter(function(p) { return p.role === 'player' && presentPlayerNames.has(p.name); })
+                   .map(function(p) { return String(p.id); })
+        );
+        var eligibleParents = members.filter(function(m) {
+            if (m.role !== 'father' && m.role !== 'mother') return false;
+            if (!m.childrenIds || !m.childrenIds.length) return false;
+            return m.childrenIds.some(function(cid) { return presentPlayerIds.has(String(cid)); });
+        });
+
+        // 運転手名セット
+        var carRegistrations = app.Carpool.appData.carRegistrations || [];
+        var availableCars = carRegistrations.filter(function(c) { return c.canDrive !== 'no'; });
+        var driverNames = new Set(availableCars.map(function(c) { return c.parent; }));
+
+        // 参加人数（運転手除く）
+        var allEligible = [...staffMembers, ...eligiblePlayers, ...eligibleParents];
+        // 重複排除
+        var seenElig = new Set();
+        allEligible = allEligible.filter(function(m) {
+            var key = String(m.id || m.name);
+            if (seenElig.has(key)) return false;
+            seenElig.add(key);
+            return true;
+        });
+        var participantCount = allEligible.filter(function(m) { return !driverNames.has(m.name); }).length;
+
+        // 座席数（運転手席除く全席）
+        var totalSeats = availableCars.reduce(function(sum, car) {
+            return sum + (car.frontSeat || 0) + (car.middleSeat || 0) + (car.backSeat || 0);
+        }, 0);
+
+        // 配置済（座席にいる人数。メンバー外乗員含む。運転手は除く）
+        var assignedCount = document.querySelectorAll('.seat.filled[data-person]').length;
+
+        // 空席
+        var emptyCount = totalSeats - assignedCount;
+        if (emptyCount < 0) emptyCount = 0;
+
+        // 配置前（配置待ちメンバーのうち荷物除く）
+        var waitingCount = 0;
+        document.querySelectorAll('#members-container .member-item').forEach(function(el) {
+            if (el.dataset.memberId !== 'luggage' && el.dataset.memberName !== '荷物') waitingCount++;
+        });
+
+        var html =
+            '<span class="stats-item"><span class="stats-label">参加人数</span><span class="stats-value">' + participantCount + '/' + totalSeats + '</span></span>' +
+            '<span class="stats-sep">｜</span>' +
+            '<span class="stats-item"><span class="stats-label">配置済</span><span class="stats-value">' + assignedCount + '</span></span>' +
+            '<span class="stats-sep">｜</span>' +
+            '<span class="stats-item"><span class="stats-label">空席</span><span class="stats-value">' + emptyCount + '</span></span>' +
+            '<span class="stats-sep">｜</span>' +
+            '<span class="stats-item"><span class="stats-label">配置前</span><span class="stats-value">' + waitingCount + '</span></span>';
+
+        bars.forEach(function(bar) { if (bar) bar.innerHTML = html; });
+    };
+
     /**
      * メンバーアイテムを作成
      * @param {Object} member - メンバー情報
