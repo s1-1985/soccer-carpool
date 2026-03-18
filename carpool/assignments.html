@@ -6,7 +6,7 @@
     <title>座席割り当て - FC尾島ジュニア</title>
     <link rel="stylesheet" href="../css/common.css?v=20260306">
     <link rel="stylesheet" href="../css/carpool/common.css?v=20260307">
-    <link rel="stylesheet" href="../css/carpool/assignment.css?v=20260306b">
+    <link rel="stylesheet" href="../css/carpool/assignment.css?v=20260318a">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -65,6 +65,9 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 統計バー（全画面モード時：ボタン上に表示） -->
+            <div id="assignment-stats-bar-fs" class="assignment-stats-bar"></div>
 
             <div class="assignment-action-buttons">
                 <button id="generate-random" class="random-assign-button">ランダム配置</button>
@@ -158,8 +161,13 @@
 
     <!-- グローバルナビゲーション -->
     <div class="global-navigation">
-        <button id="back-to-hub">HUBに戻る</button>
-        <button id="save-and-share-button" class="share-button">保存して共有</button>
+        <!-- 統計バー（割り当てタブ時：ボタン上にsticky表示） -->
+        <div id="assignment-stats-bar-nav" class="assignment-stats-bar"></div>
+        <div class="global-navigation-buttons">
+            <button id="back-to-hub">HUBに戻る</button>
+            <button id="save-button-nav" class="save-button">保存</button>
+            <button id="share-button-nav" class="share-button">共有</button>
+        </div>
     </div>
 
     <!-- html2canvas（画像エクスポート用） -->
@@ -181,7 +189,7 @@
 
     <!-- 配車管理用モジュール -->
     <script src="../js/carpool/overview.js?v=20260306"></script>
-    <script src="../js/carpool/assignment.js?v=20260314"></script>
+    <script src="../js/carpool/assignment.js?v=20260318a"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', async function() {
@@ -217,15 +225,17 @@
                 }
             });
 
-            // 保存して共有ボタンの設定
-            document.getElementById('save-and-share-button').addEventListener('click', function() {
-                if (FCOjima.Carpool.Assignment) {
-                    if (FCOjima.Carpool.Assignment.saveAssignments) {
-                        FCOjima.Carpool.Assignment.saveAssignments();
-                    }
-                    if (FCOjima.Carpool.Assignment.shareAssignments) {
-                        FCOjima.Carpool.Assignment.shareAssignments();
-                    }
+            // 保存ボタン
+            document.getElementById('save-button-nav').addEventListener('click', function() {
+                if (FCOjima.Carpool.Assignment && FCOjima.Carpool.Assignment.saveAssignments) {
+                    FCOjima.Carpool.Assignment.saveAssignments();
+                }
+            });
+
+            // 共有ボタン
+            document.getElementById('share-button-nav').addEventListener('click', function() {
+                if (FCOjima.Carpool.Assignment && FCOjima.Carpool.Assignment.shareAssignments) {
+                    FCOjima.Carpool.Assignment.shareAssignments();
                 }
             });
         });

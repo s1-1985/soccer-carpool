@@ -814,13 +814,96 @@
 }
 
 /* =============================================
+   統計バー
+   ============================================= */
+.assignment-stats-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 5px 8px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+    font-size: clamp(10px, 2.8vw, 13px);
+    white-space: nowrap;
+    overflow: hidden;
+    flex-shrink: 0;
+    margin-bottom: 4px;
+    min-height: 28px;
+}
+
+.assignment-stats-bar:empty {
+    display: none;
+}
+
+.stats-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.stats-label {
+    color: #888;
+    font-size: 0.85em;
+}
+
+.stats-value {
+    font-weight: bold;
+    color: #1C1600;
+}
+
+.stats-sep {
+    color: #ccc;
+    margin: 0 2px;
+}
+
+/* 割り当てページ: global-navigationが高くなるのでpadding-bottomを調整 */
+.container {
+    padding-bottom: 120px;
+}
+
+/* 全画面モード時のstatsBar */
+#assignment-work-area.is-fullscreen #assignment-stats-bar-fs {
+    margin: 0 6px 0;
+    border-radius: 4px;
+    font-size: clamp(9px, 2.5vw, 12px);
+}
+
+/* グローバルナビ内のstatsBar（スクロール追従） */
+.global-navigation {
+    flex-direction: column !important;
+    gap: 0;
+    padding: 6px 12px 8px;
+}
+
+.global-navigation .assignment-stats-bar {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 6px;
+}
+
+.global-navigation-buttons {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+}
+
+.global-navigation-buttons button {
+    flex: 1;
+    font-size: 12px;
+    padding: 8px 4px;
+    white-space: nowrap;
+}
+
+/* =============================================
    スマホのグローバルナビを1行に（割り当てページ専用）
    ============================================= */
 @media screen and (max-width: 768px) {
     .global-navigation {
-        flex-direction: row !important;
-        gap: 8px;
-        padding: 8px 12px;
+        flex-direction: column !important;
+        gap: 0;
+        padding: 6px 12px 8px;
     }
     .global-navigation button {
         width: auto !important;
@@ -1221,20 +1304,3 @@
     z-index: 9600;
 }
 
-/* =============================================
-   スマホのグローバルナビを1行に（割り当てページ専用）
-   ============================================= */
-@media screen and (max-width: 768px) {
-    .global-navigation {
-        flex-direction: row !important;
-        gap: 8px;
-        padding: 8px 12px;
-    }
-    .global-navigation button {
-        width: auto !important;
-        flex: 1;
-        font-size: 12px;
-        padding: 8px 4px;
-        white-space: nowrap;
-    }
-}
