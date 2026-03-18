@@ -42,7 +42,9 @@
             -webkit-overflow-scrolling: touch;
         }
         .attendance-matrix {
-            border-collapse: collapse;
+            /* separate + border-spacing:0 でないと position:sticky がモバイルChromeで効かない */
+            border-collapse: separate;
+            border-spacing: 0;
             white-space: nowrap;
             font-size: 11px;
         }
@@ -75,8 +77,10 @@
             padding: 2px 4px;
             font-size: 10px;
         }
-        /* 角（左上）の交差セル */
+        /* 角（左上）の交差セル — 縦横両方向にスティッキー */
         .attendance-matrix .mx-corner {
+            position: sticky !important;
+            top: 0 !important;
             z-index: 4 !important;
             background: #d8e8ff !important;
             text-align: center;
