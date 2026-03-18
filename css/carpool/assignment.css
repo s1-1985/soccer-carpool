@@ -749,7 +749,7 @@
     overflow-x: scroll;
     overflow-y: visible;
     height: auto;
-    min-height: 260px;
+    min-height: 280px;
     padding-bottom: 8px;
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
@@ -785,6 +785,11 @@
 #assignment-work-area.layout-h .driver-row {
     flex-direction: column-reverse;
     justify-content: flex-start;
+}
+
+/* 横レイアウト：運転席の下に1席分の余白（運転席と助手席の間） */
+#assignment-work-area.layout-h .driver-row .driver-seat {
+    margin-bottom: 70px;
 }
 
 /* スペーサー不要 */
@@ -1189,8 +1194,9 @@
     align-items: flex-start;
     gap: 12px;
     overflow-x: auto;
-    overflow-y: hidden;
-    height: 280px;
+    overflow-y: visible;
+    height: auto;
+    min-height: 280px;
     padding-bottom: 16px;
 }
 
@@ -1223,6 +1229,11 @@
 #assignment-work-area.layout-h .driver-row {
     flex-direction: column-reverse;
     justify-content: flex-start;
+}
+
+/* 横レイアウト：運転席の下に1席分の余白（運転席と助手席の間） */
+#assignment-work-area.layout-h .driver-row .driver-seat {
+    margin-bottom: 70px;
 }
 
 /* スペーサー不要 */
