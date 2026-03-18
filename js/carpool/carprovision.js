@@ -672,7 +672,6 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         row.appendChild(input);
         row.appendChild(btn);
         container.appendChild(row);
-        input.focus();
     };
 
     /** フォームリセット時にメンバー外乗員もリセット */

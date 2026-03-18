@@ -73,8 +73,14 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                 if (s !== seat && s.dataset.person) assignedPeople.push(s.dataset.person);
             });
 
-            // イベント対象者でフィルタリング（右側メンバーリストと同じロジック）
+            // イベント対象者でフィルタリング（欠席者除く）
+            var absentNamesModal = new Set(
+                (app.Carpool.appData.attendance || [])
+                    .filter(function(a) { return a.status === 'absent'; })
+                    .map(function(a) { return a.name; })
+            );
             const available = Assignment.getEventFilteredMembers().filter(function(m) {
+                if (m.role === 'player' && absentNamesModal.has(m.name)) return false;
                 return !assignedPeople.includes(m.name);
             });
             available.push({ id: 'luggage', name: '荷物', role: 'other' });
@@ -231,23 +237,28 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             });
         }
 
-        // 参加確定選手の保護者
+        // 参加確定保護者（自分自身が出欠で参加表明 OR 子供が参加確定）
         var attendance = app.Carpool.appData.attendance;
         if (attendance && attendance.length > 0) {
-            var presentPlayerNames = attendance
-                .filter(function(a) { return a.status === 'present'; })
-                .map(function(a) { return a.name; });
+            var presentNames = new Set(
+                attendance.filter(function(a) { return a.status === 'present'; }).map(function(a) { return a.name; })
+            );
             var presentPlayerIds = new Set(
                 members
-                    .filter(function(p) { return p.role === 'player' && presentPlayerNames.includes(p.name); })
+                    .filter(function(p) { return p.role === 'player' && presentNames.has(p.name); })
                     .map(function(p) { return String(p.id); })
             );
             var existingNames2 = new Set(filtered.map(function(m) { return m.name; }));
             filtered = filtered.concat(members.filter(function(m) {
                 if (m.role !== 'father' && m.role !== 'mother') return false;
                 if (existingNames2.has(m.name)) return false;
-                if (!m.childrenIds || !m.childrenIds.length) return false;
-                return m.childrenIds.some(function(cid) { return presentPlayerIds.has(String(cid)); });
+                // 自分自身が参加表明している
+                if (presentNames.has(m.name)) return true;
+                // 子供が参加確定している
+                if (m.childrenIds && m.childrenIds.length > 0) {
+                    return m.childrenIds.some(function(cid) { return presentPlayerIds.has(String(cid)); });
+                }
+                return false;
             }));
         }
 
@@ -405,13 +416,26 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         if (list) {
             list.innerHTML = '';
             // 運転手候補: 選手以外のメンバー全員
-            var candidates = (app.Carpool.members || []).filter(function(m) {
+            var candidateMembers = (app.Carpool.members || []).filter(function(m) {
                 return m.role !== 'player';
             });
+            // 手入力ドライバー（メンバーとして登録されていない）も候補に追加
+            var memberNameSet = new Set((app.Carpool.members || []).map(function(m) { return m.name; }));
+            var carRegs = app.Carpool.appData.carRegistrations || [];
+            var extraDriverNames = [];
+            carRegs.forEach(function(reg) {
+                if (reg.parent && !memberNameSet.has(reg.parent)) {
+                    extraDriverNames.push(reg.parent);
+                }
+            });
+            // 手入力ドライバーを仮オブジェクトとして追加
+            var extraDriverObjs = extraDriverNames.map(function(n) { return { name: n, role: 'manual', _manual: true }; });
+            var candidates = candidateMembers.concat(extraDriverObjs);
+
             if (candidates.length === 0) {
                 list.innerHTML = '<p style="padding:10px;color:#999;">候補メンバーがいません</p>';
             } else {
-                var roleLabels = { coach: '監督', assist: 'コーチ', father: '父', mother: '母', officer: '役員', other: 'その他' };
+                var roleLabels = { coach: '監督', assist: 'コーチ', father: '父', mother: '母', officer: '役員', manual: '手入力', other: 'その他' };
                 candidates.forEach(function(member) {
                     var item = document.createElement('div');
                     item.style.cssText = 'padding:12px 16px;border-bottom:1px solid #eee;cursor:pointer;display:flex;align-items:center;gap:8px;';
@@ -511,70 +535,115 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             .filter(function(m) { return m.role === 'player' && !absentNames.has(m.name); })
             .map(function(m) { return m.name; });
         console.log(`ランダム配置対象選手数: ${targetPlayers.length}人`);
-        
-        // 監督・コーチのリスト
-        const staffMembers = app.Carpool.members
-            .filter(m => m.role === 'coach' || m.role === 'assist')
-            .map(m => m.name);
-        
-        console.log(`監督・コーチ数: ${staffMembers.length}人`);
-        
+
+        // ドライバー名セット
+        var driverNameSet = new Set(drivers.map(function(d) { return d.parent; }));
+
+        // 非ドライバーのスタッフ（重複排除）
+        var seenStaff = new Set();
+        var uniqueStaff = app.Carpool.members
+            .filter(function(m) { return (m.role === 'coach' || m.role === 'assist') && !driverNameSet.has(m.name) && !absentNames.has(m.name); })
+            .map(function(m) { return m.name; })
+            .filter(function(n) { if (seenStaff.has(n)) return false; seenStaff.add(n); return true; });
+        console.log(`非ドライバーのスタッフ: ${uniqueStaff.length}人`);
+
+        // 非ドライバーの参加確定保護者（自己出欠あり OR 子が参加確定）
+        var presentAttNames = new Set(
+            (attendance || []).filter(function(a) { return a.status === 'present'; }).map(function(a) { return a.name; })
+        );
+        var presentPlayerIds = new Set(
+            app.Carpool.members
+                .filter(function(p) { return p.role === 'player' && presentAttNames.has(p.name); })
+                .map(function(p) { return String(p.id); })
+        );
+        var seenParent = new Set();
+        var uniqueParents = app.Carpool.members
+            .filter(function(m) {
+                if (m.role !== 'father' && m.role !== 'mother') return false;
+                if (driverNameSet.has(m.name)) return false;
+                if (absentNames.has(m.name)) return false;
+                if (presentAttNames.has(m.name)) return true;
+                if (m.childrenIds && m.childrenIds.length > 0) {
+                    return m.childrenIds.some(function(cid) { return presentPlayerIds.has(String(cid)); });
+                }
+                return false;
+            })
+            .map(function(m) { return m.name; })
+            .filter(function(n) { if (seenParent.has(n)) return false; seenParent.add(n); return true; });
+        console.log(`非ドライバーの参加確定保護者: ${uniqueParents.length}人`);
+
         // 割り当てリセット
         app.Carpool.appData.assignments = [];
 
-        // ── Step1: 対象メンバーを「女子→男子」「学年順」でソート ──
-        // 女子はなるべく同じ車にまとまるよう先頭に配置する
+        // ── Step1: 選手を「女子→男子」「学年順」でソート ──
         var gradeOrder = { '年少': 0, '年中': 1, '年長': 2, '1': 3, '2': 4, '3': 5, '4': 6, '5': 7, '6': 8 };
         var sortedPlayers = [...targetPlayers].sort(function(a, b) {
             var mA = app.Carpool.members.find(function(m) { return m.name === a; });
             var mB = app.Carpool.members.find(function(m) { return m.name === b; });
-            // 性別: female=0, male=1
             var gA = (mA && mA.gender === 'female') ? 0 : 1;
             var gB = (mB && mB.gender === 'female') ? 0 : 1;
             if (gA !== gB) return gA - gB;
-            // 同性別内は学年順
             var grA = mA ? (gradeOrder[mA.grade] !== undefined ? gradeOrder[mA.grade] : 99) : 99;
             var grB = mB ? (gradeOrder[mB.grade] !== undefined ? gradeOrder[mB.grade] : 99) : 99;
             return grA - grB;
         });
 
-        // スタッフも重複なしで準備（重複排除）
-        var seenStaff = new Set();
-        var uniqueStaff = staffMembers.filter(function(n) {
-            if (seenStaff.has(n)) return false;
-            seenStaff.add(n);
-            return true;
+        // ── Step2: 各車の座席プールを構築 ──
+        var carSeatPools = drivers.map(function(driver) {
+            var front = [], middle = [], back = [];
+            for (var i = 0; i < (driver.frontSeat || 0); i++) front.push({ type: '助手席', index: i });
+            for (var i = 0; i < (driver.middleSeat || 0); i++) middle.push({ type: '中列', index: i });
+            for (var i = 0; i < (driver.backSeat || 0); i++) back.push({ type: '後列', index: i });
+            return { front: front, middle: middle, back: back };
         });
-
-        // ── Step2: 各車の利用可能座席数を計算し、配置先リストを作成 ──
-        // carSeatsList[carIdx] = [{ type, index }, ...]
-        var carSeatsList = drivers.map(function(driver) {
-            var list = [];
-            for (var i = 0; i < (driver.frontSeat || 0); i++) list.push({ type: '助手席', index: i });
-            for (var i = 0; i < (driver.middleSeat || 0); i++) list.push({ type: '中列', index: i });
-            for (var i = 0; i < (driver.backSeat || 0); i++) list.push({ type: '後列', index: i });
-            return list;
-        });
-
-        // ── Step3: スタッフを各車に先行配置（各車1名まで、助手席優先）──
         var carSeatsAssigned = drivers.map(function() { return { '助手席': {}, '中列': {}, '後列': {} }; });
-        var staffIdx = 0;
-        drivers.forEach(function(driver, ci) {
-            if (staffIdx >= uniqueStaff.length) return;
-            var frontSeats = carSeatsList[ci].filter(function(s) { return s.type === '助手席'; });
-            if (frontSeats.length > 0) {
-                carSeatsAssigned[ci]['助手席'][frontSeats[0].index] = uniqueStaff[staffIdx++];
-                // 使用済み座席をリストから除去
-                carSeatsList[ci] = carSeatsList[ci].filter(function(s) {
-                    return !(s.type === '助手席' && s.index === frontSeats[0].index);
-                });
+
+        // 指定の座席タイプ優先順で1席割り当てる
+        function assignOneSeat(personName, carIdx, typeOrder) {
+            for (var t = 0; t < typeOrder.length; t++) {
+                var pool = carSeatPools[carIdx][typeOrder[t]];
+                if (pool.length > 0) {
+                    var slot = pool.splice(0, 1)[0];
+                    carSeatsAssigned[carIdx][slot.type][slot.index] = personName;
+                    return true;
+                }
             }
+            return false;
+        }
+
+        // ── Step3: スタッフを各車1名まで助手席優先で配置 ──
+        var staffIdx = 0;
+        for (var ci3 = 0; ci3 < drivers.length && staffIdx < uniqueStaff.length; ci3++) {
+            if (assignOneSeat(uniqueStaff[staffIdx], ci3, ['front', 'middle', 'back'])) staffIdx++;
+        }
+        // 残りのスタッフを前から詰めて配置
+        for (var ci3 = 0; ci3 < drivers.length && staffIdx < uniqueStaff.length; ci3++) {
+            while (staffIdx < uniqueStaff.length) {
+                if (!assignOneSeat(uniqueStaff[staffIdx], ci3, ['front', 'middle', 'back'])) break;
+                staffIdx++;
+            }
+        }
+
+        // ── Step3b: 参加確定保護者を各車1名まで助手席優先で配置 ──
+        var parentIdx = 0;
+        for (var ci3b = 0; ci3b < drivers.length && parentIdx < uniqueParents.length; ci3b++) {
+            if (assignOneSeat(uniqueParents[parentIdx], ci3b, ['front', 'middle', 'back'])) parentIdx++;
+        }
+        // 残りの保護者も配置
+        for (var ci3b = 0; ci3b < drivers.length && parentIdx < uniqueParents.length; ci3b++) {
+            while (parentIdx < uniqueParents.length) {
+                if (!assignOneSeat(uniqueParents[parentIdx], ci3b, ['front', 'middle', 'back'])) break;
+                parentIdx++;
+            }
+        }
+
+        // ── Step4: 選手を後列→中列→助手席の順（各車の学年グループまとめ配置）──
+        // 選手用の座席リスト（後列→中列→助手席の順）
+        var carSeatsList = carSeatPools.map(function(p) {
+            return [...p.back, ...p.middle, ...p.front];
         });
 
-        // ── Step4: 同学年グループ単位で各車に割り当て（同学年は同じ車に集める）──
         var gradeOrder2 = { '年少': 0, '年中': 1, '年長': 2, '1': 3, '2': 4, '3': 5, '4': 6, '5': 7, '6': 8 };
-
-        // 選手を学年別にグループ化
         var gradeGroups = {};
         sortedPlayers.forEach(function(name) {
             var m = app.Carpool.members.find(function(x) { return x.name === name; });
@@ -582,7 +651,6 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             if (!gradeGroups[grade]) gradeGroups[grade] = [];
             gradeGroups[grade].push(name);
         });
-
         var sortedGrades = Object.keys(gradeGroups).sort(function(a, b) {
             return (gradeOrder2[a] !== undefined ? gradeOrder2[a] : 99) -
                    (gradeOrder2[b] !== undefined ? gradeOrder2[b] : 99);
@@ -590,26 +658,21 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
 
         var carIdx = 0;
         var unassigned = [];
-
         if (carSeatsList.every(function(l) { return l.length === 0; })) {
             console.log('空き座席がありません。選手の割り当てをスキップします');
             unassigned = sortedPlayers.slice();
         } else {
             sortedGrades.forEach(function(grade) {
                 var players = gradeGroups[grade];
-                // この学年グループが次の車に全員収まるなら次の車へ移動（同学年をまとめる）
                 if (carIdx < carSeatsList.length - 1) {
                     var remaining = carSeatsList[carIdx].length;
                     var nextRemaining = carSeatsList[carIdx + 1].length;
-                    if (remaining < players.length && nextRemaining >= players.length) {
-                        carIdx++;
-                    }
+                    if (remaining < players.length && nextRemaining >= players.length) carIdx++;
                 }
                 players.forEach(function(playerName) {
                     var placed = false;
                     while (carIdx < carSeatsList.length && !placed) {
                         if (carSeatsList[carIdx].length > 0) {
-                            // 座席位置はランダム（同学年は同じ車内でシャッフル）
                             var ri = Math.floor(Math.random() * carSeatsList[carIdx].length);
                             var slot = carSeatsList[carIdx].splice(ri, 1)[0];
                             carSeatsAssigned[carIdx][slot.type][slot.index] = playerName;
@@ -623,14 +686,11 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             });
         }
 
-        // ── Step4b: スキップされた空席に未割り当てメンバーを埋める ──
-        // Step4で同学年まとめのために車をスキップした際に生まれた空席を活用する
+        // ── Step4b: スキップ空席に未割り当て選手を埋める ──
         if (unassigned.length > 0) {
             var allEmptySlots = [];
             for (var ci2 = 0; ci2 < carSeatsList.length; ci2++) {
-                carSeatsList[ci2].forEach(function(slot) {
-                    allEmptySlots.push({ carIdx: ci2, slot: slot });
-                });
+                carSeatsList[ci2].forEach(function(slot) { allEmptySlots.push({ carIdx: ci2, slot: slot }); });
             }
             while (unassigned.length > 0 && allEmptySlots.length > 0) {
                 var playerName2 = unassigned.shift();
@@ -1412,13 +1472,14 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         var driverMember = (app.Carpool.members || []).find(function(m) { return m.name === car.parent; });
         var driverDisplayName = (driverMember && driverMember.abbr) ? driverMember.abbr : car.parent;
 
+        // 1行目：運転手名
         var carHeaderName = document.createElement('div');
         carHeaderName.className = 'car-header-name';
         carHeaderName.textContent = driverDisplayName;
         carHeaderName.title = car.parent;
         carHeader.appendChild(carHeaderName);
 
-        // 座席数変更ボタン（ヘッダー内）
+        // 2行目：座席数変更ボタン
         var seatCountBtn = document.createElement('button');
         seatCountBtn.className = 'seat-count-change-btn';
         seatCountBtn.type = 'button';
@@ -1430,10 +1491,10 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
 
         carLayout.appendChild(carHeader);
 
-        // 車両詳細情報（備考のみコンパクト表示）
+        // 車両詳細情報（備考を赤字表示）
         if (car.notes) {
             const carInfo = document.createElement('div');
-            carInfo.className = 'car-info';
+            carInfo.className = 'car-info car-notes-red';
             carInfo.textContent = UI.escapeHTML(car.notes);
             carLayout.appendChild(carInfo);
         }
@@ -1889,7 +1950,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             parent: { title: '保護者', members: [] },
             other: { title: 'その他', members: [] }
         };
-        
+
         filteredMembers.forEach(member => {
             if (member.role === 'coach' || member.role === 'assist') {
                 roleGroups.coach.members.push(member);
@@ -1901,24 +1962,32 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                 roleGroups.other.members.push(member);
             }
         });
-        
+
+        // 選手を高学年順でソート
+        var gradeOrderDesc = { '6': 0, '5': 1, '4': 2, '3': 3, '2': 4, '1': 5, '年長': 6, '年中': 7, '年少': 8 };
+        roleGroups.player.members.sort(function(a, b) {
+            var ga = gradeOrderDesc[a.grade] !== undefined ? gradeOrderDesc[a.grade] : 99;
+            var gb = gradeOrderDesc[b.grade] !== undefined ? gradeOrderDesc[b.grade] : 99;
+            return ga - gb;
+        });
+
         // 各グループを表示
         Object.values(roleGroups).forEach(group => {
             if (group.members.length === 0) return;
-            
+
             const groupHeader = document.createElement('h3');
             groupHeader.textContent = group.title;
             groupHeader.className = 'member-group-header';
             membersContainer.appendChild(groupHeader);
-            
+
             const membersList = document.createElement('div');
             membersList.className = 'members-list';
-            
+
             group.members.forEach(member => {
                 const memberItem = this.createMemberItem(member);
                 membersList.appendChild(memberItem);
             });
-            
+
             membersContainer.appendChild(membersList);
         });
         
@@ -1968,30 +2037,33 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         );
         eligiblePlayers = eligiblePlayers.filter(function(m) { return !absentNames.has(m.name); });
 
-        // 参加確定選手の保護者
-        var presentPlayerNames = new Set(
+        // 参加確定保護者（自己出欠あり OR 子供が参加確定）
+        var presentAllNames = new Set(
             (app.Carpool.appData.attendance || [])
                 .filter(function(a) { return a.status === 'present'; })
                 .map(function(a) { return a.name; })
         );
-        var presentPlayerIds = new Set(
-            members.filter(function(p) { return p.role === 'player' && presentPlayerNames.has(p.name); })
+        var presentPIds = new Set(
+            members.filter(function(p) { return p.role === 'player' && presentAllNames.has(p.name); })
                    .map(function(p) { return String(p.id); })
         );
         var eligibleParents = members.filter(function(m) {
             if (m.role !== 'father' && m.role !== 'mother') return false;
-            if (!m.childrenIds || !m.childrenIds.length) return false;
-            return m.childrenIds.some(function(cid) { return presentPlayerIds.has(String(cid)); });
+            if (presentAllNames.has(m.name)) return true;
+            if (m.childrenIds && m.childrenIds.length > 0) {
+                return m.childrenIds.some(function(cid) { return presentPIds.has(String(cid)); });
+            }
+            return false;
         });
 
-        // 運転手名セット
+        // 運転手名セット・車両数
         var carRegistrations = app.Carpool.appData.carRegistrations || [];
         var availableCars = carRegistrations.filter(function(c) { return c.canDrive !== 'no'; });
         var driverNames = new Set(availableCars.map(function(c) { return c.parent; }));
+        var carCount = availableCars.length;
 
         // 参加人数（運転手除く）
         var allEligible = [...staffMembers, ...eligiblePlayers, ...eligibleParents];
-        // 重複排除
         var seenElig = new Set();
         allEligible = allEligible.filter(function(m) {
             var key = String(m.id || m.name);
@@ -2006,8 +2078,11 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             return sum + (car.frontSeat || 0) + (car.middleSeat || 0) + (car.backSeat || 0);
         }, 0);
 
-        // 配置済（座席にいる人数。メンバー外乗員含む。運転手は除く）
-        var assignedCount = document.querySelectorAll('.seat.filled[data-person]').length;
+        // 配置済（荷物除く）
+        var assignedCount = 0;
+        document.querySelectorAll('.seat.filled[data-person]').forEach(function(s) {
+            if (s.dataset.person && s.dataset.person !== '荷物') assignedCount++;
+        });
 
         // 空席
         var emptyCount = totalSeats - assignedCount;
@@ -2020,7 +2095,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         });
 
         var html =
-            '<span class="stats-item"><span class="stats-label">参加人数</span><span class="stats-value">' + participantCount + '/' + totalSeats + '</span></span>' +
+            '<span class="stats-item"><span class="stats-label">車両</span><span class="stats-value">' + carCount + '</span></span>' +
+            '<span class="stats-sep">｜</span>' +
+            '<span class="stats-item"><span class="stats-label">参加人数</span><span class="stats-value">' + participantCount + '</span><span class="stats-label">/座席数</span><span class="stats-value">' + totalSeats + '</span></span>' +
             '<span class="stats-sep">｜</span>' +
             '<span class="stats-item"><span class="stats-label">配置済</span><span class="stats-value">' + assignedCount + '</span></span>' +
             '<span class="stats-sep">｜</span>' +
@@ -2263,14 +2340,19 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
 
         var event = Storage.getSelectedEvent();
 
-        // 台数に応じて画像幅を決定（16:9横向き）
+        // 台数・行数に応じて画像サイズを決定（4台/行、5台目以降2行目）
         var carCount = carsContainer.children.length;
-        var exportWidth = Math.max(960, carCount * 300 + 48);
-        var exportHeight = Math.round(exportWidth * 9 / 16);
+        var carsPerRow = Math.min(4, carCount);
+        var numRows = Math.ceil(carCount / 4);
+        var exportWidth = Math.max(960, carsPerRow * 300 + 48);
+        // ヘッダー+情報行の高さ + 車両行ごとの高さ
+        var carRowHeight = 380; // 1行分の車両エリア高さ（目安）
+        var headerHeight = 120; // ヘッダー・情報エリア高さ
+        var exportHeight = headerHeight + carRowHeight * numRows;
 
-        // エクスポート用ラッパー（16:9固定サイズ、画面外に配置）
+        // エクスポート用ラッパー（画面外に配置）
         var wrap = document.createElement('div');
-        wrap.style.cssText = 'position:absolute;top:0;left:-9999px;background:#fff;padding:14px 16px;font-family:sans-serif;box-sizing:border-box;width:' + exportWidth + 'px;height:' + exportHeight + 'px;overflow:hidden;display:flex;flex-direction:column;';
+        wrap.style.cssText = 'position:absolute;top:0;left:-9999px;background:#fff;padding:14px 16px;font-family:sans-serif;box-sizing:border-box;width:' + exportWidth + 'px;min-height:' + exportHeight + 'px;overflow:visible;display:flex;flex-direction:column;';
 
         // ヘッダー（コンパクト）
         var header = document.createElement('div');
@@ -2343,13 +2425,16 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             wrap.appendChild(commentDiv);
         }
 
-        // 実際の cars-container をクローン（全車両を横1列で表示）
+        // 実際の cars-container をクローン（4台/行でラップ）
         var carsClone = carsContainer.cloneNode(true);
-        carsClone.style.cssText = 'overflow:visible;max-height:none;height:auto;display:flex;flex-direction:row;flex-wrap:nowrap;gap:12px;flex:1;min-height:0;';
-        // 各car-layoutを横並び用にリセット
+        var carItemWidth = Math.floor((exportWidth - 32 - (carsPerRow - 1) * 12) / carsPerRow);
+        carsClone.style.cssText = 'overflow:visible;max-height:none;height:auto;display:flex;flex-direction:row;flex-wrap:wrap;gap:12px;align-items:flex-start;';
+        // 各car-layoutを指定幅で表示
         carsClone.querySelectorAll('.car-layout').forEach(function(el) {
             el.style.flexShrink = '0';
+            el.style.width = carItemWidth + 'px';
             el.style.marginBottom = '0';
+            el.style.boxSizing = 'border-box';
         });
         // クローン内のコンテナ要素のスクロール制限を解除
         carsClone.querySelectorAll('.car-seat-layout, .car-top-view, .seat-row, .car-info').forEach(function(el) {
@@ -2357,8 +2442,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             el.style.maxHeight = 'none';
             el.style.height = 'auto';
         });
-        // クローン内の不要なボタン類を非表示
-        carsClone.querySelectorAll('.seat-clear-btn, .seat-count-adjuster').forEach(function(el) {
+        // クローン内の不要なボタン類を非表示（座席数変更ボタン含む）
+        carsClone.querySelectorAll('.seat-clear-btn, .seat-count-adjuster, .seat-count-change-btn').forEach(function(el) {
             el.style.display = 'none';
         });
         // 座席・アイコンをやや大きく
@@ -2382,6 +2467,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
 
         document.body.appendChild(wrap);
 
+        // 実際のラッパー高さを取得（コンテンツに合わせる）
+        var actualHeight = wrap.scrollHeight || exportHeight;
         html2canvas(wrap, {
             scale: 2,
             useCORS: true,
@@ -2389,9 +2476,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             scrollX: 0,
             scrollY: 0,
             windowWidth: exportWidth,
-            windowHeight: exportHeight,
+            windowHeight: actualHeight,
             width: exportWidth,
-            height: exportHeight
+            height: actualHeight
         }).then(function(canvas) {
             document.body.removeChild(wrap);
             if (exportBtn) { exportBtn.textContent = origText; exportBtn.disabled = false; }
