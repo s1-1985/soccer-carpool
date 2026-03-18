@@ -422,10 +422,20 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             // 手入力ドライバー（メンバーとして登録されていない）も候補に追加
             var memberNameSet = new Set((app.Carpool.members || []).map(function(m) { return m.name; }));
             var carRegs = app.Carpool.appData.carRegistrations || [];
+            var seenManual = new Set();
             var extraDriverNames = [];
             carRegs.forEach(function(reg) {
-                if (reg.parent && !memberNameSet.has(reg.parent)) {
+                if (reg.parent && !memberNameSet.has(reg.parent) && !seenManual.has(reg.parent)) {
+                    seenManual.add(reg.parent);
                     extraDriverNames.push(reg.parent);
+                }
+            });
+            // 過去の手入力ドライバー（変更で上書きされたが記憶されている名前）も含める
+            var savedManual = app.Carpool.appData.manualDriverNames || [];
+            savedManual.forEach(function(n) {
+                if (n && !memberNameSet.has(n) && !seenManual.has(n)) {
+                    seenManual.add(n);
+                    extraDriverNames.push(n);
                 }
             });
             // 手入力ドライバーを仮オブジェクトとして追加
@@ -475,6 +485,14 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         });
         var car = availableCars[carIndex];
         if (!car) return;
+        // 元のドライバーが手入力（メンバー未登録）なら消えないよう保存
+        var memberNameSet2 = new Set((app.Carpool.members || []).map(function(m) { return m.name; }));
+        if (car.parent && !memberNameSet2.has(car.parent)) {
+            if (!app.Carpool.appData.manualDriverNames) app.Carpool.appData.manualDriverNames = [];
+            if (!app.Carpool.appData.manualDriverNames.includes(car.parent)) {
+                app.Carpool.appData.manualDriverNames.push(car.parent);
+            }
+        }
         car.parent = newDriver;
 
         var driverSeat = document.querySelector('.seat.driver-seat[data-car-index="' + carIndex + '"]');
@@ -1632,7 +1650,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
 
         const label = document.createElement('div');
         label.className = 'seat-label';
-        label.textContent = '運転手 ✏';
+        label.textContent = '運転手';
 
         driverSeat.appendChild(nameTag);
         driverSeat.appendChild(label);
@@ -2400,8 +2418,14 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
 
             infoRows.forEach(function(row) {
                 var cell = document.createElement('div');
-                cell.style.cssText = 'display:flex;gap:3px;white-space:nowrap;';
-                cell.innerHTML = '<span style="color:#E8A200;font-weight:bold;">' + row.label + ':</span><span>' + UI.escapeHTML(String(row.value)) + '</span>';
+                // 参加選手は長くなるので折り返し・全幅表示
+                if (row.label === '参加選手') {
+                    cell.style.cssText = 'display:flex;gap:3px;white-space:normal;flex-wrap:wrap;width:100%;align-items:flex-start;';
+                    cell.innerHTML = '<span style="color:#E8A200;font-weight:bold;white-space:nowrap;">' + row.label + ':</span><span style="word-break:break-all;flex:1;">' + UI.escapeHTML(String(row.value)) + '</span>';
+                } else {
+                    cell.style.cssText = 'display:flex;gap:3px;white-space:nowrap;';
+                    cell.innerHTML = '<span style="color:#E8A200;font-weight:bold;">' + row.label + ':</span><span>' + UI.escapeHTML(String(row.value)) + '</span>';
+                }
                 infoSection.appendChild(cell);
             });
             wrap.appendChild(infoSection);
@@ -2429,12 +2453,13 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         var carsClone = carsContainer.cloneNode(true);
         var carItemWidth = Math.floor((exportWidth - 32 - (carsPerRow - 1) * 12) / carsPerRow);
         carsClone.style.cssText = 'overflow:visible;max-height:none;height:auto;display:flex;flex-direction:row;flex-wrap:wrap;gap:12px;align-items:flex-start;';
-        // 各car-layoutを指定幅で表示
+        // 各car-layoutを指定幅で表示（box-sizing:border-boxでpadding込みの幅にする）
         carsClone.querySelectorAll('.car-layout').forEach(function(el) {
             el.style.flexShrink = '0';
             el.style.width = carItemWidth + 'px';
             el.style.marginBottom = '0';
             el.style.boxSizing = 'border-box';
+            el.style.minWidth = '0';
         });
         // クローン内のコンテナ要素のスクロール制限を解除
         carsClone.querySelectorAll('.car-seat-layout, .car-top-view, .seat-row, .car-info').forEach(function(el) {
