@@ -103,7 +103,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                     if (gc && member.role === 'player') {
                         var badge = document.createElement('span');
                         badge.style.cssText = 'min-width:22px;height:18px;border-radius:9px;background:' + gc + ';color:#fff;font-size:10px;font-weight:bold;display:flex;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0;';
-                        badge.textContent = member.grade + '年';
+                        badge.textContent = ['年少', '年中', '年長'].includes(member.grade) ? member.grade : member.grade + '年';
                         item.appendChild(badge);
                     }
 
@@ -2144,7 +2144,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             var badge = document.createElement('span');
             badge.className = 'grade-badge';
             badge.style.background = gc;
-            badge.textContent = member.grade + '年';
+            badge.textContent = ['年少', '年中', '年長'].includes(member.grade) ? member.grade : member.grade + '年';
             memberItem.appendChild(badge);
         }
 
@@ -2364,7 +2364,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         var numRows = Math.ceil(carCount / 4);
         var exportWidth = Math.max(960, carsPerRow * 300 + 48);
         // ヘッダー+情報行の高さ + 車両行ごとの高さ
-        var carRowHeight = 380; // 1行分の車両エリア高さ（目安）
+        var carRowHeight = 480; // 1行分の車両エリア高さ（目安）
         var headerHeight = 120; // ヘッダー・情報エリア高さ
         var exportHeight = headerHeight + carRowHeight * numRows;
 
@@ -2460,12 +2460,21 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             el.style.marginBottom = '0';
             el.style.boxSizing = 'border-box';
             el.style.minWidth = '0';
+            el.style.overflow = 'visible';
+            el.style.height = 'auto';
         });
         // クローン内のコンテナ要素のスクロール制限を解除
         carsClone.querySelectorAll('.car-seat-layout, .car-top-view, .seat-row, .car-info').forEach(function(el) {
             el.style.overflow = 'visible';
             el.style.maxHeight = 'none';
             el.style.height = 'auto';
+        });
+        // car-top-viewの高さ制限解除（3列目の見切れ防止）
+        carsClone.querySelectorAll('.car-top-view').forEach(function(el) {
+            el.style.overflow = 'visible';
+            el.style.maxHeight = 'none';
+            el.style.height = 'auto';
+            el.style.paddingBottom = '10px';
         });
         // クローン内の不要なボタン類を非表示（座席数変更ボタン含む）
         carsClone.querySelectorAll('.seat-clear-btn, .seat-count-adjuster, .seat-count-change-btn').forEach(function(el) {

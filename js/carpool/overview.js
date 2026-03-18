@@ -579,12 +579,33 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
             for (var i = 0; i < result.items.length; i++) {
                 var item = result.items[i];
                 var url = await item.getDownloadURL();
+                var row = document.createElement('div');
+                row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:4px;';
                 var a = document.createElement('a');
                 a.href = url;
                 a.target = '_blank';
-                a.style.cssText = 'display:block;padding:6px 10px;background:#f0f4ff;border-radius:6px;font-size:13px;color:#2563eb;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+                a.style.cssText = 'flex:1;padding:6px 10px;background:#f0f4ff;border-radius:6px;font-size:13px;color:#2563eb;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
                 a.textContent = item.name;
-                list.appendChild(a);
+                var delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.textContent = '取消';
+                delBtn.style.cssText = 'flex-shrink:0;padding:4px 10px;background:#dc3545;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;';
+                delBtn.addEventListener('click', (function(fileRef, rowEl, eventIdForDel, listEl) {
+                    return async function() {
+                        if (!confirm(fileRef.name + ' を削除しますか？')) return;
+                        try {
+                            await fileRef.delete();
+                            rowEl.remove();
+                            var remaining = listEl.querySelectorAll('div');
+                            if (remaining.length === 0) listEl.innerHTML = '<p style="color:#999;font-size:12px;">ファイルなし</p>';
+                        } catch(e) {
+                            UI.showAlert('削除に失敗しました: ' + e.message);
+                        }
+                    };
+                })(item, row, eventId, list));
+                row.appendChild(a);
+                row.appendChild(delBtn);
+                list.appendChild(row);
             }
         } catch(e) {
             list.innerHTML = '<p style="color:#c00;font-size:12px;">読み込みエラー: ' + e.message + '</p>';

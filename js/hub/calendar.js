@@ -498,15 +498,29 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             </div>`;
         }
         
-        // 集合場所
+        // 集合場所（会場登録の住所でマップを開く）
         let meetingPlaceDisplay = '';
         if (event.meetingPlace) {
+            var allVenues = app.Hub.venues || [];
+            var meetingVenueData = allVenues.find(function(v) { return v.name === event.meetingPlace; });
+            var meetingMapQuery = (meetingVenueData && meetingVenueData.address) ? meetingVenueData.address : event.meetingPlace;
+            var meetingMapUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(meetingMapQuery);
             meetingPlaceDisplay = `
             <div class="detail-item">
                 <span class="detail-label">集合場所:</span> ${UI.escapeHTML(event.meetingPlace)}
+                <button type="button" class="map-button" onclick="window.open('${meetingMapUrl}','_blank')" style="margin-left:8px;font-size:11px;padding:2px 8px;background:#4285f4;color:#fff;border:none;border-radius:4px;cursor:pointer;">地図を開く</button>
             </div>`;
         }
         
+        // 会場マップボタン（会場登録の住所を優先）
+        var venueMapBtn = '';
+        if (event.venue) {
+            var allVenuesForMap = app.Hub.venues || [];
+            var venueDataForMap = allVenuesForMap.find(function(v) { return v.name === event.venue; });
+            var venueQueryStr = (venueDataForMap && venueDataForMap.address) ? venueDataForMap.address : event.venue;
+            venueMapBtn = '<button type="button" class="map-button" onclick="window.open(\'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(venueQueryStr) + '\',\'_blank\')" style="margin-left:8px;font-size:11px;padding:2px 8px;background:#4285f4;color:#fff;border:none;border-radius:4px;cursor:pointer;">地図を開く</button>';
+        }
+
         // 出欠一覧（イベントの対象学年メンバー）
         // ※ autoPopulateFromTargetGrades と同じロジックで対象メンバーを決定
         let attendanceDisplay = '';
@@ -553,12 +567,17 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
 
             const rows = targetMembers.map(m => {
                 const st = statusMap[m.name] || 'pending';
-                const label = st === 'present' ? '○' : st === 'absent' ? '×' : '－';
-                const cls = st === 'present' ? 'color:green' : st === 'absent' ? 'color:red' : 'color:#999';
-                return `<span style="margin-right:12px;"><b style="${cls}">${label}</b> ${UI.escapeHTML(m.name)}</span>`;
+                const icon = st === 'present' ? '○' : st === 'absent' ? '×' : '－';
+                const bg = st === 'present' ? '#e8f5e9' : st === 'absent' ? '#ffebee' : '#f5f5f5';
+                const clr = st === 'present' ? '#2e7d32' : st === 'absent' ? '#c62828' : '#9e9e9e';
+                return `<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:${bg};border-radius:6px;"><span style="font-weight:bold;color:${clr};font-size:14px;width:16px;text-align:center;">${icon}</span><span style="font-size:13px;">${UI.escapeHTML(m.name)}</span></div>`;
             }).join('');
 
-            attendanceDisplay = `<div class="detail-item"><span class="detail-label">出欠確認:</span><br><div style="margin-top:4px;line-height:2;">${rows}</div></div>`;
+            const presentCount = targetMembers.filter(m => (statusMap[m.name] || 'pending') === 'present').length;
+            const absentCount = targetMembers.filter(m => (statusMap[m.name] || 'pending') === 'absent').length;
+            const pendingCount = targetMembers.filter(m => !statusMap[m.name] || statusMap[m.name] === 'pending').length;
+            const summary = `<div style="display:flex;gap:12px;margin-bottom:8px;font-size:12px;"><span style="color:#2e7d32;">○ 参加: ${presentCount}</span><span style="color:#c62828;">× 不参加: ${absentCount}</span><span style="color:#9e9e9e;">－ 未回答: ${pendingCount}</span></div>`;
+            attendanceDisplay = `<div class="detail-item"><span class="detail-label">出欠確認:</span><br>${summary}<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:4px;margin-top:4px;">${rows}</div></div>`;
         }
 
         // このイベント固有のログ（eventId で絞り込み、なければタイトルで近似）
@@ -591,6 +610,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             ${meetingPlaceDisplay}
             <div class="detail-item">
                 <span class="detail-label">会場:</span> ${UI.escapeHTML(event.venue || '未設定')}
+                ${venueMapBtn}
             </div>
             <div class="detail-item">
                 <span class="detail-label">時間:</span> ${event.startTime || '未設定'}${event.endTime ? ` - ${event.endTime}` : ''}

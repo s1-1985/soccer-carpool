@@ -804,6 +804,7 @@
 
 #assignment-work-area.is-fullscreen.layout-h .car-seats-container {
     flex: 1.2;
+    overflow-y: auto;
 }
 
 #assignment-work-area.is-fullscreen.layout-h .members-assignment-container {
@@ -816,7 +817,7 @@
     align-items: flex-start;
     gap: 12px;
     overflow-x: scroll;
-    overflow-y: hidden;
+    overflow-y: auto;
     height: auto;
     flex: 1;
     scroll-snap-type: x mandatory;
@@ -1248,6 +1249,7 @@
 
 #assignment-work-area.is-fullscreen.layout-h .car-seats-container {
     flex: 1.2;
+    overflow-y: auto;
 }
 
 #assignment-work-area.is-fullscreen.layout-h .members-assignment-container {
