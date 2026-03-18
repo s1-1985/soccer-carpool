@@ -30,9 +30,13 @@
         }
 
         /* ── 出欠マトリクス ── */
+        /* matrix-wrap のみがスクロールするよう modal-content のスクロールを無効化 */
+        #attendance-matrix-modal .modal-content {
+            overflow: hidden;
+        }
         .matrix-wrap {
             overflow: auto;
-            max-height: calc(100dvh - 160px);
+            max-height: calc(90vh - 80px);
             border: 1px solid #ddd;
             border-radius: 6px;
             -webkit-overflow-scrolling: touch;

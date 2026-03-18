@@ -508,21 +508,43 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         }
         
         // 出欠一覧（イベントの対象学年メンバー）
+        // ※ autoPopulateFromTargetGrades と同じロジックで対象メンバーを決定
         let attendanceDisplay = '';
         const members = app.Hub.members || [];
-        const targetGradeValues = event.target || [];
+        const targetGradeValues = (event.target && event.target.length > 0) ? event.target : null;
         const extraPlayers = event.extraPlayers || [];
+        const isEventType = event.type === 'event';
         let targetMembers = [];
-        if (targetGradeValues.length > 0) {
-            targetMembers = members.filter(m => m.role === 'player' && targetGradeValues.includes(m.grade));
-        }
-        // 学年外追加選手
-        extraPlayers.forEach(name => {
-            if (!targetMembers.find(m => m.name === name)) {
-                const m = members.find(m => m.name === name);
+
+        // 選手を追加（学年指定あり: 対象学年のみ, なし: 全選手）
+        const players = members.filter(function(m) {
+            if (m.role !== 'player') return false;
+            if (targetGradeValues) {
+                return m.grade && targetGradeValues.includes(m.grade);
+            }
+            return true;
+        });
+        targetMembers = players.slice();
+
+        // 学年外追加選手を追加（重複除く）
+        const addedNames = new Set(players.map(function(p) { return p.name; }));
+        extraPlayers.forEach(function(name) {
+            if (!addedNames.has(name)) {
+                const m = members.find(function(mem) { return mem.name === name; });
                 if (m) targetMembers.push(m);
+                addedNames.add(name);
             }
         });
+
+        // イベント種別「イベント」の場合は保護者も表示
+        if (isEventType) {
+            members.forEach(function(m) {
+                if (m.role === 'mother' || m.role === 'father' || m.role === 'officer') {
+                    targetMembers.push(m);
+                }
+            });
+        }
+
         if (targetMembers.length > 0) {
             const eventData = Storage.loadEventData(event.id);
             const attendance = eventData.attendance || [];
