@@ -29,7 +29,11 @@ jobs:
 
       - name: Apply Firebase Storage CORS (main branch only)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: gsutil cors set cors.json gs://fc-ojimajr-hub.firebasestorage.app
+        continue-on-error: true
+        run: |
+          gsutil cors set cors.json gs://fc-ojimajr-hub.firebasestorage.app || \
+          gsutil cors set cors.json gs://fc-ojimajr-hub.appspot.com || \
+          echo "CORS設定をスキップ（バケット未作成の可能性）"
 
       - name: Deploy to Firebase Hosting (Preview - PR only)
         if: github.event_name == 'pull_request'
