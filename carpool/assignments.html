@@ -177,7 +177,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script src="../js/common/firebase-config.js?v=20260306"></script>
+    <script src="../js/common/firebase-config.js?v=20260611"></script>
 
     <!-- 共通モジュール -->
     <script src="../js/common/global.js?v=20260306"></script>
@@ -185,15 +185,15 @@
     <script src="../js/common/storage.js?v=20260306"></script>
     <script src="../js/common/ui.js?v=20260306"></script>
     <script src="../js/common/auth.js?v=20260306"></script>
-    <script src="../js/common/db.js?v=20260306"></script>
+    <script src="../js/common/db.js?v=20260611"></script>
 
     <!-- 配車管理用モジュール -->
     <script src="../js/carpool/overview.js?v=20260306"></script>
-    <script src="../js/carpool/assignment.js?v=20260318b"></script>
+    <script src="../js/carpool/assignment.js?v=20260611"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', async function() {
-            await FCOjima.Auth.requireLogin();
+            await FCOjima.Auth.requireApproved();
             // モーダル初期化
             FCOjima.UI.initModals();
             

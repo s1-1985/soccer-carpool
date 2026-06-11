@@ -108,7 +108,10 @@ FCOjima.DB = FCOjima.DB || {};
         const batch = db.batch();
         const snapshot = await Collections.notifications().get();
         snapshot.docs.forEach(doc => batch.delete(doc.ref));
-        notifications.forEach(n => {
+        notifications.forEach((n, i) => {
+            // ID未付与の旧データはここで採番（String(undefined)="undefined" の
+            // 同一ドキュメントに全件が上書きされ消失するのを防ぐ）
+            if (!n.id) n.id = Date.now().toString() + '_' + i;
             const data = Object.assign({}, n);
             const id = String(data.id);
             delete data.id;

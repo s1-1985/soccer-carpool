@@ -100,11 +100,12 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
 
         var card = document.createElement('div');
         card.style.cssText = 'border:1px solid #ddd;border-radius:8px;padding:12px;margin-bottom:12px;background:#fff;';
+        var esc = UI ? UI.escapeHTML : function(s) { return s; };
         card.innerHTML =
-            '<div style="font-weight:bold;margin-bottom:4px;">' + (UI ? UI.escapeHTML(u.name || '') : (u.name || '')) + '</div>' +
-            '<div style="font-size:13px;color:#666;">メール: ' + (u.email || '不明') + '</div>' +
+            '<div style="font-weight:bold;margin-bottom:4px;">' + esc(u.name || '') + '</div>' +
+            '<div style="font-size:13px;color:#666;">メール: ' + esc(u.email || '不明') + '</div>' +
             '<div style="font-size:13px;color:#666;">性別: ' + (u.gender === 'male' ? '男性' : u.gender === 'female' ? '女性' : '不明') + '</div>' +
-            '<div style="font-size:13px;color:#666;">子供: ' + childNames + '</div>' +
+            '<div style="font-size:13px;color:#666;">子供: ' + esc(childNames) + '</div>' +
             '<div style="font-size:12px;color:#aaa;margin-top:4px;">申請日時: ' + (u.registeredAt ? new Date(u.registeredAt.seconds * 1000).toLocaleString('ja-JP') : '不明') + '</div>' +
             '<div style="display:flex;gap:8px;margin-top:10px;">' +
                 '<button class="approve-btn" data-uid="' + u.uid + '" style="flex:1;padding:8px;background:#2ecc71;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:bold;">承認</button>' +
@@ -177,20 +178,26 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 var row = document.createElement('div');
                 row.style.cssText = 'border:1px solid #eee;border-radius:8px;padding:10px;margin-bottom:8px;background:#fff;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;';
 
+                var esc = UI ? UI.escapeHTML : function(s) { return s; };
                 var info = document.createElement('div');
                 info.innerHTML =
-                    '<div style="font-weight:bold;">' + (UI ? UI.escapeHTML(u.name || '') : (u.name || '')) + '</div>' +
-                    '<div style="font-size:12px;color:#888;">' + (u.email || '') + '</div>' +
-                    '<div style="font-size:12px;color:#888;">子供: ' + childNames + '</div>';
+                    '<div style="font-weight:bold;">' + esc(u.name || '') + '</div>' +
+                    '<div style="font-size:12px;color:#888;">' + esc(u.email || '') + '</div>' +
+                    '<div style="font-size:12px;color:#888;">子供: ' + esc(childNames) + '</div>';
 
                 var ctrl = document.createElement('div');
                 ctrl.style.display = 'flex';
                 ctrl.style.gap = '6px';
                 ctrl.style.alignItems = 'center';
 
+                var currentProfile = app.Auth && app.Auth.currentUserProfile;
+                var iAmAdmin = !!(currentProfile && currentProfile.role === 'admin');
+
                 var select = document.createElement('select');
                 select.style.cssText = 'padding:4px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px;';
                 Object.keys(ROLE_LABELS).forEach(function(role) {
+                    // 管理者役割の付与は admin のみ（Firestoreルールと同期）
+                    if (role === 'admin' && !iAmAdmin && u.role !== 'admin') return;
                     var opt = document.createElement('option');
                     opt.value = role;
                     opt.textContent = ROLE_LABELS[role];
@@ -198,11 +205,13 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                     select.appendChild(opt);
                 });
 
-                // admin role の変更は admin のみ可能
-                var currentProfile = app.Auth && app.Auth.currentUserProfile;
                 if (u.uid === (currentProfile && currentProfile.uid)) {
                     select.disabled = true;
                     select.title = '自分の役割は変更できません';
+                } else if (u.role === 'admin' && !iAmAdmin) {
+                    // 管理者の役割変更（剥奪）も admin のみ（Firestoreルールと同期）
+                    select.disabled = true;
+                    select.title = '管理者の役割変更は管理者のみ可能です';
                 }
 
                 var saveBtn = document.createElement('button');
@@ -394,7 +403,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                     var evTargets = (ev.target && ev.target.length > 0) ? ev.target : null;
                     var extraPlayers = ev.extraPlayers || [];
                     var isTarget = !evTargets
-                        || (member.grade && evTargets.includes(member.grade))
+                        || (member.grade && evTargets.some(function(g) { return String(g) === String(member.grade); }))
                         || extraPlayers.includes(member.name);
 
                     var status;
@@ -486,10 +495,11 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             html += '<div style="margin-bottom:8px;font-size:13px;"><span style="color:#888;">対象: </span>' + grades + '</div>';
         }
 
-        // 説明
-        if (ev.description) {
+        // 備考（イベントのフィールド名は notes。旧データの description にも対応）
+        var evNotes = ev.notes || ev.description;
+        if (evNotes) {
             html += '<div style="margin-top:8px;padding:8px 12px;background:#f5f5f5;border-radius:6px;font-size:13px;white-space:pre-wrap;">'
-                + UI.escapeHTML(ev.description) + '</div>';
+                + UI.escapeHTML(evNotes) + '</div>';
         }
 
         body.innerHTML = html;

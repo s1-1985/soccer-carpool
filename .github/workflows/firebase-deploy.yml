@@ -45,13 +45,15 @@ jobs:
           projectId: fc-ojimajr-hub
           channelId: preview-${{ github.event.pull_request.number }}
 
-      - name: Deploy Storage Rules (main branch only)
+      - name: Deploy Storage / Firestore Rules (main branch only)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         continue-on-error: true
         run: |
           npm install -g firebase-tools
           firebase deploy --only storage --project fc-ojimajr-hub || \
           echo "Storageルールのデプロイをスキップ"
+          firebase deploy --only firestore:rules --project fc-ojimajr-hub || \
+          echo "Firestoreルールのデプロイをスキップ"
 
       - name: Deploy to Firebase Hosting (Live - main branch)
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'

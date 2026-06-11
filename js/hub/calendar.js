@@ -195,7 +195,9 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
 
         return events.filter(function(ev) {
             if (!ev.target || ev.target.length === 0) return true; // 対象学年なし＝全員対象
-            return ev.target.some(function(g) { return myChildGrades.includes(g); });
+            return ev.target.some(function(g) {
+                return myChildGrades.some(function(cg) { return String(cg) === String(g); });
+            });
         });
     };
     
@@ -444,7 +446,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
      * イベント詳細表示
      * @param {number} eventId - イベントID
      */
-    Calendar.showEventDetails = function(eventId) {
+    Calendar.showEventDetails = async function(eventId) {
         const events = app.Hub.events;
         const event = events.find(e => String(e.id) === String(eventId));
         if (!event) {
@@ -534,7 +536,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         const players = members.filter(function(m) {
             if (m.role !== 'player') return false;
             if (targetGradeValues) {
-                return m.grade && targetGradeValues.includes(m.grade);
+                return m.grade && targetGradeValues.some(function(g) { return String(g) === String(m.grade); });
             }
             return true;
         });
@@ -560,7 +562,16 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         }
 
         if (targetMembers.length > 0) {
-            const eventData = Storage.loadEventData(event.id);
+            // 出欠データはFirestore優先で取得（localStorageのみだと他端末の回答が見えない）
+            let eventData = null;
+            if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadEventData) {
+                try {
+                    eventData = await FCOjima.DB.loadEventData(event.id);
+                } catch (e) {
+                    console.warn('Firestoreイベントデータ取得失敗:', e);
+                }
+            }
+            if (!eventData) eventData = Storage.loadEventData(event.id);
             const attendance = eventData.attendance || [];
             const statusMap = {};
             attendance.forEach(a => { statusMap[a.name] = a.status; });
@@ -825,7 +836,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             // 対象選手一覧を構築（学年対象 + 追加選手）
             const targetPlayerNames = new Set();
             members.forEach(function(m) {
-                if (m.role === 'player' && target.includes(m.grade)) targetPlayerNames.add(m.name);
+                if (m.role === 'player' && target.some(function(g) { return String(g) === String(m.grade); })) targetPlayerNames.add(m.name);
             });
             extraPlayers.forEach(function(n) { targetPlayerNames.add(n); });
 
@@ -836,7 +847,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 if (!ev.target || ev.target.length === 0) return;
                 const evPlayerNames = new Set();
                 members.forEach(function(m) {
-                    if (m.role === 'player' && ev.target.includes(m.grade)) evPlayerNames.add(m.name);
+                    if (m.role === 'player' && ev.target.some(function(g) { return String(g) === String(m.grade); })) evPlayerNames.add(m.name);
                 });
                 (ev.extraPlayers || []).forEach(function(n) { evPlayerNames.add(n); });
                 evPlayerNames.forEach(function(n) {
@@ -1067,7 +1078,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
 
         // 指定学年外の選手を抽出
         var extraCandidates = members.filter(function(m) {
-            return m.role === 'player' && (!checkedGrades.length || !checkedGrades.includes(m.grade));
+            return m.role === 'player' && (!checkedGrades.length || !checkedGrades.some(function(g) { return String(g) === String(m.grade); }));
         });
 
         // 現在選択中の追加選手

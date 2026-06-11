@@ -208,7 +208,9 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
                 app.Hub.logs = Storage.addLog('venues', '会場更新', '「' + name + '」', logs);
             }
         } else {
-            var newId = venues.length > 0 ? Math.max.apply(null, venues.map(function(v) { return parseInt(v.id) || 0; })) + 1 : 1;
+            // タイムスタンプIDで採番（parseInt(最大値)+1 方式はFirestoreの英数字IDが
+            // 0扱いになり既存IDと衝突するため廃止）
+            var newId = Date.now();
             venues.push({ id: newId, name: name, address: address, notes: notes, createdBy: currentUser });
             app.Hub.venues = venues;
             app.Hub.logs = Storage.addLog('venues', '会場追加', '「' + name + '」', logs);

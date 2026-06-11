@@ -67,12 +67,13 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script src="../js/common/firebase-config.js?v=20260223b"></script>
+    <script src="../js/common/firebase-config.js?v=20260611"></script>
 
     <script>
         const pendingAuth = window.FCOjimaFirebase.auth;
         const pendingDb   = window.FCOjimaFirebase.db;
-        const TEAM_ID     = window.FCOjimaFirebase.TEAM_ID;
+        // 注意: TEAM_ID は firebase-config.js がグローバル const として宣言済み。
+        // ここで再宣言すると SyntaxError でこの script 全体が動かなくなる（過去バグ）。
 
         pendingAuth.onAuthStateChanged(function(user) {
             if (!user) {
