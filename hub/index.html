@@ -604,6 +604,11 @@
         // DOMContentLoaded イベントで初期化（承認確認 → Firestoreロード → 画面初期化）
         document.addEventListener('DOMContentLoaded', async function() {
             const userProfile = await FCOjima.Auth.requireApproved();
+            // 未登録/承認待ち/却下の場合は requireApproved がリダイレクトまたは
+            // body差し替えを行い null を返す。以降の初期化を続けると header 等が
+            // null になりエラーになるため、ここで打ち切る。
+            if (!userProfile) return;
+
             await FCOjima.Hub.init();
 
             // ログインユーザー名をヘッダーに表示

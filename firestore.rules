@@ -8,18 +8,24 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function userDoc(teamId) {
-      return get(/databases/$(database)/documents/teams/$(teamId)/users/$(request.auth.uid));
+    // 自分のユーザードキュメントが存在するか
+    // ※ get(...).exists は存在しないプロパティ（常に undefined）で、これを使うと
+    //   承認チェックが全端末で false になり events/venues/notifications/logs/eventData
+    //   の読み取りが全滅する。存在確認は必ず exists() を使い、get() の前段でガードする。
+    function userDocExists(teamId) {
+      return exists(/databases/$(database)/documents/teams/$(teamId)/users/$(request.auth.uid));
+    }
+
+    function userData(teamId) {
+      return get(/databases/$(database)/documents/teams/$(teamId)/users/$(request.auth.uid)).data;
     }
 
     function isApproved(teamId) {
-      let u = userDoc(teamId);
-      return u.exists && u.data.status == 'approved';
+      return userDocExists(teamId) && userData(teamId).status == 'approved';
     }
 
     function userRole(teamId) {
-      let u = userDoc(teamId);
-      return u.exists ? u.data.role : 'none';
+      return userDocExists(teamId) ? userData(teamId).role : 'none';
     }
 
     function isManager(teamId) {
