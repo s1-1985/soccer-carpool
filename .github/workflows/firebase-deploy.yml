@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+      # 一時的: 本番復旧用（復旧後に削除する）
+      - claude/gracious-euler-gqq5mt
   pull_request:
     branches:
       - main
@@ -54,7 +56,7 @@ jobs:
           echo "Storageルールのデプロイをスキップ"
 
       - name: Deploy to Firebase Hosting (Live - main branch)
-        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+        if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/gracious-euler-gqq5mt')) || github.event_name == 'workflow_dispatch'
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
