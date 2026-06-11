@@ -120,7 +120,7 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
         const players = members.filter(function(m) {
             if (m.role !== 'player') return false;
             if (targetGrades) {
-                return m.grade && targetGrades.includes(m.grade);
+                return m.grade && targetGrades.some(function(g) { return String(g) === String(m.grade); });
             }
             return true;
         });
@@ -611,10 +611,10 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
         // 対象学年のメンバー数をカウント
         const members = FCOjima.Carpool.members;
         if (event.target && event.target.length > 0) {
-            stats.total = members.filter(member => 
-                member.role === 'player' && 
-                member.grade && 
-                event.target.includes(member.grade)
+            stats.total = members.filter(member =>
+                member.role === 'player' &&
+                member.grade &&
+                event.target.some(g => String(g) === String(member.grade))
             ).length;
         } else {
             stats.total = members.filter(member => member.role === 'player').length;

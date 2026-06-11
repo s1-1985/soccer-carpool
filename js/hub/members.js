@@ -534,8 +534,9 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
                 app.Hub.logs = Storage.addLog('members', 'メンバー更新', '「' + name + '」', logs);
             }
         } else {
-            var ids = members.map(function(m) { return parseInt(m.id, 10) || 0; });
-            var newId = ids.length > 0 ? Math.max.apply(null, ids) + 1 : 1;
+            // タイムスタンプIDで採番（parseInt(最大値)+1 方式はFirestoreの英数字IDが
+            // 0扱いになり既存IDと衝突するため廃止）
+            var newId = Date.now();
             members.push({ id: newId, name: name, kana: kana, abbr: abbr, birth: birth, gender: gender, role: role, number: number ? parseInt(number, 10) : null, grade: grade, notes: notes, childrenIds: childrenIds });
             app.Hub.logs = Storage.addLog('members', 'メンバー追加', '「' + name + '」', logs);
         }

@@ -22,6 +22,22 @@ const _auth = firebase.auth();
 // Firestore（SDKが読み込まれている場合のみ）
 const _db = (typeof firebase.firestore === 'function') ? firebase.firestore() : null;
 
+// ローカル検証モード: localhost かつ localStorage に fcojima_use_emulator=1 が
+// セットされている場合のみ Firebase エミュレータへ接続する（本番には一切影響しない）
+try {
+  if ((location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+      && localStorage.getItem('fcojima_use_emulator') === '1') {
+    _auth.useEmulator('http://' + location.hostname + ':9099', { disableWarnings: true });
+    if (_db) _db.useEmulator(location.hostname, 8080);
+    if (typeof firebase.storage === 'function') {
+      firebase.storage().useEmulator(location.hostname, 9199);
+    }
+    console.log('⚠️ Firebaseエミュレータ接続中（ローカル検証モード）');
+  }
+} catch (e) {
+  console.warn('エミュレータ設定をスキップ:', e);
+}
+
 // チームID（固定）
 const TEAM_ID = 'fc-ojima';
 

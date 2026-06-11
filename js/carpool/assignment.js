@@ -220,7 +220,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         // 対象学年の選手
         if (targetGrades.length > 0) {
             filtered = filtered.concat(members.filter(function(m) {
-                return m.role === 'player' && m.grade && targetGrades.includes(m.grade);
+                return m.role === 'player' && m.grade && targetGrades.some(function(g) { return String(g) === String(m.grade); });
             }));
         } else {
             filtered = filtered.concat(members.filter(function(m) { return m.role === 'player'; }));
@@ -804,7 +804,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         if (!text) return;
 
         // 投稿者名（ログインユーザー）
-        var author = (app.Auth && app.Auth.getUserName) ? app.Auth.getUserName() : 'ユーザー';
+        var author = (app.Auth && app.Auth.getDisplayName) ? app.Auth.getDisplayName() : 'ユーザー';
 
         // 履歴配列に追加
         if (!Array.isArray(app.Carpool.appData.comments)) {
@@ -1513,7 +1513,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         if (car.notes) {
             const carInfo = document.createElement('div');
             carInfo.className = 'car-info car-notes-red';
-            carInfo.textContent = UI.escapeHTML(car.notes);
+            carInfo.textContent = car.notes;
             carLayout.appendChild(carInfo);
         }
         
@@ -1866,7 +1866,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             const targetPlayers = members.filter(m =>
                 m.role === 'player' &&
                 m.grade &&
-                targetGrades.includes(m.grade)
+                targetGrades.some(g => String(g) === String(m.grade))
             );
             filteredMembers = [...filteredMembers, ...targetPlayers];
         } else {
@@ -2032,7 +2032,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         var eligiblePlayers = [];
         if (targetGrades.length > 0) {
             eligiblePlayers = members.filter(function(m) {
-                return m.role === 'player' && m.grade && targetGrades.includes(m.grade);
+                return m.role === 'player' && m.grade && targetGrades.some(function(g) { return String(g) === String(m.grade); });
             });
         } else {
             eligiblePlayers = members.filter(function(m) { return m.role === 'player'; });

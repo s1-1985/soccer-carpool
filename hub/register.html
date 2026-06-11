@@ -120,7 +120,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script src="../js/common/firebase-config.js?v=20260223c"></script>
+    <script src="../js/common/firebase-config.js?v=20260611"></script>
 
     <script>
         const regAuth = window.FCOjimaFirebase.auth;
@@ -153,18 +153,6 @@
 
             // 選手リストを読み込む
             loadPlayers();
-
-            // 承認済みユーザーがいない場合は最初の管理者登録であることを表示
-            regDb.collection('teams').doc(TEAM_ID)
-                .collection('users').where('status', '==', 'approved').limit(1).get()
-                .then(function(snap) {
-                    if (snap.empty) {
-                        document.getElementById('register-mode-note').textContent =
-                            '最初の登録者は管理者として自動承認されます';
-                        document.getElementById('register-mode-note').style.color = '#1a7f37';
-                        document.getElementById('register-mode-note').style.fontWeight = 'bold';
-                    }
-                }).catch(function() {});
         });
 
         let allPlayers = [];
@@ -218,7 +206,7 @@
                 if (selectedIds.includes(p.id)) return;
                 const opt = document.createElement('option');
                 opt.value = p.id;
-                opt.textContent = (p.name || '') + (p.grade ? '（' + p.grade + '年）' : '');
+                opt.textContent = (p.name || '') + (p.grade ? '（' + (['年少','年中','年長'].includes(p.grade) ? p.grade : p.grade + '年') + '）' : '');
                 select.appendChild(opt);
             });
 
@@ -280,11 +268,8 @@
             btn.textContent = '送信中...';
 
             try {
-                // 承認済みユーザーが0人なら最初の登録者をadminとして自動承認
-                const approvedSnap = await regDb.collection('teams').doc(TEAM_ID)
-                    .collection('users').where('status', '==', 'approved').limit(1).get();
-                const isFirstUser = approvedSnap.empty;
-
+                // 申請は常に「承認待ちの保護者」として作成する
+                // （初代管理者は Firebase Console から手動設定する運用）
                 await regDb.collection('teams').doc(TEAM_ID)
                     .collection('users').doc(currentUser.uid).set({
                         name,
@@ -292,12 +277,12 @@
                         gender,
                         birth: birth || null,
                         email: currentUser.email || null,
-                        role: isFirstUser ? 'admin' : 'parent',
+                        role: 'parent',
                         childrenIds,
-                        status: isFirstUser ? 'approved' : 'pending',
+                        status: 'pending',
                         registeredAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
-                window.location.href = isFirstUser ? '/hub/index.html' : '/hub/pending.html';
+                window.location.href = '/hub/pending.html';
             } catch(err) {
                 errEl.textContent = '送信に失敗しました: ' + err.message;
                 errEl.style.display = 'block';

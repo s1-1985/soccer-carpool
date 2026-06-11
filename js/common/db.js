@@ -108,7 +108,10 @@ FCOjima.DB = FCOjima.DB || {};
         const batch = db.batch();
         const snapshot = await Collections.notifications().get();
         snapshot.docs.forEach(doc => batch.delete(doc.ref));
-        notifications.forEach(n => {
+        notifications.forEach((n, i) => {
+            // ID未付与の旧データはここで採番（String(undefined)="undefined" の
+            // 同一ドキュメントに全件が上書きされ消失するのを防ぐ）
+            if (!n.id) n.id = Date.now().toString() + '_' + i;
             const data = Object.assign({}, n);
             const id = String(data.id);
             delete data.id;
@@ -176,13 +179,23 @@ FCOjima.DB = FCOjima.DB || {};
     // ========== 全データ一括ロード ==========
 
     DB.loadAllData = async function() {
-        const [members, venues, events, notifications, logs] = await Promise.all([
+        // members/venues/events/notifications は承認済みなら全員読める。
+        // logs だけはマネージャー限定（Firestoreルール）なので、一般保護者では
+        // permission-denied になる。これを Promise.all に含めると失敗が伝播して
+        // 全データがロードできず、保護者の画面が空になる（重大バグ）。
+        // logs は別扱いにして失敗を握りつぶす。
+        const [members, venues, events, notifications] = await Promise.all([
             DB.loadMembers(),
             DB.loadVenues(),
             DB.loadEvents(),
-            DB.loadNotifications(),
-            DB.loadLogs()
+            DB.loadNotifications()
         ]);
+        let logs = [];
+        try {
+            logs = await DB.loadLogs();
+        } catch (e) {
+            console.warn('ログの読み込みをスキップ（権限がない可能性）:', e && e.code ? e.code : e);
+        }
         return { members, venues, events, notifications, logs };
     };
 
