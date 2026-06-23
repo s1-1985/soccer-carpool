@@ -1,7 +1,7 @@
 # 引き継ぎドキュメント (handover)
 
-最終更新: 2026-06-11
-mainの最新コミット: `f154d25` (2026-03-18)「複数画面の不具合修正: 画像出力・横レイアウト・出欠表示・会場地図・バッジ」
+最終更新: 2026-06-23
+mainの最新コミット: `7ae7d71` (2026-06-23)「fix: 実機相当テストで判明した重大バグ修正（Firestoreルール・データロード）」
 本番URL: https://fc-ojimajr-hub.web.app （Firebase Hosting / プロジェクト `fc-ojimajr-hub`）
 
 ---
@@ -47,6 +47,91 @@ FC尾島ジュニア（少年サッカーチーム）の運営支援Webアプリ
 - **2026-03-06〜07**: UI改善・モバイル対応・出欠マトリクス等の大量修正（PR #48〜#59）
 - **2026-03-14〜18**: CORS/Storage設定、割り当て画面の大幅改善・統計バー・画像出力修正（PR #60〜#67）
 - **2026-06-11**: 上記インシデントと復旧。workflow_dispatch追加・引き継ぎ資料整備（PR #70）
+- **2026-06-23**: Fable 5による全体徹底点検。Playwrightテスト68項目（後述）。重大バグ2件含む多数修正（PR #71）
+
+## 2026-06-23 全体点検（PR #71）
+
+Fable 5 (claude-fable-5) によるコードベース全件レビュー + Playwright + Firebase エミュレータを使った
+68項目テストスイート（セキュリティルール/登録フロー/レイアウト/HUBタブ全/管理/型比較/配車フロー/保護者/却下ユーザー/認証）。
+
+### 発見・修正した重大バグ
+
+#### Bug 1: Firestore rules の `get().exists` が常に undefined（**全ユーザー・全デバイスで全データ読み込み失敗**）
+- `isApproved` / `isManager` の内部実装で `get(...).exists` を参照していた
+- `.exists` は `DocumentSnapshot` の**プロパティではなくメソッド（`.exists` は実際にはboolean）**で、
+  Firestore Security Rules の `get()` 戻り値には存在しない。常に `undefined` → 常に `false`
+- 結果: `events` / `venues` / `notifications` / `logs` / `eventData` の全読み取りが全ユーザーで拒否
+  （承認済み保護者もマネージャーも同様）
+- 実デバイスでは localStorage キャッシュで動いているように見えていたため長期間気づかれなかった
+- **修正**: `exists()` 関数（ドキュメントの存在確認専用）と `get().data` を分離
+  ```
+  function userDocExists(teamId) {
+    return exists(/databases/$(database)/documents/teams/$(teamId)/users/$(request.auth.uid));
+  }
+  function userData(teamId) {
+    return get(/databases/$(database)/documents/teams/$(teamId)/users/$(request.auth.uid)).data;
+  }
+  function isApproved(teamId) {
+    return userDocExists(teamId) && userData(teamId).status == 'approved';
+  }
+  ```
+
+#### Bug 2: `loadAllData` で logs を Promise.all に含めていた（**一般保護者の画面が空になる**）
+- `logs` コレクションはマネージャー限定読み取り（Firestoreルール）
+- 一般保護者が `DB.loadAllData()` を呼ぶと logs の読み取りが permission-denied になり、
+  `Promise.all` 全体が reject → members/events/venues/notifications も全滅
+- **修正**: `db.js` の `loadAllData` で logs を別の try/catch に分離
+
+#### Bug 3: `hub/register.html` に初代管理者自己昇格の穴（**セキュリティホール**）
+- 「承認済みユーザーが 0 人なら `role:'admin', status:'approved'` で自己作成可」という
+  bootstrap 条項がフロントエンドに残っていた
+- Firestore rules 側では常に `status:'pending', role:'parent'` しか create を許可していない設定に
+  なっていたが、フロントが不正なデータを送信しようとしていた（rules が弾く前に誤解を生む）
+- **修正**: register.html のブートストラップロジックを完全削除。初代 admin は Firebase Console から手動作成する
+
+### その他の修正（計11ファイル以上）
+
+| ファイル | 修正内容 |
+|---|---|
+| `js/hub/calendar.js` | 学年比較バグ修正（`.includes(m.grade)` → `.some(g => String(g) === String(m.grade))`）、showEventDetails を async 化 |
+| `js/hub/members.js` | 新規メンバーID採番を `Date.now()` に変更（Firestore文字列IDが `parseInt` で0になり ID=1 衝突） |
+| `js/hub/venues.js` | 同上のID採番修正 |
+| `js/hub/admin.js` | XSS修正（メール/子供名のエスケープ）、フィールド名修正（`ev.notes\|\|ev.description`）、admin役割変更のUI制限、学年比較修正 |
+| `js/carpool/attendance.js` | 学年比較バグ修正（2箇所） |
+| `js/carpool/assignment.js` | 学年比較修正（3箇所）、`Auth.getUserName` → `Auth.getDisplayName`（存在しない関数参照でコメント投稿者が常に「ユーザー」になっていた）、notes のダブルエスケープ修正 |
+| `hub/index.html` | `requireApproved()` 後の null ガード追加（却下ユーザーがアクセスするとクラッシュ）、ログアウトボタン追加、役員フィルター追加 |
+| `hub/pending.html` | SyntaxError 修正（`const TEAM_ID` 二重宣言 → インラインスクリプト全体が無効化されボタン動作不全） |
+| `carpool/*.html` | `requireLogin` → `requireApproved`（未承認ユーザーが配車ページにアクセスできた） |
+| `js/common/firebase-config.js` | localhost + localStorage フラグによるエミュレータ接続フック追加 |
+| `firebase.json` | エミュレータ設定ブロック追加 |
+| `.github/workflows/firebase-deploy.yml` | Firestore rules のデプロイステップ追加 |
+| 不要ファイル削除 | 旧単独ページ（`carpool/assignment.html` 他6ファイル + CSS 1ファイル）を `git rm`（約1,500行削除） |
+
+### 初代管理者のセットアップ手順（現在）
+
+Firebase Console → fc-ojimajr-hub → Firestore → `teams/fc-ojima/users` に以下のドキュメントを手動作成:
+```
+ドキュメントID: <ユーザーのFirebase Auth UID>
+フィールド:
+  displayName: "管理者名"
+  email: "admin@example.com"
+  role: "admin"
+  status: "approved"
+  registeredAt: (Timestamp)
+```
+その後、そのユーザーでログインすれば管理者として使える。2人目以降は管理画面から承認・役割変更が可能。
+
+### ローカル開発・テスト環境のセットアップ
+
+```bash
+firebase emulators:start
+# ブラウザで localhost:5000 を開いた後、DevTools コンソールで:
+localStorage.setItem('fcojima_use_emulator', '1')
+location.reload()
+# → Auth / Firestore / Storage がすべてエミュレータへ向く（本番への影響ゼロ）
+```
+
+---
 
 ## 設計メモ・既知の注意点（現コードベース）
 
