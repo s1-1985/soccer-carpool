@@ -13,7 +13,17 @@ FCOjima.DB = FCOjima.DB || {};
 
     DB.loadMembers = async function() {
         const snapshot = await Collections.members().orderBy('role').get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const members = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // 4月1日を過ぎると学年が変わるため、birthから毎回再計算して上書き
+        const Utils = window.FCOjima && FCOjima.Utils;
+        if (Utils && Utils.calculateGrade) {
+            members.forEach(function(m) {
+                if (m.role === 'player' && m.birth) {
+                    m.grade = Utils.calculateGrade(m.birth);
+                }
+            });
+        }
+        return members;
     };
 
     DB.saveMember = async function(member) {
