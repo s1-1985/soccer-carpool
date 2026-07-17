@@ -1,7 +1,7 @@
 # 引き継ぎドキュメント (handover)
 
-最終更新: 2026-06-23
-mainの最新コミット: `7ae7d71` (2026-06-23)「fix: 実機相当テストで判明した重大バグ修正（Firestoreルール・データロード）」
+最終更新: 2026-07-17
+mainの最新コミット: `9156b61` (2026-06-23)「fix: 4月1日以降も選手の学年が変わらないバグを修正 (#73)」
 本番URL: https://fc-ojimajr-hub.web.app （Firebase Hosting / プロジェクト `fc-ojimajr-hub`）
 
 ---
@@ -48,6 +48,35 @@ FC尾島ジュニア（少年サッカーチーム）の運営支援Webアプリ
 - **2026-03-14〜18**: CORS/Storage設定、割り当て画面の大幅改善・統計バー・画像出力修正（PR #60〜#67）
 - **2026-06-11**: 上記インシデントと復旧。workflow_dispatch追加・引き継ぎ資料整備（PR #70）
 - **2026-06-23**: Fable 5による全体徹底点検。Playwrightテスト68項目（後述）。重大バグ2件含む多数修正（PR #71）
+- **2026-07-17**: 選手学年の自動更新バグを修正（PR #73）
+
+## 2026-07-17 選手学年の自動更新バグ修正（PR #73）
+
+### 症状
+生年月日を登録済みの選手でも、4月1日を過ぎると学年が自動で更新されなかった。
+
+### 原因
+`member.grade` はメンバー登録・編集時に `Utils.calculateGrade(birth)` で計算し
+Firestore に保存していたが、その後は保存値をそのまま読むだけで再計算していなかった。
+
+### 修正（`js/common/db.js`）
+`DB.loadMembers()` でFirestoreからデータ取得後、`role === 'player'` かつ `birth` がある
+メンバーの `grade` を毎回 `Utils.calculateGrade(birth)` で再計算して上書きするよう変更。
+Firestoreへの書き戻しはなし（メモリ上のみ更新）。
+
+```javascript
+// DB.loadMembers() 内
+members.forEach(function(m) {
+    if (m.role === 'player' && m.birth) {
+        m.grade = Utils.calculateGrade(m.birth);
+    }
+});
+```
+
+影響範囲: HUBメンバー一覧・配車出欠・割り当て・学年フィルター・卒団自動検出
+キャッシュバスト: 全6HTMLの `db.js?v=20260623` に更新済み
+
+---
 
 ## 2026-06-23 全体点検（PR #71）
 
