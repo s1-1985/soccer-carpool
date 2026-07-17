@@ -6,7 +6,7 @@
     <title>座席割り当て - FC尾島ジュニア</title>
     <link rel="stylesheet" href="../css/common.css?v=20260306">
     <link rel="stylesheet" href="../css/carpool/common.css?v=20260307">
-    <link rel="stylesheet" href="../css/carpool/assignment.css?v=20260318b">
+    <link rel="stylesheet" href="../css/carpool/assignment.css?v=20260717">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -159,6 +159,26 @@
         </div>
     </div>
 
+    <!-- キャンバス型全画面モード（A1紙面で作業するイメージ） -->
+    <div id="canvas-mode">
+        <div class="canvas-viewport" id="canvas-viewport">
+            <div class="canvas-surface" id="canvas-surface"></div>
+            <div class="canvas-title" id="canvas-title"></div>
+            <div class="canvas-controls">
+                <button id="canvas-fit-btn" class="canvas-ctrl-btn" title="全体表示">⊡ 全体</button>
+                <button id="canvas-zoom-in-btn" class="canvas-ctrl-btn" title="拡大">＋</button>
+                <button id="canvas-zoom-out-btn" class="canvas-ctrl-btn" title="縮小">−</button>
+                <button id="canvas-close-btn" class="canvas-ctrl-btn canvas-close-btn" title="閉じる">✕</button>
+            </div>
+            <div class="canvas-hint" id="canvas-hint">配置する座席をタップ</div>
+        </div>
+        <div class="canvas-dock">
+            <div id="canvas-members-dock"></div>
+            <div id="canvas-stats-dock"></div>
+            <div id="canvas-actions-dock"></div>
+        </div>
+    </div>
+
     <!-- グローバルナビゲーション -->
     <div class="global-navigation">
         <!-- 統計バー（割り当てタブ時：ボタン上にsticky表示） -->
@@ -189,7 +209,7 @@
 
     <!-- 配車管理用モジュール -->
     <script src="../js/carpool/overview.js?v=20260306"></script>
-    <script src="../js/carpool/assignment.js?v=20260611"></script>
+    <script src="../js/carpool/assignment.js?v=20260717"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', async function() {

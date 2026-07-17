@@ -992,6 +992,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
      */
     Assignment.initTouchDrag = function(el, dataFn) {
         el.addEventListener('touchstart', function(e) {
+            // キャンバスモード中はタッチドラッグ無効（パン・ピンチ・タップ配置を優先）
+            if (Assignment._canvas && Assignment._canvas.active) return;
             var d = typeof dataFn === 'function' ? dataFn() : dataFn;
             if (!d) return;
             _td = { el: el, ghost: null, data: d, x: e.touches[0].clientX, y: e.touches[0].clientY, on: false };
@@ -1323,13 +1325,16 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         var fsLayoutBtn = document.getElementById('fs-layout-btn');
         if (fsLayoutBtn) fsLayoutBtn.addEventListener('click', Assignment.toggleLayout);
 
-        // 全画面を開くボタン
+        // 全画面を開くボタン（キャンバス型全画面モードを開く）
         var openFsBtn = document.getElementById('open-fs-btn');
-        if (openFsBtn) openFsBtn.addEventListener('click', Assignment.openFullscreen);
+        if (openFsBtn) openFsBtn.addEventListener('click', Assignment.openCanvasMode);
 
-        // 全画面を閉じるボタン
+        // 全画面を閉じるボタン（旧全画面モード用・互換）
         var closeFsBtn = document.getElementById('close-fs-btn');
         if (closeFsBtn) closeFsBtn.addEventListener('click', Assignment.closeFullscreen);
+
+        // キャンバスモードのジェスチャー・ボタン初期化
+        Assignment._initCanvasMode();
     };
 
     /**
@@ -1382,7 +1387,304 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         workArea.classList.remove('is-fullscreen');
         document.body.style.overflow = '';
     };
-    
+
+    /* =============================================
+       キャンバス型全画面モード
+       車両を大きな紙面（キャンバス）上に並べ、
+       ピンチズーム・パンで自由に動き回りながら割り振る
+       ============================================= */
+
+    // キャンバスモードの内部状態
+    Assignment._canvas = {
+        active: false,
+        scale: 1, tx: 0, ty: 0,
+        minScale: 0.2, maxScale: 3,
+        pointers: {},      // pointerId -> {x, y}
+        panStart: null,    // 1本指パンの開始状態
+        pinchStart: null,  // 2本指ピンチの開始状態
+        moved: false,      // パン/ピンチ発生フラグ（タップ誤発火抑止用）
+        selected: null,    // タップ選択中のメンバー名
+        homes: []          // 移動したDOMノードの戻し先
+    };
+
+    /**
+     * キャンバスモードを開く
+     * 実DOMノード（車両・メンバー・統計・ボタン）をキャンバスへ移動して再利用する
+     */
+    Assignment.openCanvasMode = function() {
+        var c = Assignment._canvas;
+        var root = document.getElementById('canvas-mode');
+        if (!root || c.active) return;
+
+        // DOMをキャンバスへ移動（元の位置を記録して閉じるとき戻す）
+        c.homes = [];
+        function moveTo(el, dest) {
+            if (!el || !dest) return;
+            c.homes.push({ el: el, parent: el.parentNode, next: el.nextSibling });
+            dest.appendChild(el);
+        }
+        moveTo(document.getElementById('cars-container'), document.getElementById('canvas-surface'));
+        moveTo(document.getElementById('members-container'), document.getElementById('canvas-members-dock'));
+        moveTo(document.getElementById('assignment-stats-bar-fs'), document.getElementById('canvas-stats-dock'));
+        moveTo(document.querySelector('.assignment-action-buttons'), document.getElementById('canvas-actions-dock'));
+
+        c.active = true;
+        root.classList.add('active');
+        document.body.classList.add('canvas-mode-active');
+        document.body.style.overflow = 'hidden';
+
+        // イベントタイトルを表示
+        var event = Storage.getSelectedEvent();
+        var title = document.getElementById('canvas-title');
+        if (title && event) {
+            title.textContent = (event.title || '') + '　' +
+                (Utils.formatDateForDisplay ? Utils.formatDateForDisplay(event.date) : (event.date || ''));
+        }
+
+        Assignment._layoutCanvasSurface();
+        Assignment._canvasFitAll();
+    };
+
+    /**
+     * キャンバスモードを閉じる（移動したDOMを元へ戻す）
+     */
+    Assignment.closeCanvasMode = function() {
+        var c = Assignment._canvas;
+        var root = document.getElementById('canvas-mode');
+        if (!root || !c.active) return;
+
+        Assignment._clearCanvasSelection();
+
+        // 逆順で元の位置へ戻す
+        for (var i = c.homes.length - 1; i >= 0; i--) {
+            var h = c.homes[i];
+            if (h.parent) h.parent.insertBefore(h.el, h.next);
+        }
+        c.homes = [];
+        c.active = false;
+        c.pointers = {};
+        c.panStart = null;
+        c.pinchStart = null;
+
+        root.classList.remove('active');
+        document.body.classList.remove('canvas-mode-active');
+        document.body.style.overflow = '';
+    };
+
+    /**
+     * キャンバス紙面のサイズを車両数に応じて決める（ほぼ正方形のグリッド）
+     */
+    Assignment._layoutCanvasSurface = function() {
+        var c = Assignment._canvas;
+        if (!c.active) return;
+        var surface = document.getElementById('canvas-surface');
+        if (!surface) return;
+        var carCount = surface.querySelectorAll('.car-layout').length;
+        var cols = Math.max(1, Math.ceil(Math.sqrt(Math.max(carCount, 1))));
+        var CAR_W = 320, GAP = 16, PAD = 52; // padding 24px × 2 + border 2px × 2
+        surface.style.width = (cols * CAR_W + (cols - 1) * GAP + PAD) + 'px';
+    };
+
+    /** transform を適用 */
+    Assignment._applyCanvasTransform = function() {
+        var c = Assignment._canvas;
+        var surface = document.getElementById('canvas-surface');
+        if (!surface) return;
+        surface.style.transform = 'translate(' + c.tx + 'px,' + c.ty + 'px) scale(' + c.scale + ')';
+    };
+
+    /**
+     * 全体表示：全車両が収まる倍率・位置に戻す
+     */
+    Assignment._canvasFitAll = function() {
+        var c = Assignment._canvas;
+        var viewport = document.getElementById('canvas-viewport');
+        var surface = document.getElementById('canvas-surface');
+        if (!viewport || !surface) return;
+        var TOP = 60; // 浮遊コントロールと重ならないためのオフセット
+        var vw = viewport.clientWidth, vh = viewport.clientHeight - TOP;
+        var sw = surface.offsetWidth, sh = surface.offsetHeight;
+        if (!vw || vh <= 0 || !sw || !sh) return;
+        var s = Math.min(vw / sw, vh / sh) * 0.95;
+        s = Math.max(c.minScale, Math.min(c.maxScale, s));
+        c.scale = s;
+        c.tx = (vw - sw * s) / 2;
+        c.ty = TOP + Math.max((vh - sh * s) / 2, 4);
+        Assignment._applyCanvasTransform();
+    };
+
+    /**
+     * 指定スクリーン座標を固定点にしてズーム
+     */
+    Assignment._canvasZoomAt = function(clientX, clientY, factor) {
+        var c = Assignment._canvas;
+        var viewport = document.getElementById('canvas-viewport');
+        if (!viewport) return;
+        var rect = viewport.getBoundingClientRect();
+        var x = clientX - rect.left, y = clientY - rect.top;
+        var ns = Math.max(c.minScale, Math.min(c.maxScale, c.scale * factor));
+        var applied = ns / c.scale;
+        c.tx = x - (x - c.tx) * applied;
+        c.ty = y - (y - c.ty) * applied;
+        c.scale = ns;
+        Assignment._applyCanvasTransform();
+    };
+
+    /**
+     * メンバーをタップ選択 / 選択解除（タップ配置フローの起点）
+     */
+    Assignment.toggleCanvasSelect = function(name, el) {
+        var c = Assignment._canvas;
+        if (c.selected === name) {
+            Assignment._clearCanvasSelection();
+            return;
+        }
+        Assignment._clearCanvasSelection();
+        c.selected = name;
+        if (el) el.classList.add('canvas-selected');
+        document.body.classList.add('canvas-select-active');
+        var hint = document.getElementById('canvas-hint');
+        if (hint) hint.textContent = name + ' を配置する座席をタップ';
+    };
+
+    /** 選択状態を解除 */
+    Assignment._clearCanvasSelection = function() {
+        Assignment._canvas.selected = null;
+        document.querySelectorAll('.member-item.canvas-selected').forEach(function(el) {
+            el.classList.remove('canvas-selected');
+        });
+        document.body.classList.remove('canvas-select-active');
+    };
+
+    /**
+     * キャンバスモードの初期化（ジェスチャー・ボタン）
+     * setupEventListeners から1回だけ呼ばれる
+     */
+    Assignment._initCanvasMode = function() {
+        var viewport = document.getElementById('canvas-viewport');
+        if (!viewport || viewport.dataset.canvasInit === '1') return;
+        viewport.dataset.canvasInit = '1';
+        var c = Assignment._canvas;
+
+        // ── コントロールボタン ──
+        var fitBtn = document.getElementById('canvas-fit-btn');
+        if (fitBtn) fitBtn.addEventListener('click', function() { Assignment._canvasFitAll(); });
+        var zoomInBtn = document.getElementById('canvas-zoom-in-btn');
+        if (zoomInBtn) zoomInBtn.addEventListener('click', function() {
+            var r = viewport.getBoundingClientRect();
+            Assignment._canvasZoomAt(r.left + r.width / 2, r.top + r.height / 2, 1.3);
+        });
+        var zoomOutBtn = document.getElementById('canvas-zoom-out-btn');
+        if (zoomOutBtn) zoomOutBtn.addEventListener('click', function() {
+            var r = viewport.getBoundingClientRect();
+            Assignment._canvasZoomAt(r.left + r.width / 2, r.top + r.height / 2, 1 / 1.3);
+        });
+        var closeBtn = document.getElementById('canvas-close-btn');
+        if (closeBtn) closeBtn.addEventListener('click', Assignment.closeCanvasMode);
+
+        // ── 1本指パン・2本指ピンチ（Pointer Events）──
+        viewport.addEventListener('pointerdown', function(e) {
+            // コントロールボタン上ではジェスチャーを開始しない
+            if (e.target.closest && e.target.closest('.canvas-controls')) return;
+            c.pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+            var ids = Object.keys(c.pointers);
+            if (ids.length === 1) {
+                c.panStart = { x: e.clientX, y: e.clientY, tx: c.tx, ty: c.ty };
+                c.moved = false;
+            } else if (ids.length === 2) {
+                var p1 = c.pointers[ids[0]], p2 = c.pointers[ids[1]];
+                var rect = viewport.getBoundingClientRect();
+                c.panStart = null;
+                c.pinchStart = {
+                    dist: Math.hypot(p2.x - p1.x, p2.y - p1.y) || 1,
+                    cx: (p1.x + p2.x) / 2 - rect.left,
+                    cy: (p1.y + p2.y) / 2 - rect.top,
+                    scale: c.scale, tx: c.tx, ty: c.ty
+                };
+                c.moved = true;
+            }
+        });
+
+        viewport.addEventListener('pointermove', function(e) {
+            if (!c.pointers[e.pointerId]) return;
+            c.pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+            var ids = Object.keys(c.pointers);
+            if (ids.length === 1 && c.panStart) {
+                var dx = e.clientX - c.panStart.x, dy = e.clientY - c.panStart.y;
+                if (!c.moved && Math.hypot(dx, dy) > 6) c.moved = true;
+                if (c.moved) {
+                    c.tx = c.panStart.tx + dx;
+                    c.ty = c.panStart.ty + dy;
+                    Assignment._applyCanvasTransform();
+                }
+            } else if (ids.length === 2 && c.pinchStart) {
+                var q1 = c.pointers[ids[0]], q2 = c.pointers[ids[1]];
+                var rect2 = viewport.getBoundingClientRect();
+                var dist = Math.hypot(q2.x - q1.x, q2.y - q1.y) || 1;
+                var cx = (q1.x + q2.x) / 2 - rect2.left;
+                var cy = (q1.y + q2.y) / 2 - rect2.top;
+                var ns = Math.max(c.minScale, Math.min(c.maxScale, c.pinchStart.scale * dist / c.pinchStart.dist));
+                var applied = ns / c.pinchStart.scale;
+                // ピンチ中心を固定点としてズームし、中心の移動分をパンに反映
+                c.tx = cx - (c.pinchStart.cx - c.pinchStart.tx) * applied;
+                c.ty = cy - (c.pinchStart.cy - c.pinchStart.ty) * applied;
+                c.scale = ns;
+                Assignment._applyCanvasTransform();
+            }
+        });
+
+        function releasePointer(e) {
+            delete c.pointers[e.pointerId];
+            var ids = Object.keys(c.pointers);
+            if (ids.length === 1) {
+                // ピンチ→パンへ移行
+                var p = c.pointers[ids[0]];
+                c.panStart = { x: p.x, y: p.y, tx: c.tx, ty: c.ty };
+                c.pinchStart = null;
+            } else if (ids.length === 0) {
+                c.panStart = null;
+                c.pinchStart = null;
+            }
+        }
+        viewport.addEventListener('pointerup', releasePointer);
+        viewport.addEventListener('pointercancel', releasePointer);
+
+        // パン/ピンチ直後のタップ誤発火（座席モーダル等）を抑止
+        viewport.addEventListener('click', function(e) {
+            if (c.moved) {
+                c.moved = false;
+                e.stopPropagation();
+                e.preventDefault();
+            }
+        }, true);
+
+        // PC：ホイールでカーソル位置ズーム
+        viewport.addEventListener('wheel', function(e) {
+            if (!c.active) return;
+            e.preventDefault();
+            Assignment._canvasZoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.15 : 1 / 1.15);
+        }, { passive: false });
+
+        // ダブルタップ：等倍ズームイン ⇄ 全体表示
+        var lastTap = 0, lastX = 0, lastY = 0;
+        viewport.addEventListener('pointerup', function(e) {
+            if (e.pointerType !== 'touch' || c.moved) { lastTap = 0; return; }
+            var now = Date.now();
+            if (now - lastTap < 300 && Math.hypot(e.clientX - lastX, e.clientY - lastY) < 40) {
+                lastTap = 0;
+                if (c.scale < 1) Assignment._canvasZoomAt(e.clientX, e.clientY, 1 / c.scale);
+                else Assignment._canvasFitAll();
+            } else {
+                lastTap = now; lastX = e.clientX; lastY = e.clientY;
+            }
+        });
+
+        // 画面回転・リサイズ時は全体表示に戻す
+        window.addEventListener('resize', function() {
+            if (c.active) Assignment._canvasFitAll();
+        });
+    };
+
     /**
      * イベント情報を表示
      */
@@ -1465,7 +1767,12 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         
         // ドラッグ＆ドロップのセットアップ
         this.setupDragAndDrop();
-        
+
+        // キャンバスモード中は紙面サイズを再計算（車両数変化に追従）
+        if (Assignment._canvas && Assignment._canvas.active) {
+            Assignment._layoutCanvasSurface();
+        }
+
         console.log('割り当て一覧の更新が完了しました');
     };
     
@@ -1691,6 +1998,17 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         
         // 座席クリック時の処理（PCクリック・モバイルタップ両対応）
         seat.addEventListener('click', () => {
+            // キャンバスモードでメンバー選択中：タップで直接配置
+            var c = Assignment._canvas;
+            if (c && c.active && c.selected) {
+                var name = c.selected;
+                Assignment._clearCanvasSelection();
+                delete seat.dataset.isExtraPassenger;
+                Assignment.setSeatOccupant(seat, name);
+                Assignment.saveAssignments();
+                Assignment.updateMembersList();
+                return;
+            }
             if (seat.dataset.isExtraPassenger === 'true') {
                 Assignment.openExtraPassengerModal(seat);
             } else {
@@ -2010,6 +2328,18 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         });
         
         console.log('メンバーリストの更新が完了しました');
+
+        // キャンバスモードの選択状態を復元（再描画で選択ハイライトが消えるため）
+        if (Assignment._canvas && Assignment._canvas.selected) {
+            var selName = Assignment._canvas.selected;
+            var selEl = Array.prototype.find.call(
+                membersContainer.querySelectorAll('.member-item'),
+                function(el) { return el.dataset.name === selName; }
+            );
+            if (selEl) selEl.classList.add('canvas-selected');
+            else Assignment._clearCanvasSelection();
+        }
+
         this.updateStatsBar();
     };
 
@@ -2154,6 +2484,13 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         nameLabel.textContent = (member.abbr != null && member.abbr !== '') ? member.abbr : member.name;
         memberItem.appendChild(nameLabel);
 
+        // キャンバスモード：タップで選択（→座席タップで配置）
+        memberItem.addEventListener('click', function() {
+            if (Assignment._canvas && Assignment._canvas.active) {
+                Assignment.toggleCanvasSelect(member.name, memberItem);
+            }
+        });
+
         // HTML5ドラッグ（PC）
         memberItem.draggable = true;
         memberItem.addEventListener('dragstart', Assignment.handleDragStart.bind(Assignment));
@@ -2172,6 +2509,11 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
      * @param {DragEvent} e - ドラッグイベント
      */
     Assignment.handleDragStart = function(e) {
+        // キャンバスモード中はHTML5ドラッグ無効（パン操作と衝突するため）
+        if (Assignment._canvas && Assignment._canvas.active) {
+            e.preventDefault();
+            return;
+        }
         var el = e.currentTarget;
         // 要素がメンバーアイテムの場合
         if (el.classList.contains('member-item')) {
