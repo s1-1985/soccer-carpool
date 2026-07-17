@@ -992,8 +992,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
      */
     Assignment.initTouchDrag = function(el, dataFn) {
         el.addEventListener('touchstart', function(e) {
-            // キャンバスモード中はタッチドラッグ無効（パン・ピンチ・タップ配置を優先）
-            if (Assignment._canvas && Assignment._canvas.active) return;
+            // キャンバスモード中：座席からのドラッグはパン操作と衝突するため無効。
+            // メンバー帯（下部ドック＝パン領域外）からのドラッグは許可
+            if (Assignment._canvas && Assignment._canvas.active && !el.classList.contains('member-item')) return;
             var d = typeof dataFn === 'function' ? dataFn() : dataFn;
             if (!d) return;
             _td = { el: el, ghost: null, data: d, x: e.touches[0].clientX, y: e.touches[0].clientY, on: false };
@@ -1567,20 +1568,34 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         var c = Assignment._canvas;
 
         // ── コントロールボタン ──
-        var fitBtn = document.getElementById('canvas-fit-btn');
-        if (fitBtn) fitBtn.addEventListener('click', function() { Assignment._canvasFitAll(); });
-        var zoomInBtn = document.getElementById('canvas-zoom-in-btn');
-        if (zoomInBtn) zoomInBtn.addEventListener('click', function() {
+        // touch-action:none のviewport内ではタッチ後にブラウザがclickを合成しない
+        // ことがあるため、タッチは pointerup で直接発火し、click（PC/キーボード）は
+        // 二重発火ガード付きで併用する
+        function bindTap(btn, fn) {
+            if (!btn) return;
+            var swallowUntil = 0;
+            btn.addEventListener('pointerup', function(e) {
+                if (e.pointerType === 'mouse') return; // PCはネイティブclickに任せる
+                e.stopPropagation();
+                swallowUntil = Date.now() + 600;
+                fn();
+            });
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (Date.now() < swallowUntil) return; // pointerupで処理済み
+                fn();
+            });
+        }
+        bindTap(document.getElementById('canvas-fit-btn'), function() { Assignment._canvasFitAll(); });
+        bindTap(document.getElementById('canvas-zoom-in-btn'), function() {
             var r = viewport.getBoundingClientRect();
             Assignment._canvasZoomAt(r.left + r.width / 2, r.top + r.height / 2, 1.3);
         });
-        var zoomOutBtn = document.getElementById('canvas-zoom-out-btn');
-        if (zoomOutBtn) zoomOutBtn.addEventListener('click', function() {
+        bindTap(document.getElementById('canvas-zoom-out-btn'), function() {
             var r = viewport.getBoundingClientRect();
             Assignment._canvasZoomAt(r.left + r.width / 2, r.top + r.height / 2, 1 / 1.3);
         });
-        var closeBtn = document.getElementById('canvas-close-btn');
-        if (closeBtn) closeBtn.addEventListener('click', Assignment.closeCanvasMode);
+        bindTap(document.getElementById('canvas-close-btn'), function() { Assignment.closeCanvasMode(); });
 
         // ── 1本指パン・2本指ピンチ（Pointer Events）──
         viewport.addEventListener('pointerdown', function(e) {
@@ -1644,15 +1659,41 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             } else if (ids.length === 0) {
                 c.panStart = null;
                 c.pinchStart = null;
+                // タッチではパン後にclickが発火しない場合があるため、
+                // フラグを短時間で必ずリセットする（残留すると以降のボタンが効かなくなる）
+                if (c.moved) {
+                    setTimeout(function() { c.moved = false; }, 350);
+                }
             }
         }
         viewport.addEventListener('pointerup', releasePointer);
         viewport.addEventListener('pointercancel', releasePointer);
 
-        // パン/ピンチ直後のタップ誤発火（座席モーダル等）を抑止
+        // ── タッチのタップを pointerup から自前で発火 ──
+        // touch-action:none のviewport内ではタッチ後にブラウザがclickを
+        // 合成しないことがある（実機で座席タップ・ボタンが効かなくなる原因）。
+        // タップ判定（移動なし）なら対象要素の click() を直接呼ぶ。
+        var passingSyntheticTap = false;
+        var swallowClicksUntil = 0;
+        viewport.addEventListener('pointerup', function(e) {
+            if (e.pointerType === 'mouse') return;     // PCはネイティブclickでOK
+            if (c.moved) return;                       // パン/ピンチはタップではない
+            if (!e.target.closest) return;
+            if (e.target.closest('.canvas-controls')) return; // ボタンは専用ハンドラ
+            var target = e.target.closest('.seat-clear-btn, .seat-count-change-btn, .seat');
+            if (!target) return;
+            passingSyntheticTap = true;
+            try { target.click(); } finally { passingSyntheticTap = false; }
+            swallowClicksUntil = Date.now() + 600;     // ブラウザ由来の遅延clickを吸収
+        });
+
+        // クリック抑止（キャプチャ段階）:
+        // 1) 上記で処理済みタップの重複click  2) パン/ピンチ直後の誤発火click
         viewport.addEventListener('click', function(e) {
-            if (c.moved) {
-                c.moved = false;
+            if (passingSyntheticTap) return;           // 自前発火分は通す
+            if (e.target.closest && e.target.closest('.canvas-controls')) return; // ボタンは自前ガード持ち
+            if (Date.now() < swallowClicksUntil || c.moved) {
+                c.moved = false;                       // 誤発火clickを1回吸収したらフラグ消費
                 e.stopPropagation();
                 e.preventDefault();
             }
@@ -2509,12 +2550,13 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
      * @param {DragEvent} e - ドラッグイベント
      */
     Assignment.handleDragStart = function(e) {
-        // キャンバスモード中はHTML5ドラッグ無効（パン操作と衝突するため）
-        if (Assignment._canvas && Assignment._canvas.active) {
+        var el = e.currentTarget;
+        // キャンバスモード中：座席からのドラッグのみ無効（パン操作と衝突するため）。
+        // メンバー帯からのドラッグは許可
+        if (Assignment._canvas && Assignment._canvas.active && !el.classList.contains('member-item')) {
             e.preventDefault();
             return;
         }
-        var el = e.currentTarget;
         // 要素がメンバーアイテムの場合
         if (el.classList.contains('member-item')) {
             e.dataTransfer.setData('text/plain', el.dataset.name);
