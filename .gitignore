@@ -1,6 +1,8 @@
 # Firebase
 .firebase/
 firebase-debug.log
+firestore-debug.log
+ui-debug.log
 .firebaserc.local
 
 # Node (Firebase CLIを使う場合)
