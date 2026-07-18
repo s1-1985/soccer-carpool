@@ -115,60 +115,109 @@
             white-space: nowrap;
             font-size: 11px;
         }
-        /* 列ヘッダー各行のスティッキー top */
-        .attendance-matrix .mx-date  { position: sticky; top: 0;    z-index: 3; height: 22px; background: #e8f0ff; }
-        .attendance-matrix .mx-dow   { position: sticky; top: 22px; z-index: 3; height: 18px; background: #e8f0ff; }
-        .attendance-matrix .mx-title { position: sticky; top: 40px; z-index: 3; height: 34px; background: #dde8ff; max-width: 52px; overflow: hidden; text-overflow: ellipsis; }
-        .attendance-matrix .mx-count { position: sticky; top: 74px; z-index: 3; height: 22px; background: #dde8ff; font-weight: bold; }
-        /* 共通ヘッダースタイル */
-        .attendance-matrix .mx-h {
-            text-align: center;
-            padding: 2px 4px;
-            border: 1px solid #c0cfe8;
+        /* ── ツールバー（過去表示トグル等） ── */
+        .mx-toolbar {
+            display: flex; align-items: center; gap: 8px;
+            margin-bottom: 8px; flex-wrap: wrap;
         }
+        .mx-toggle-btn {
+            background: #f0f4f8; border: 1px solid #ccd5e0; color: #444;
+            border-radius: 16px; padding: 5px 14px; font-size: 12px; cursor: pointer;
+            white-space: nowrap; -webkit-tap-highlight-color: transparent;
+        }
+        .mx-toggle-btn.is-active { background: #E8A200; border-color: #E8A200; color: #1C1600; font-weight: bold; }
+        .mx-legend { font-size: 11px; color: #888; display: flex; gap: 8px; }
+        .mx-legend b.p { color: #27ae60; }
+        .mx-legend b.u { color: #e0a020; }
+        .mx-legend b.a { color: #e74c3c; }
+
+        /* ── 単一行ヘッダー（イベント列） ── */
+        .attendance-matrix .mx-evt {
+            position: sticky; top: 0; z-index: 3;
+            background: #eef3fb;
+            border: 1px solid #c0cfe8;
+            padding: 4px 4px 5px;
+            cursor: pointer;
+            vertical-align: bottom;
+            min-width: 54px; max-width: 66px;
+            transition: background 0.12s;
+        }
+        .attendance-matrix .mx-evt:hover { background: #dbe6f7; }
+        .attendance-matrix .mx-evt:active { background: #cdddf3; }
+        .attendance-matrix .mx-evt .e-date { font-size: 13px; font-weight: bold; color: #1C1600; line-height: 1.1; }
+        .attendance-matrix .mx-evt .e-dow  { font-size: 10px; line-height: 1.3; }
+        .attendance-matrix .mx-evt .e-title {
+            font-size: 11px; color: #2b4a7a; margin: 2px 0 3px;
+            max-width: 62px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            text-decoration: underline; text-decoration-color: #b8c8e0;
+        }
+        .attendance-matrix .mx-evt .e-brk {
+            display: flex; justify-content: center; gap: 3px;
+            font-size: 10px; font-weight: bold; line-height: 1;
+        }
+        .attendance-matrix .mx-evt .e-brk span { padding: 1px 0; }
+        .attendance-matrix .mx-evt .b-p { color: #27ae60; }
+        .attendance-matrix .mx-evt .b-u { color: #e0a020; }
+        .attendance-matrix .mx-evt .b-a { color: #e74c3c; }
+        .attendance-matrix .mx-evt .z0 { color: #cfd6de; }
+        /* 直近イベント列の強調 */
+        .attendance-matrix .mx-evt.mx-upcoming {
+            background: #fff5e0;
+            border-top: 3px solid #E8A200;
+            box-shadow: inset 0 0 0 1px #f0d38a;
+        }
+        .attendance-matrix .mx-evt.mx-upcoming:hover { background: #ffeecb; }
+        /* 週末列（土日）ヘッダーの淡い色分け */
+        .attendance-matrix .mx-evt.mx-sat .e-dow { color: #2980b9; }
+        .attendance-matrix .mx-evt.mx-sun .e-dow { color: #e74c3c; }
+
         /* 左固定列 */
         .attendance-matrix .mx-col-grade {
             position: sticky; left: 0; z-index: 2;
-            width: 28px; min-width: 28px;
-            background: #f9f9f9;
+            width: 30px; min-width: 30px;
+            background: #f7f7f7;
             border: 1px solid #ddd;
             text-align: center;
-            padding: 2px 2px;
+            padding: 3px 2px;
             font-size: 10px;
         }
         .attendance-matrix .mx-col-name {
-            position: sticky; left: 28px; z-index: 2;
-            min-width: 48px; max-width: 64px;
-            background: #f9f9f9;
+            position: sticky; left: 30px; z-index: 2;
+            min-width: 52px; max-width: 68px;
+            background: #f7f7f7;
             border: 1px solid #ddd;
-            padding: 2px 4px;
-            font-size: 10px;
+            padding: 3px 5px;
+            font-size: 11px;
         }
-        /* 角（左上）の交差セル — 縦横両方向にスティッキー */
+        /* 角（左上）の交差セル（学年／氏名見出し）— 単一行なので rowspan なし */
         .attendance-matrix .mx-corner {
-            position: sticky !important;
-            top: 0 !important;
-            z-index: 4 !important;
-            background: #d8e8ff !important;
+            position: sticky; top: 0; z-index: 4;
+            background: #d8e8ff;
             text-align: center;
             font-weight: bold;
-            padding: 3px 2px;
+            padding: 4px 2px;
             border: 1px solid #c0cfe8;
             vertical-align: middle;
-            font-size: 10px;
+            font-size: 11px;
         }
+        .attendance-matrix .mx-corner-grade { left: 0; width: 30px; min-width: 30px; }
+        .attendance-matrix .mx-corner-name  { left: 30px; }
         /* データセル */
         .attendance-matrix .mx-cell {
             text-align: center;
-            padding: 2px 4px;
+            padding: 3px 4px;
             border: 1px solid #eee;
-            min-width: 32px;
+            min-width: 40px;
+            font-size: 13px;
         }
+        /* 直近イベント列のデータセルを薄く強調 */
+        .attendance-matrix td.mx-cell.mx-col-hi { background: #fffaf0; }
         .attendance-matrix .mx-present { color: #27ae60; font-weight: bold; }
         .attendance-matrix .mx-absent  { color: #e74c3c; }
-        .attendance-matrix .mx-unknown { color: #aaa; }
-        .attendance-matrix .mx-na      { color: #ccc; }
-        .attendance-matrix .mx-title-btn:hover { background: #ccd8f0; text-decoration: underline; }
+        .attendance-matrix .mx-unknown { color: #bbb; }
+        .attendance-matrix .mx-na      { color: #e0e0e0; }
+        /* 学年グループの区切り（上罫線を濃く） */
+        .attendance-matrix tr.mx-grade-top td { border-top: 2px solid #c9c9c9; }
         /* ファイルリンク */
         .event-file-link {
             display: block;
@@ -672,7 +721,7 @@
     <script src="../js/hub/notifications.js?v=20260224a"></script>
     <script src="../js/hub/venues.js?v=20260611"></script>
     <script src="../js/hub/myevents.js?v=20260718"></script>
-    <script src="../js/hub/admin.js?v=20260718b"></script>
+    <script src="../js/hub/admin.js?v=20260718c"></script>
 
     <script>
         // タブの切り替えに応じてフローティングボタンの表示を制御
