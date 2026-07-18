@@ -266,9 +266,19 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         try {
             var Utils = FCOjima.Utils;
 
+            // 今日（ISO文字列）
+            var now = new Date();
+            var todayISO = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2) + '-' + ('0' + now.getDate()).slice(-2);
+
             // 1. イベント取得（ナイター除外・日付昇順）
             var events = await FCOjima.DB.loadEvents();
-            var targetEvents = events.filter(function(ev) { return ev.type !== 'nighter'; });
+            var allNonNighter = events.filter(function(ev) { return ev.type !== 'nighter'; });
+            // 過去表示トグル（デフォルト: 今後のみ）
+            var showPast = !!Admin._matrixShowPast;
+            var targetEvents = showPast
+                ? allNonNighter
+                : allNonNighter.filter(function(ev) { return ev.date && ev.date >= todayISO; });
+            var pastCount = allNonNighter.length - allNonNighter.filter(function(ev) { return ev.date && ev.date >= todayISO; }).length;
 
             // 2. 選手のみ・学年→名前順にソート
             var members = (FCOjima.Hub.members || [])
@@ -280,8 +290,33 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                     return (a.name || '').localeCompare(b.name || '', 'ja');
                 });
 
+            // ─── ツールバー（過去表示トグル・凡例） ───
+            function buildToolbar() {
+                var bar = document.createElement('div');
+                bar.className = 'mx-toolbar';
+                var toggle = document.createElement('button');
+                toggle.type = 'button';
+                toggle.className = 'mx-toggle-btn' + (showPast ? ' is-active' : '');
+                toggle.textContent = showPast ? '過去も表示中' : '今後のみ表示' + (pastCount > 0 ? '（過去' + pastCount + '件）' : '');
+                toggle.addEventListener('click', function() {
+                    Admin._matrixShowPast = !showPast;
+                    Admin.loadAttendanceMatrix();
+                });
+                var legend = document.createElement('div');
+                legend.className = 'mx-legend';
+                legend.innerHTML = '人数: <b class="p">参加</b>/<b class="u">未回答</b>/<b class="a">欠席</b>';
+                bar.appendChild(toggle);
+                bar.appendChild(legend);
+                return bar;
+            }
+
             if (targetEvents.length === 0) {
-                el.innerHTML = '<p style="color:#999;padding:8px;">イベントがありません。</p>';
+                el.innerHTML = '';
+                el.appendChild(buildToolbar());
+                var empty = document.createElement('p');
+                empty.style.cssText = 'color:#999;padding:16px 8px;';
+                empty.textContent = showPast ? 'イベントがありません。' : '今後のイベントはありません。「過去も表示」で消化済みのイベントを確認できます。';
+                el.appendChild(empty);
                 return;
             }
 
@@ -290,21 +325,43 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 targetEvents.map(function(ev) { return FCOjima.DB.loadEventData(ev.id); })
             );
 
-            // 4. マップ構築: eventId → { name/memberId → status }
-            // ※ 出欠データは name で保存されているため name キー優先
+            // 対象選手かどうか判定
+            function isTargetFor(member, ev) {
+                var evTargets = (ev.target && ev.target.length > 0) ? ev.target : null;
+                var extraPlayers = ev.extraPlayers || [];
+                return !evTargets
+                    || (member.grade && evTargets.some(function(g) { return String(g) === String(member.grade); }))
+                    || extraPlayers.includes(member.name);
+            }
+
+            // 4. マップ構築 + 内訳集計（参加/未回答/欠席）
             var statusMap = {};
-            var presentCount = [];
+            var breakdown = []; // {present, unknown, absent, target}
             targetEvents.forEach(function(ev, i) {
                 statusMap[ev.id] = {};
                 var list = (dataArr[i] && dataArr[i].attendance) ? dataArr[i].attendance : [];
-                var cnt = 0;
                 list.forEach(function(item) {
                     if (item.name) statusMap[ev.id][item.name] = item.status;
                     if (item.memberId) statusMap[ev.id][String(item.memberId)] = item.status;
-                    if (item.status === 'present') cnt++;
                 });
-                presentCount.push(cnt);
+                // 対象選手を分母に present/absent/unknown を数える
+                var present = 0, absent = 0, targetN = 0;
+                var evMap = statusMap[ev.id];
+                members.forEach(function(m) {
+                    if (!isTargetFor(m, ev)) return;
+                    targetN++;
+                    var st = evMap[m.name] || evMap[String(m.id)] || 'unknown';
+                    if (st === 'present') present++;
+                    else if (st === 'absent') absent++;
+                });
+                breakdown.push({ present: present, absent: absent, unknown: targetN - present - absent, target: targetN });
             });
+
+            // 直近イベント（今日以降で最初）のインデックス
+            var upcomingIdx = -1;
+            for (var ui = 0; ui < targetEvents.length; ui++) {
+                if (targetEvents[ui].date && targetEvents[ui].date >= todayISO) { upcomingIdx = ui; break; }
+            }
 
             // 5. テーブル生成
             var table = document.createElement('table');
@@ -312,69 +369,61 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             var thead = document.createElement('thead');
             var tbody = document.createElement('tbody');
 
-            // ─── 列ヘッダー行1: 日付 ───
-            var tr1 = document.createElement('tr');
-            // 左固定ヘッダー（rowspan=4）
+            // ─── 単一ヘッダー行（列＝イベント。学年/氏名は左上コーナー） ───
+            var trH = document.createElement('tr');
             var thGrade = document.createElement('th');
-            thGrade.className = 'mx-col mx-col-grade mx-corner';
-            thGrade.rowSpan = 4;
+            thGrade.className = 'mx-corner mx-corner-grade';
             thGrade.textContent = '学年';
             var thName = document.createElement('th');
-            thName.className = 'mx-col mx-col-name mx-corner';
-            thName.rowSpan = 4;
+            thName.className = 'mx-corner mx-corner-name';
             thName.textContent = '氏名';
-            tr1.appendChild(thGrade);
-            tr1.appendChild(thName);
-            targetEvents.forEach(function(ev) {
-                var th = document.createElement('th');
-                th.className = 'mx-h mx-date';
-                var d = new Date(ev.date + 'T00:00:00');
-                th.textContent = (d.getMonth() + 1) + '/' + d.getDate();
-                tr1.appendChild(th);
-            });
-            thead.appendChild(tr1);
+            trH.appendChild(thGrade);
+            trH.appendChild(thName);
 
-            // ─── 列ヘッダー行2: 曜日 ───
-            var tr2 = document.createElement('tr');
-            targetEvents.forEach(function(ev) {
-                var th = document.createElement('th');
-                th.className = 'mx-h mx-dow';
-                var d = new Date(ev.date + 'T00:00:00');
-                var dow = d.getDay();
-                th.textContent = DOW_LABELS[dow];
-                if (dow === 0) th.style.color = '#e74c3c';
-                else if (dow === 6) th.style.color = '#2980b9';
-                tr2.appendChild(th);
-            });
-            thead.appendChild(tr2);
-
-            // ─── 列ヘッダー行3: イベント名（タップでモーダル） ───
-            var tr3 = document.createElement('tr');
             targetEvents.forEach(function(ev, i) {
                 var th = document.createElement('th');
-                th.className = 'mx-h mx-title mx-title-btn';
-                th.textContent = ev.title || Utils.getEventTypeLabel(ev.type);
-                th.title = ev.title || '';
-                th.style.cursor = 'pointer';
+                th.className = 'mx-evt';
+                var d = new Date(ev.date + 'T00:00:00');
+                var dow = d.getDay();
+                if (i === upcomingIdx) th.classList.add('mx-upcoming');
+                if (dow === 0) th.classList.add('mx-sun');
+                else if (dow === 6) th.classList.add('mx-sat');
+
+                var dateDiv = document.createElement('div');
+                dateDiv.className = 'e-date';
+                dateDiv.textContent = (d.getMonth() + 1) + '/' + d.getDate();
+                var dowDiv = document.createElement('div');
+                dowDiv.className = 'e-dow';
+                dowDiv.textContent = DOW_LABELS[dow];
+                if (dow === 0) dowDiv.style.color = '#e74c3c';
+                else if (dow === 6) dowDiv.style.color = '#2980b9';
+                var titleDiv = document.createElement('div');
+                titleDiv.className = 'e-title';
+                titleDiv.textContent = ev.title || Utils.getEventTypeLabel(ev.type);
+
+                var brk = breakdown[i];
+                var brkDiv = document.createElement('div');
+                brkDiv.className = 'e-brk';
+                brkDiv.innerHTML =
+                    '<span class="b-p' + (brk.present ? '' : ' z0') + '">' + brk.present + '</span>' +
+                    '<span class="b-u' + (brk.unknown ? '' : ' z0') + '">' + brk.unknown + '</span>' +
+                    '<span class="b-a' + (brk.absent ? '' : ' z0') + '">' + brk.absent + '</span>';
+
+                th.appendChild(dateDiv);
+                th.appendChild(dowDiv);
+                th.appendChild(titleDiv);
+                th.appendChild(brkDiv);
+                th.title = (ev.title || '') + '　参加' + brk.present + '/未回答' + brk.unknown + '/欠席' + brk.absent + '（対象' + brk.target + '人）';
+
+                // ヘッダーのどこをタップしても概要モーダル
                 (function(ev, evData) {
                     th.addEventListener('click', function() {
                         Admin.openEventDetailModal(ev, evData, false);
                     });
                 })(ev, dataArr[i]);
-                tr3.appendChild(th);
+                trH.appendChild(th);
             });
-            thead.appendChild(tr3);
-
-            // ─── 列ヘッダー行4: 参加人数 ───
-            var tr4 = document.createElement('tr');
-            targetEvents.forEach(function(ev, i) {
-                var th = document.createElement('th');
-                th.className = 'mx-h mx-count';
-                th.textContent = presentCount[i] + '人';
-                tr4.appendChild(th);
-            });
-            thead.appendChild(tr4);
-
+            thead.appendChild(trH);
             table.appendChild(thead);
 
             // ─── データ行: 選手1人1行 ───
@@ -384,8 +433,15 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 'unknown': { text: '未', cls: 'mx-unknown' },
                 'na':      { text: '－', cls: 'mx-na'      }
             };
+            var prevGrade = null;
             members.forEach(function(member) {
                 var tr = document.createElement('tr');
+                // 学年グループの境目に区切り線
+                if (prevGrade !== null && String(member.grade) !== String(prevGrade)) {
+                    tr.className = 'mx-grade-top';
+                }
+                prevGrade = member.grade;
+
                 var tdGrade = document.createElement('td');
                 tdGrade.className = 'mx-col mx-col-grade';
                 tdGrade.textContent = Utils.getGradeLabel(member.grade);
@@ -395,17 +451,12 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 tr.appendChild(tdGrade);
                 tr.appendChild(tdName);
 
-                targetEvents.forEach(function(ev) {
+                targetEvents.forEach(function(ev, ci) {
                     var td = document.createElement('td');
                     td.className = 'mx-cell';
+                    if (ci === upcomingIdx) td.classList.add('mx-col-hi');
 
-                    // 対象学年チェック
-                    var evTargets = (ev.target && ev.target.length > 0) ? ev.target : null;
-                    var extraPlayers = ev.extraPlayers || [];
-                    var isTarget = !evTargets
-                        || (member.grade && evTargets.some(function(g) { return String(g) === String(member.grade); }))
-                        || extraPlayers.includes(member.name);
-
+                    var isTarget = isTargetFor(member, ev);
                     var status;
                     if (!isTarget) {
                         status = 'na';
@@ -446,7 +497,20 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             wrap.className = 'matrix-wrap';
             wrap.appendChild(table);
             el.innerHTML = '';
+            el.appendChild(buildToolbar());
             el.appendChild(wrap);
+
+            // 直近イベント列が見えるよう横スクロール位置を調整
+            if (upcomingIdx >= 0) {
+                requestAnimationFrame(function() {
+                    var upTh = wrap.querySelector('.mx-evt.mx-upcoming');
+                    if (upTh) {
+                        var leftCols = 30 + (thName.offsetWidth || 60);
+                        var target = upTh.offsetLeft - leftCols - 8;
+                        if (target > 0) wrap.scrollLeft = target;
+                    }
+                });
+            }
 
         } catch(e) {
             el.innerHTML = '<p style="color:#c00;">読み込みエラー: ' + e.message + '</p>';
@@ -580,6 +644,12 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             FCOjima.Hub.notifications = FCOjima.Hub.notifications || [];
             FCOjima.Hub.notifications.unshift(notice);
             Storage.saveNotifications(FCOjima.Hub.notifications);
+
+            // 連絡事項タブを即時再描画（初期化時に一度描画されたきりなので、
+            // これがないと移動した本人の画面ではリロードするまで通知が出ない）
+            if (FCOjima.Hub.Notifications && FCOjima.Hub.Notifications.renderNotifications) {
+                FCOjima.Hub.Notifications.renderNotifications();
+            }
 
             // 操作ログ
             FCOjima.Hub.logs = Storage.addLog('attendance', '参加イベント変更',
