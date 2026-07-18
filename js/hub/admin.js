@@ -581,6 +581,12 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             FCOjima.Hub.notifications.unshift(notice);
             Storage.saveNotifications(FCOjima.Hub.notifications);
 
+            // 連絡事項タブを即時再描画（初期化時に一度描画されたきりなので、
+            // これがないと移動した本人の画面ではリロードするまで通知が出ない）
+            if (FCOjima.Hub.Notifications && FCOjima.Hub.Notifications.renderNotifications) {
+                FCOjima.Hub.Notifications.renderNotifications();
+            }
+
             // 操作ログ
             FCOjima.Hub.logs = Storage.addLog('attendance', '参加イベント変更',
                 member.name + ': ' + (fromEv.title || '') + ' → ' + (toEv.title || ''), FCOjima.Hub.logs);
