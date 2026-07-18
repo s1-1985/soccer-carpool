@@ -50,6 +50,36 @@ FC尾島ジュニア（少年サッカーチーム）の運営支援Webアプリ
 - **2026-06-23**: Fable 5による全体徹底点検。Playwrightテスト68項目（後述）。重大バグ2件含む多数修正（PR #71）
 - **2026-07-17**: 選手学年の自動更新バグを修正（PR #73）
 
+## 2026-07-18 参加イベント移動・変更通知・「参加予定」タブ（新機能）
+
+### 概要
+同じ日に学年別イベントが複数ある場合、人数の少ないイベントへ他学年の選手を
+補充移動させる運用を支援する機能群。
+
+### 機能（`hub/index.html` / `js/hub/admin.js` / `js/hub/myevents.js`(新規)）
+1. **出欠マトリクスからの参加イベント移動**（マネージャーのみ＝管理タブ内なので自然にゲート）
+   - 同日に他イベントがあるセル（◯/✖/未）をタップ → `#matrix-move-modal` に同日他イベントをリスト表示
+   - 選択+確認で移動実行: 移動先出欠=present、対象学年外なら **extraPlayers（既存の学年外追加選手機構）に追加**、
+     移動元出欠=absent（備考「→○○へ移動」。既存ロジックで配車対象から自動除外）
+   - `Admin.movePlayerToEvent` 参照。イベント保存は `Storage.saveEvents(Admin._matrixEvents)`
+2. **変更通知**: 連絡事項コレクションに `type:'move'` の構造化通知を自動投稿
+   （text/date/user は通常の連絡事項として表示互換。ts/memberId/from/toEventId等の構造化フィールド付き）
+3. **保護者向けダイアログ**: HUBを開いたとき、自分の子（childrenIds）に関する未読move通知が
+   あれば `#move-notice-modal` を表示。既読は端末ごと localStorage（`fcojima_move_ack_<uid>`）
+4. **「参加予定」タブ**（`FCOjima.Hub.MyEvents` / `js/hub/myevents.js`）
+   - childrenIds のあるユーザーのみタブ表示。子供（兄弟含む）が参加対象の今後のイベントをリスト化
+   - 参加判定 = 対象学年 or extraPlayers、かつ出欠がabsentでない
+   - 前回閲覧時とのスナップショット差分（localStorage `fcojima_myevents_snap_<uid>`）で
+     変化をバナー＋🔔ハイライト表示、タブに赤丸バッジ（`.tab-badge`）。タブを開くと既読化
+
+### 検証
+エミュレータ＋Playwrightで22項目（移動実行→Firestore反映・extraPlayers追加・マトリクス再描画・
+保護者ダイアログ表示/既読・参加予定タブの移動反映・バッジ消灯・連絡事項表示）全パス。
+
+キャッシュバスト: admin.js / myevents.js → `?v=20260718`
+
+---
+
 ## 2026-07-17 割り当て画面：キャンバス型全画面モード追加
 
 ### 背景

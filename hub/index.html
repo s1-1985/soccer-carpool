@@ -29,6 +29,73 @@
             z-index: 100;
         }
 
+        /* ── タブ未読バッジ（参加予定） ── */
+        .tab .tablinks { position: relative; }
+        .tab-badge {
+            display: none;
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #dc3545;
+            pointer-events: none;
+        }
+        .tab-badge.on { display: block; }
+
+        /* ── 参加予定タブ ── */
+        .me-changes {
+            background: #fff3cd;
+            border: 1px solid #E8A200;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            font-size: 13px;
+        }
+        .me-changes ul { margin: 6px 0 0 18px; padding: 0; }
+        .me-changes li { margin-bottom: 3px; }
+        .me-card {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-left: 4px solid #E8A200;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+        }
+        .me-card.me-changed {
+            border-color: #dc3545;
+            border-left-color: #dc3545;
+            background: #fff8f8;
+        }
+        .me-date { font-weight: bold; font-size: 14px; color: #1C1600; }
+        .me-title { font-size: 15px; font-weight: bold; margin: 2px 0; }
+        .me-meta { font-size: 12px; color: #777; }
+        .me-kids { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+        .me-kid {
+            font-size: 12px;
+            background: #f4f4f4;
+            border-radius: 12px;
+            padding: 3px 10px;
+        }
+        .me-kid.unknown { background: #fff3cd; }
+
+        /* ── 参加イベント移動（マトリクス） ── */
+        .mx-cell-movable { cursor: pointer; }
+        .mx-cell-movable:active { background: #fff3cd !important; }
+        .matrix-move-item {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px 12px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .matrix-move-item:hover { background: #fff3cd; border-color: #E8A200; }
+
         /* ── 出欠マトリクス ── */
         /* matrix-wrap のみがスクロールするよう modal-content のスクロールを無効化 */
         #attendance-matrix-modal .modal-content {
@@ -132,6 +199,7 @@
         <!-- タブナビゲーション -->
         <div class="tab">
             <button class="tablinks active" onclick="FCOjima.UI.openTab(event, 'calendar')" id="defaultTab">カレンダー</button>
+            <button class="tablinks" id="my-events-tab" onclick="FCOjima.UI.openTab(event, 'my-events')" style="display:none;">参加予定<span class="tab-badge" id="my-events-badge"></span></button>
             <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'members')">メンバー</button>
             <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'notifications')">連絡事項</button>
             <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'venues')">会場登録</button>
@@ -185,6 +253,16 @@
         </div>
 
         <!-- メンバータブ -->
+        <!-- 参加予定タブ（子供が登録されている保護者・指導者のみ表示） -->
+        <div id="my-events" class="tabcontent">
+            <h2>参加予定</h2>
+            <p style="font-size:12px;color:#888;margin-bottom:12px;">お子さん（兄弟姉妹含む）が参加対象のイベント一覧です。前回見たときから変わった点は🔔付きで表示されます。</p>
+            <div id="my-events-changes"></div>
+            <div id="my-events-list">
+                <p class="loading">読み込み中...</p>
+            </div>
+        </div>
+
         <div id="members" class="tabcontent">
             <div class="filter-controls">
                 <div class="search-box" style="display:flex;gap:6px;align-items:center;">
@@ -303,6 +381,27 @@
     </div>
 
     <!-- 出欠状況モーダル -->
+    <!-- 参加イベント移動モーダル（出欠マトリクスから／マネージャーのみ） -->
+    <div id="matrix-move-modal" class="modal" style="z-index:1040;">
+        <div class="modal-content" style="max-width:420px;">
+            <span class="close" id="matrix-move-close">&times;</span>
+            <h3 style="margin-top:0;font-size:16px;">参加イベントの変更</h3>
+            <div id="matrix-move-info" style="font-size:13px;color:#555;margin-bottom:10px;"></div>
+            <div id="matrix-move-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+    </div>
+
+    <!-- 参加イベント変更お知らせダイアログ（保護者向け） -->
+    <div id="move-notice-modal" class="modal" style="z-index:1050;">
+        <div class="modal-content" style="max-width:420px;">
+            <h3 style="margin-top:0;font-size:16px;">📢 参加イベント変更のお知らせ</h3>
+            <div id="move-notice-body"></div>
+            <div class="form-actions" style="margin-top:14px;">
+                <button type="button" id="move-notice-ok" class="primary-button" style="width:100%;padding:12px;">確認しました</button>
+            </div>
+        </div>
+    </div>
+
     <div id="attendance-matrix-modal" class="modal">
         <div class="modal-content" style="max-width:95vw;width:95vw;padding:12px;">
             <span class="close" id="attendance-matrix-modal-close">&times;</span>
@@ -572,7 +671,8 @@
     <script src="../js/hub/members.js?v=20260611"></script>
     <script src="../js/hub/notifications.js?v=20260224a"></script>
     <script src="../js/hub/venues.js?v=20260611"></script>
-    <script src="../js/hub/admin.js?v=20260611"></script>
+    <script src="../js/hub/myevents.js?v=20260718"></script>
+    <script src="../js/hub/admin.js?v=20260718"></script>
 
     <script>
         // タブの切り替えに応じてフローティングボタンの表示を制御
@@ -624,6 +724,19 @@
                 const adminTab = document.getElementById('admin-tab');
                 if (adminTab) adminTab.style.display = '';
                 if (FCOjima.Hub.Admin && FCOjima.Hub.Admin.init) FCOjima.Hub.Admin.init();
+            }
+
+            // 参加予定タブ（子供が登録されているユーザーのみ。バッジ・変更ダイアログもここで初期化）
+            if (FCOjima.Hub.MyEvents && FCOjima.Hub.MyEvents.init) {
+                FCOjima.Hub.MyEvents.init(userProfile);
+            }
+
+            // 参加イベント移動モーダルの閉じるボタン
+            const matrixMoveClose = document.getElementById('matrix-move-close');
+            if (matrixMoveClose) {
+                matrixMoveClose.addEventListener('click', function() {
+                    FCOjima.UI.closeModal('matrix-move-modal');
+                });
             }
 
             // ログアウトボタン
