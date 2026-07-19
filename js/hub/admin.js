@@ -464,7 +464,19 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 th.appendChild(dowDiv);
                 th.appendChild(titleDiv);
                 th.appendChild(brkDiv);
-                th.title = (ev.title || '') + '　参加' + brk.present + '/未回答' + brk.unknown + '/欠席' + brk.absent + '（対象' + brk.target + '人）';
+                var titleForTooltip = (ev.title || '') + '　参加' + brk.present + '/未回答' + brk.unknown + '/欠席' + brk.absent + '（対象' + brk.target + '人）';
+
+                if (FCOjima.Hub.dutyEnabled) {
+                    var dutyAssignment = (FCOjima.Hub.dutyAssignments || []).find(function(a) { return String(a.eventId) === String(ev.id); });
+                    if (dutyAssignment) {
+                        var dutyDiv = document.createElement('div');
+                        dutyDiv.className = 'e-duty';
+                        dutyDiv.textContent = '🔔' + dutyAssignment.groupName;
+                        th.appendChild(dutyDiv);
+                        titleForTooltip += '　当番: ' + dutyAssignment.groupName;
+                    }
+                }
+                th.title = titleForTooltip;
 
                 // ヘッダーのどこをタップしても概要モーダル
                 (function(ev, evData) {
@@ -741,10 +753,12 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         try {
             var settings = await FCOjima.DB.loadDutySettings();
             _dutySettings = settings;
+            FCOjima.Hub.dutyEnabled = !!settings.enabled;
             if (toggle) toggle.checked = !!settings.enabled;
 
             var groups = await FCOjima.DB.loadDutyGroups();
             _dutyGroups = groups;
+            FCOjima.Hub.dutyGroups = groups;
 
             // 候補メンバー: 指導者（coach/assist）・父・母
             var candidates = (FCOjima.Hub.members || []).filter(function(m) {
@@ -847,6 +861,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         try {
             await FCOjima.DB.saveDutySettings({ enabled: enabled });
             _dutySettings = { enabled: enabled };
+            FCOjima.Hub.dutyEnabled = enabled;
         } catch (e) {
             alert('設定の保存に失敗しました: ' + e.message);
             var toggle = document.getElementById('duty-enabled-toggle');
@@ -897,6 +912,66 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         } catch (e) {
             alert('メンバーの更新に失敗しました: ' + e.message);
             Admin.loadDutyGroups();
+        }
+    };
+
+    /**
+     * イベントに当番グループを割り当てる（管理者のみ）。
+     * 連絡事項に自動通知を投稿する。
+     * @param {Object} ev - イベント
+     * @param {string} groupId - 当番グループID（空文字なら割り当て解除）
+     */
+    Admin.assignDutyGroup = async function(ev, groupId) {
+        var Storage = FCOjima.Storage;
+        FCOjima.Hub.dutyAssignments = FCOjima.Hub.dutyAssignments || [];
+        var group = groupId ? (FCOjima.Hub.dutyGroups || []).find(function(g) { return String(g.id) === String(groupId); }) : null;
+
+        try {
+            if (groupId && group) {
+                await FCOjima.DB.saveDutyAssignment(ev.id, { groupId: String(groupId), groupName: group.name });
+                var idx = FCOjima.Hub.dutyAssignments.findIndex(function(a) { return String(a.eventId) === String(ev.id); });
+                var entry = { eventId: String(ev.id), groupId: String(groupId), groupName: group.name };
+                if (idx >= 0) FCOjima.Hub.dutyAssignments[idx] = entry;
+                else FCOjima.Hub.dutyAssignments.push(entry);
+            } else {
+                await FCOjima.DB.deleteDutyAssignment(ev.id);
+                FCOjima.Hub.dutyAssignments = FCOjima.Hub.dutyAssignments.filter(function(a) { return String(a.eventId) !== String(ev.id); });
+            }
+
+            // 連絡事項へ通知
+            var now = new Date();
+            var dateStr = now.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }) +
+                          ' ' + now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+            var operator = (FCOjima.Auth && FCOjima.Auth.getDisplayName) ? FCOjima.Auth.getDisplayName() : 'システム';
+            var d = new Date(ev.date + 'T00:00:00');
+            var evDateLabel = (d.getMonth() + 1) + '/' + d.getDate();
+            var notice = {
+                id: Date.now().toString() + Math.floor(Math.random() * 1000),
+                type: 'duty',
+                date: dateStr,
+                user: operator,
+                text: '【当番】' + evDateLabel + '「' + (ev.title || '') + '」の当番: ' +
+                      (group ? group.name : '（未設定に変更されました）'),
+                ts: Date.now(),
+                eventId: String(ev.id),
+                eventDate: ev.date,
+                groupId: groupId || null,
+                groupName: group ? group.name : null
+            };
+            FCOjima.Hub.notifications = FCOjima.Hub.notifications || [];
+            FCOjima.Hub.notifications.unshift(notice);
+            Storage.saveNotifications(FCOjima.Hub.notifications);
+            if (FCOjima.Hub.Notifications && FCOjima.Hub.Notifications.renderNotifications) {
+                FCOjima.Hub.Notifications.renderNotifications();
+            }
+
+            // 出欠マトリクスが表示中なら当番バッジを反映
+            var matrixEl = document.getElementById('attendance-matrix-container');
+            if (matrixEl && matrixEl.querySelector('.attendance-matrix')) {
+                Admin.loadAttendanceMatrix();
+            }
+        } catch (e) {
+            alert('当番の割り当てに失敗しました: ' + e.message);
         }
     };
 
@@ -1114,6 +1189,22 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             html += FCOjima.Checklist.formatChips(ev.type, ev.checklistExtra);
         }
 
+        // 当番グループ割り当て（機能が有効な場合のみ・管理者が変更可）
+        if (FCOjima.Hub.dutyEnabled) {
+            var dutyGroups = FCOjima.Hub.dutyGroups || [];
+            var currentAssignment = (FCOjima.Hub.dutyAssignments || []).find(function(a) { return String(a.eventId) === String(ev.id); });
+            html += '<div style="display:flex;align-items:center;gap:8px;margin:8px 0;font-size:13px;">'
+                + '<span style="color:#888;min-width:52px;">当番</span>'
+                + '<select id="event-duty-select" data-event-id="' + ev.id + '" style="padding:4px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;flex:1;max-width:220px;">'
+                + '<option value="">未設定</option>'
+                + dutyGroups.map(function(g) {
+                    var selected = currentAssignment && String(currentAssignment.groupId) === String(g.id) ? ' selected' : '';
+                    return '<option value="' + g.id + '"' + selected + '>' + UI.escapeHTML(g.name) + '</option>';
+                  }).join('')
+                + '</select>'
+                + '</div>';
+        }
+
         // 備考（イベントのフィールド名は notes。旧データの description にも対応）
         var evNotes = ev.notes || ev.description;
         if (evNotes) {
@@ -1123,6 +1214,14 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
 
         body.innerHTML = html;
         modal.style.display = 'flex';
+
+        // 当番グループ選択の変更を保存
+        var dutySelect = document.getElementById('event-duty-select');
+        if (dutySelect) {
+            dutySelect.addEventListener('change', function() {
+                Admin.assignDutyGroup(ev, dutySelect.value);
+            });
+        }
 
         // 会場の天気（非同期。取得失敗してもモーダル自体は壊れない）
         if (ev.venue && FCOjima.Weather && FCOjima.Weather.getForecast) {

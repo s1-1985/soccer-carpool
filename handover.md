@@ -1,8 +1,57 @@
 # 引き継ぎドキュメント (handover)
 
 最終更新: 2026-07-19
-mainの最新コミット: `7cfc24a` (2026-07-19)「fix: Codexレビュー指摘4件を修正（当番グループのキーボード操作・同時編集・CI安全性） (#87)」
+mainの最新コミット: `a23124c` (2026-07-19)「fix: 保護者の子供情報の不整合を修正＋メンバーカードを役割・学年で見た目差別化 (#88)」
 本番URL: https://fc-ojimajr-hub.web.app （Firebase Hosting / プロジェクト `fc-ojimajr-hub`）
+
+---
+
+## 2026-07-19 当番表機能 Phase 2（イベントへの当番グループ割り当て）
+
+Phase 1（グループのON/OFF・作成・メンバー管理）に続き、「どのイベントにどのグループが
+当番か」を割り当てる仕組みを実装。ユーザーヒアリング結果：
+- 割り当て方法: **管理者が手動で選ぶ**（自動ローテーションではない）
+- 表示場所: **イベント詳細モーダル・出欠マトリクス・参加予定タブ**の3箇所
+- 確定時: **連絡事項に自動通知する**
+
+### 実装内容
+- Firestore新規コレクション: `teams/fc-ojima/dutyAssignments/{eventId}` に
+  `{ groupId, groupName }`。`eventData`/`events`は承認済みなら誰でも書き込み可のため、
+  当番割り当てだけマネージャー限定にする目的で別コレクションに分離（Phase 1と同じ設計判断）
+- `firestore.rules`: `read: isApproved`、`write: isManager`
+- `js/common/db.js`: `DB.loadDutyAssignments`/`saveDutyAssignment`/`deleteDutyAssignment`
+- `js/common/firebase-config.js`: `Collections.dutyAssignments`
+- `js/hub/main.js`: `Hub.init()`で`dutySettings`/`dutyGroups`/`dutyAssignments`を読み込み、
+  `FCOjima.Hub.dutyEnabled`/`dutyGroups`/`dutyAssignments`としてグローバルに公開
+  （`DB.loadAllData`にも追加。失敗時は握りつぶしてduty機能を無効扱いにするだけで
+  他のデータ読み込みを壊さない、既存のlogsと同じ防御パターン）
+- `js/hub/admin.js`:
+  - `Admin.openEventDetailModal`（管理者向け概要モーダル）に、`dutyEnabled`が
+    trueのときだけ当番グループ選択`<select>`を表示。変更で`Admin.assignDutyGroup`を呼ぶ
+  - `Admin.assignDutyGroup(ev, groupId)`: `dutyAssignments`を保存/削除し、
+    連絡事項に`type:'duty'`の通知を投稿（既存のmove通知パターンを踏襲）。
+    出欠マトリクスが表示中なら再読み込みしてバッジに反映
+  - 出欠マトリクスのイベント列ヘッダーに`🔔グループ名`のバッジを追加（`dutyEnabled`時のみ）
+  - Phase 1の`Admin.loadDutyGroups`/`saveDutyEnabled`が`FCOjima.Hub.dutyEnabled`/
+    `dutyGroups`も同期するよう修正（設定画面での変更が他のUIにも反映されるように）
+- `js/hub/calendar.js`（保護者向けイベント詳細モーダル）、`js/hub/myevents.js`
+  （参加予定タブ）: 当番情報を**読み取り専用**で表示（編集UIは管理者向けモーダルのみ）
+- `hub/index.html`: `.e-duty`（マトリクスの当番バッジ）のCSSを追加
+
+### 検証
+Firebaseエミュレータ+Playwrightで、管理者による割り当て→通知投稿→マトリクスバッジ反映→
+リロード後の永続化、保護者側の読み取り専用表示（参加予定タブ・カレンダー詳細モーダル）、
+機能OFF時に一切表示されないこと、非マネージャーによる書き込み拒否、をそれぞれ確認
+（10+3+1項目、全PASS）。
+
+### キャッシュバスト
+`firebase-config.js?v=20260719b`（全ページ）、`db.js?v=20260719c`（全ページ）、
+`hub/index.html`: `main.js?v=20260719`、`calendar.js?v=20260719d`、
+`myevents.js?v=20260719b`、`admin.js?v=20260719g`
+
+### 今後の拡張余地（未着手・要望があれば）
+- 自動ローテーション（現状は毎回手動選択）
+- 当番の「貢献度」集計（送迎貢献度と同じ考え方で当番回数をランキング化できる）
 
 ---
 

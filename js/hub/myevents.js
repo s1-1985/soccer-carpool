@@ -113,6 +113,9 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
             });
 
             if (kids.length > 0) {
+                var dutyAssignment = app.Hub.dutyEnabled
+                    ? (app.Hub.dutyAssignments || []).find(function(a) { return String(a.eventId) === String(ev.id); })
+                    : null;
                 items.push({
                     eventId: String(ev.id),
                     date: ev.date,
@@ -121,6 +124,7 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
                     venue: ev.venue || '',
                     type: ev.type,
                     checklistExtra: ev.checklistExtra,
+                    dutyGroupName: dutyAssignment ? dutyAssignment.groupName : null,
                     kids: kids
                 });
             }
@@ -325,6 +329,13 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
                         checklistWrap.innerHTML = checklistHtml;
                         card.appendChild(checklistWrap.firstChild);
                     }
+                }
+
+                if (it.dutyGroupName) {
+                    var dutyMeta = document.createElement('div');
+                    dutyMeta.className = 'me-meta';
+                    dutyMeta.textContent = '🔔 当番: ' + it.dutyGroupName;
+                    card.appendChild(dutyMeta);
                 }
 
                 var kidsDiv = document.createElement('div');

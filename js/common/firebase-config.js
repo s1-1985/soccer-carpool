@@ -50,7 +50,8 @@ const Collections = {
   logs:          () => _db.collection('teams').doc(TEAM_ID).collection('logs'),
   eventData:     (eventId) => _db.collection('teams').doc(TEAM_ID).collection('eventData').doc(String(eventId)),
   dutyGroups:    () => _db.collection('teams').doc(TEAM_ID).collection('dutyGroups'),
-  dutySettings:  () => _db.collection('teams').doc(TEAM_ID).collection('dutySettings').doc('main')
+  dutySettings:  () => _db.collection('teams').doc(TEAM_ID).collection('dutySettings').doc('main'),
+  dutyAssignments: () => _db.collection('teams').doc(TEAM_ID).collection('dutyAssignments')
 };
 
 window.FCOjimaFirebase = { db: _db, auth: _auth, Collections, TEAM_ID };
