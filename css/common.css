@@ -339,7 +339,11 @@ tr:hover { background: #fbf6e8; }
     border-radius: var(--r-lg);
     width: 88%;
     max-width: 780px;
-    max-height: 90vh;
+    /* モバイルChromeはURLバー表示中 vh > 実際の可視高さ となり
+       90vh + margin 24px で下端（アクションボタン）が画面外に見切れる。
+       dvh（動的ビューポート）対応ブラウザでは常に可視領域基準にする */
+    max-height: calc(100vh - 48px);
+    max-height: calc(100dvh - 48px);
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;

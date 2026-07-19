@@ -321,21 +321,82 @@ FCOjima.Utils = FCOjima.Utils || {};
     };
 
     /**
+     * 氏名照合用の正規化。空白（半角・全角・タブ）をすべて除去し、NFKCで
+     * 全角英数・半角カナ等の表記揺れも吸収する。
+     * usersドキュメントの氏名は本人入力（例:「曽根　靖弘」全角スペース入り）、
+     * メンバー名は管理者入力（例:「曽根靖弘」）で空白の有無が一致しないことがあるため。
+     */
+    Utils.normalizeName = function(name) {
+        if (!name) return '';
+        var s = String(name);
+        if (String.prototype.normalize) s = s.normalize('NFKC');
+        return s.replace(/[\s　]+/g, '');
+    };
+
+    /**
      * ユーザー/保護者の子供IDを解決する。
      * usersコレクションのchildrenIdsは登録申請時点のスナップショットで、その後
      * 「メンバー」タブで保護者メンバーのchildrenIdsを編集しても同期されない
      * （別々のドキュメントのため）。メンバー側を正とする方針により、氏名が一致する
-     * 父/母メンバーが見つかればそちらのchildrenIdsを優先する
-     * （見つからない場合のみ引数のchildrenIdsにフォールバック）
-     * @param {{name: string, childrenIds?: Array}} userLike - name必須のユーザー/プロフィールオブジェクト
+     * 保護者メンバーが見つかればそちらのchildrenIdsを優先する。
+     *
+     * 照合は正規化した氏名（空白除去）で行う。usersドキュメントの氏名に全角スペースが
+     * 入っているとメンバー名と完全一致せず、古いスナップショット（メンバー再登録で
+     * IDが振り直された後は別人を指すことがある）へフォールバックして誤った子供が
+     * 表示されるバグがあった（2026-07-19実機報告: 曽根さんの子が高阪姓の選手と表示）。
+     * 氏名で当たらない場合はフリガナ（kana）でも照合する。
+     * father/mother以外の役割（役員等）で登録された保護者メンバーも対象に含める。
+     * @param {{name: string, kana?: string, childrenIds?: Array}} userLike - name必須のユーザー/プロフィールオブジェクト
      * @param {Array} members - FCOjima.Hub.members相当のメンバー一覧
      * @returns {Array} 解決済みchildrenIds
      */
+    /**
+     * childrenIdsのID→選手メンバー解決。
+     * 過去のID採番バグ（連番衝突）でIDが重複している場合に備え、
+     * 選手(role==='player')を優先して返す
+     */
+    Utils.findChildMemberById = function(members, cid) {
+        var list = members || [];
+        var player = list.find(function(m) {
+            return m.role === 'player' && String(m.id) === String(cid);
+        });
+        if (player) return player;
+        return list.find(function(m) { return String(m.id) === String(cid); }) || null;
+    };
+
     Utils.resolveChildrenIds = function(userLike, members) {
         if (!userLike) return [];
-        var parentMember = (members || []).find(function(m) {
-            return (m.role === 'father' || m.role === 'mother') && m.name === userLike.name;
+        var list = members || [];
+        var nName = Utils.normalizeName(userLike.name);
+        var nKana = Utils.normalizeName(userLike.kana);
+
+        // 選手以外（＝保護者になり得るメンバー）から氏名一致→カナ一致の順で探す。
+        // father/mother を優先し、見つからなければ他役割（役員等で登録された保護者）も許容
+        function findBy(matcher) {
+            var hit = list.find(function(m) {
+                return (m.role === 'father' || m.role === 'mother') && matcher(m);
+            });
+            if (hit) return hit;
+            return list.find(function(m) {
+                return m.role !== 'player' && m.childrenIds && m.childrenIds.length > 0 && matcher(m);
+            });
+        }
+
+        var parentMember = null;
+        if (nName) {
+            parentMember = findBy(function(m) { return Utils.normalizeName(m.name) === nName; });
+        }
+        if (!parentMember && nKana) {
+            parentMember = findBy(function(m) { return Utils.normalizeName(m.kana) === nKana; });
+        }
+        if (parentMember) return parentMember.childrenIds || [];
+
+        // フォールバック（登録時スナップショット）。メンバー再登録でIDが振り直されると
+        // 旧IDが別人（選手以外含む）を指すことがあるため、選手として実在するIDのみ残す
+        return (userLike.childrenIds || []).filter(function(cid) {
+            return list.some(function(m) {
+                return m.role === 'player' && String(m.id) === String(cid);
+            });
         });
-        return parentMember ? (parentMember.childrenIds || []) : (userLike.childrenIds || []);
     };
 })();

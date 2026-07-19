@@ -120,9 +120,10 @@ header {
     padding-bottom: 10px;
 }
 
-/* global-navigation（固定フッター）分のパディング */
+/* global-navigation（固定フッター）分のパディング
+   （Android Chromeのエッジ・トゥ・エッジ表示ではナビがsafe-area分高くなるため加算する） */
 .container {
-    padding-bottom: 90px;
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
 }
 
 /* アクションボタン（通常フロー） */
@@ -200,7 +201,7 @@ header {
 
     /* コンテナの下余白（横並びナビ高さ約52px） */
     .container {
-        padding-bottom: 140px;
+        padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
     }
 
     /* アクションボタンのbottom値もナビ高さに合わせる */
