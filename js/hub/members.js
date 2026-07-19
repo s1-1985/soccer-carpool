@@ -352,7 +352,7 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
                 var childrenNames = '';
                 if (member.childrenIds && member.childrenIds.length > 0) {
                     var childNames = member.childrenIds.map(function(cid) {
-                        var child = members.find(function(m) { return String(m.id) === String(cid); });
+                        var child = Utils.findChildMemberById(members, cid);
                         return child ? child.name : null;
                     }).filter(Boolean);
                     if (childNames.length > 0) childrenNames = '子: ' + childNames.join('、');
@@ -415,7 +415,7 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
         // 保護者: 子どもの名前を表示
         if ((member.role === 'father' || member.role === 'mother') && member.childrenIds && member.childrenIds.length > 0) {
             var childNames = member.childrenIds.map(function(cid) {
-                var child = members.find(function(m) { return String(m.id) === String(cid); });
+                var child = Utils.findChildMemberById(members, cid);
                 return child ? child.name : null;
             }).filter(Boolean);
             if (childNames.length > 0) {

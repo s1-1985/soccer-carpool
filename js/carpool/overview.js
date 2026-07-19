@@ -225,9 +225,10 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                         <span>${UI.escapeHTML(event.venue)}</span>
                         ${venueMapBtn}
                     </div>
+                    <div id="overview-weather" class="weather-slot"></div>
                 </div>`;
             }
-            
+
             locationInfo += '</div>';
             
             // 出欠回答期限
@@ -281,7 +282,25 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                     ${targetDisplay}
                     ${notesSection}
                 </div>`;
+
+            // 会場の現地天気（非同期。取得失敗しても画面は壊さない）
+            Overview._renderWeather(event);
         }
+    };
+
+    /**
+     * 会場の天気予報を取得して #overview-weather に差し込む
+     */
+    Overview._renderWeather = function(event) {
+        if (!event || !event.venue || !app.Weather || !app.Weather.getForecast) return;
+        var target = document.getElementById('overview-weather');
+        if (!target) return;
+        var allVenues = ((app.Hub && app.Hub.venues) ? app.Hub.venues : Storage.loadVenues()) || [];
+        var venueData = allVenues.find(function(v) { return v.name === event.venue; });
+        app.Weather.getForecast(event.venue, venueData && venueData.address, event.date).then(function(result) {
+            var el = document.getElementById('overview-weather');
+            if (el) el.innerHTML = app.Weather.formatChip(result);
+        });
     };
     
     /**

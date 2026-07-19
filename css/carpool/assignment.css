@@ -494,8 +494,10 @@
         max-width: 100% !important;
         border-radius: 18px 18px 0 0 !important;
         margin: 0 !important;
-        padding: 14px 16px 24px !important;
+        padding: 14px 16px calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+        /* URLバー表示中のモバイルChromeでは vh > 可視高さ のため dvh を優先 */
         max-height: 80vh !important;
+        max-height: 80dvh !important;
         display: flex;
         flex-direction: column;
         box-shadow: 0 -4px 20px rgba(0,0,0,0.18) !important;

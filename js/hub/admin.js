@@ -101,7 +101,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
     Admin.createPendingCard = function(u) {
         var members = app.Hub.members || [];
         var childNames = Admin._resolveChildrenIds(u, members).map(function(cid) {
-            var m = members.find(function(mem) { return String(mem.id) === String(cid); });
+            var m = FCOjima.Utils.findChildMemberById(members, cid);
             return m ? m.name : cid;
         }).join('、') || '（なし）';
 
@@ -178,7 +178,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
 
             approved.forEach(function(u) {
                 var childNames = Admin._resolveChildrenIds(u, members).map(function(cid) {
-                    var m = members.find(function(mem) { return String(mem.id) === String(cid); });
+                    var m = FCOjima.Utils.findChildMemberById(members, cid);
                     return m ? m.name : cid;
                 }).join('、') || '（なし）';
 

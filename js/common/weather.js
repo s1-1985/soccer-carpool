@@ -38,38 +38,71 @@ FCOjima.Weather = FCOjima.Weather || {};
     }
 
     /**
-     * 会場名・住所からジオコーディングする。結果はlocalStorageに永続キャッシュ（緯度経度は変わらないため）。
+     * 1クエリぶんのジオコーディング検索
      * @returns {Promise<{lat:number, lon:number}|null>}
      */
-    function geocode(venueName, address) {
-        var cacheKey = 'fcojima_geocode_' + (venueName || '');
-        try {
-            var cached = localStorage.getItem(cacheKey);
-            if (cached) {
-                var parsed = JSON.parse(cached);
-                if (parsed === null || (parsed && typeof parsed.lat === 'number')) return Promise.resolve(parsed);
-            }
-        } catch (e) { /* キャッシュ読み込み失敗は無視して再取得 */ }
-
-        // 検索クエリ: 住所があれば都道府県+市区町村部分を優先（学校名等はヒット率が低いため）
-        var query = venueName;
-        if (address) {
-            var m = address.match(/^.{2,4}[都道府県].{1,7}?[市区町村郡]/);
-            query = m ? m[0] : address;
-        }
-        if (!query) return Promise.resolve(null);
-
+    function geocodeQuery(query) {
         var url = GEOCODE_URL + '?name=' + encodeURIComponent(query) + '&count=1&language=ja&format=json';
         return fetch(url).then(function(res) {
             if (!res.ok) throw new Error('geocode http ' + res.status);
             return res.json();
         }).then(function(data) {
             var r = data && data.results && data.results[0];
-            var result = r ? { lat: r.latitude, lon: r.longitude } : null;
-            try { localStorage.setItem(cacheKey, JSON.stringify(result)); } catch (e) {}
-            return result;
+            return r ? { lat: r.latitude, lon: r.longitude } : null;
         }).catch(function() {
             return null;
+        });
+    }
+
+    /**
+     * 会場名・住所からジオコーディングする。結果はlocalStorageに永続キャッシュ（緯度経度は変わらないため）。
+     *
+     * Open-Meteoのジオコーディングは地名DB（GeoNames）ベースで
+     * 「〇〇グラウンド」「〇〇小学校」のような施設名では当たらないことが多い。
+     * そのため複数クエリを順に試す: ①住所の市区町村部分 ②施設種別の接尾辞を
+     * 除いた会場名 ③会場名そのまま。
+     * ※ キャッシュキーは v2。旧実装が失敗結果(null)を永続キャッシュしており、
+     *    ロジック改善後も旧キーのままだと失敗が固定化されるためキーを変更した
+     * @returns {Promise<{lat:number, lon:number}|null>}
+     */
+    function geocode(venueName, address) {
+        var cacheKey = 'fcojima_geocode_v2_' + (venueName || '') + '|' + (address || '');
+        try {
+            var cached = localStorage.getItem(cacheKey);
+            if (cached) {
+                var parsed = JSON.parse(cached);
+                if (parsed && typeof parsed.lat === 'number') return Promise.resolve(parsed);
+                // 失敗キャッシュ(null)は当日中のみ有効（翌日に再試行できるようにする）
+                if (parsed && parsed.miss === todayISO()) return Promise.resolve(null);
+            }
+        } catch (e) { /* キャッシュ読み込み失敗は無視して再取得 */ }
+
+        var queries = [];
+        if (address) {
+            var m = address.match(/^.{2,4}[都道府県].{1,7}?[市区町村郡]/);
+            queries.push(m ? m[0] : address);
+        }
+        if (venueName) {
+            var stripped = venueName.replace(/(グラウンド|グランド|サッカー場|野球場|運動公園|総合公園|公園|小学校|中学校|高校|高等学校|体育館|運動場|競技場|スポーツ広場|多目的広場|河川敷|緑地)$/, '');
+            if (stripped && stripped !== venueName) queries.push(stripped);
+            queries.push(venueName);
+        }
+        // 重複除去
+        queries = queries.filter(function(q, i) { return q && queries.indexOf(q) === i; });
+        if (queries.length === 0) return Promise.resolve(null);
+
+        // 順に試して最初に当たったものを使う
+        var chain = Promise.resolve(null);
+        queries.forEach(function(q) {
+            chain = chain.then(function(loc) {
+                return loc || geocodeQuery(q);
+            });
+        });
+        return chain.then(function(loc) {
+            try {
+                localStorage.setItem(cacheKey, JSON.stringify(loc || { miss: todayISO() }));
+            } catch (e) {}
+            return loc;
         });
     }
 
