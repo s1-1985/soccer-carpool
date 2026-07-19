@@ -607,13 +607,19 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             attendanceDisplay = `<div class="detail-item"><span class="detail-label">出欠確認:</span><br>${summary}<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:4px;margin-top:4px;">${rows}</div></div>`;
         }
 
-        // このイベント固有のログ（eventId で絞り込み、なければタイトルで近似）
+        // このイベント固有のログのみ表示する。
+        // eventId を持つログはID一致で厳密に絞る。旧フォーマット（eventIdなし）は
+        // タイトルだけで近似すると同名イベント（毎週の「岩松」等）のログが全部
+        // 混入するため、「タイトル＋日付」の両方が details に含まれる場合のみ表示
+        // （2026-07-20実機報告: モーダルに他イベントのログが表示されていた）
         const allLogs = app.Hub.logs || [];
         const eventLogs = allLogs.filter(function(l) {
             if (l.type !== 'calendar') return false;
             if (l.eventId) return String(l.eventId) === String(event.id);
-            // 旧フォーマットはタイトルで近似
-            return l.details && l.details.includes(event.title.substring(0, 10));
+            // 旧フォーマット: details例「「岩松」（2026-07-18）」→ タイトルと日付の両方一致が必須
+            return l.details &&
+                l.details.includes('「' + event.title + '」') &&
+                l.details.includes('（' + event.date + '）');
         });
         let eventLogDisplay = '';
         if (eventLogs.length > 0) {
@@ -643,7 +649,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             <div class="detail-item">
                 <span class="detail-label">時間:</span> ${event.startTime || '未設定'}${event.endTime ? ` - ${event.endTime}` : ''}
             </div>
-            ${app.Checklist ? app.Checklist.formatChips(event.type, event.checklistExtra) : ''}
+            ${app.Checklist ? app.Checklist.formatChips(event.type, event.checklistExtra, event.checklist) : ''}
             ${dutyDisplay}
             ${event.notes ? `
             <div class="detail-item">
@@ -727,6 +733,13 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         var depEl = document.getElementById('event-departure-time');
         if (depEl) depEl.disabled = false;
 
+        // 持ち物: 種類のテンプレを初期値としてセット（自由編集可）
+        var clEl = document.getElementById('event-checklist');
+        if (clEl && app.Checklist) {
+            var typeEl = document.getElementById('event-type');
+            clEl.value = app.Checklist.getTemplate(typeEl ? typeEl.value : 'game').join('、');
+        }
+
         // モーダルを表示
         UI.openModal('event-modal');
     };
@@ -764,6 +777,12 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         } else {
             // 出発時間を有効化
             if (depEl) depEl.disabled = false;
+        }
+
+        // 持ち物テンプレを種類に合わせて入れ替え（編集はこの後自由にできる）
+        var clEl = document.getElementById('event-checklist');
+        if (clEl && app.Checklist) {
+            clEl.value = app.Checklist.getTemplate(type).join('、');
         }
     };
     
@@ -859,6 +878,10 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         const startTime = document.getElementById('event-start-time').value;
         const endTime = document.getElementById('event-end-time').value;
         const notes = document.getElementById('event-notes').value;
+        // 持ち物（完全上書きリストとして保存。空でも保存＝持ち物なし）
+        // ※ undefinedはFirestoreが拒否するため必ず配列にする
+        const checklistEl = document.getElementById('event-checklist');
+        const checklist = (app.Checklist && checklistEl) ? app.Checklist.parseInput(checklistEl.value) : [];
         
         // バリデーション（タイトルのみ必須）
         if (!date || !title) {
@@ -930,7 +953,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                     venue,
                     startTime,
                     endTime,
-                    notes
+                    notes,
+                    checklist
                 };
                 
                 // ログに記録（eventId付き）
@@ -953,7 +977,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 venue,
                 startTime,
                 endTime,
-                notes
+                notes,
+                checklist
             });
 
             // ログに記録（eventId付き）
@@ -1018,7 +1043,13 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         document.getElementById('event-start-time').value = event.startTime || '';
         document.getElementById('event-end-time').value = event.endTime || '';
         document.getElementById('event-notes').value = event.notes || '';
-        
+
+        // 持ち物を復元（個別リストがあればそれ、なければテンプレ+旧extra）
+        var clEl = document.getElementById('event-checklist');
+        if (clEl && app.Checklist) {
+            clEl.value = app.Checklist.getItems(event.type, event.checklistExtra, event.checklist).join('、');
+        }
+
         // 対象学年のチェックボックスを生成
         this.generateGradeCheckboxes();
         

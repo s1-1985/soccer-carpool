@@ -8,7 +8,7 @@
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#1C1600">
     <link rel="apple-touch-icon" href="/img/icon-192.png">
-    <link rel="stylesheet" href="../css/common.css?v=20260720">
+    <link rel="stylesheet" href="../css/common.css?v=20260720a">
     <link rel="stylesheet" href="../css/hub/calendar.css?v=20260224a">
     <link rel="stylesheet" href="../css/hub/members.css?v=20260719">
     <link rel="stylesheet" href="../css/hub/notifications.css?v=20260224a">
@@ -272,8 +272,8 @@
         <div class="tab">
             <button class="tablinks active" onclick="FCOjima.UI.openTab(event, 'calendar')" id="defaultTab">カレンダー</button>
             <button class="tablinks" id="my-events-tab" onclick="FCOjima.UI.openTab(event, 'my-events')" style="display:none;">参加予定<span class="tab-badge" id="my-events-badge"></span></button>
-            <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'members')">メンバー</button>
             <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'notifications')">連絡事項</button>
+            <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'members')">メンバー</button>
             <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'venues')">会場登録</button>
             <button class="tablinks" id="admin-tab" onclick="FCOjima.UI.openTab(event, 'admin')" style="display:none;">管理</button>
         </div>
@@ -285,9 +285,16 @@
             <div class="controls">
                 <div class="month-control">
                     <button id="prev-month">&lt;</button>
-                    <h2 id="current-month">2025年4月</h2>
+                    <h2 id="current-month"></h2>
                     <button id="next-month">&gt;</button>
                 </div>
+                <script>
+                    // データ読み込み前の一瞬に古い月が見えないよう、今月を即時表示する
+                    (function() {
+                        var d = new Date();
+                        document.getElementById('current-month').textContent = d.getFullYear() + '年' + (d.getMonth() + 1) + '月';
+                    })();
+                </script>
                 <div class="view-toggle">
                     <button id="calendar-view" class="active">カレンダー</button>
                     <button id="list-view">リスト</button>
@@ -591,6 +598,11 @@
                     <input type="time" id="event-end-time">
                 </div>
                 <div class="form-group">
+                    <label for="event-checklist">🎒 持ち物（「、」またはカンマ区切りで自由に編集）</label>
+                    <textarea id="event-checklist" rows="2" placeholder="例: ゼッケン、すね当て、水筒"></textarea>
+                    <div style="font-size:11px;color:#888;margin-top:2px;">種類を変えるとテンプレが入ります。自由に追加・削除できます。</div>
+                </div>
+                <div class="form-group">
                     <label for="event-notes">備考</label>
                     <textarea id="event-notes" placeholder="その他の備考事項"></textarea>
                 </div>
@@ -778,17 +790,17 @@
     <script src="../js/common/ui.js?v=20260224a"></script>
     <script src="../js/common/auth.js?v=20260224a"></script>
     <script src="../js/common/db.js?v=20260719c"></script>
-    <script src="../js/common/weather.js?v=20260720"></script>
-    <script src="../js/common/checklist.js?v=20260719"></script>
+    <script src="../js/common/weather.js?v=20260720a"></script>
+    <script src="../js/common/checklist.js?v=20260720a"></script>
 
     <!-- HUBページ用モジュール -->
-    <script src="../js/hub/main.js?v=20260719"></script>
-    <script src="../js/hub/calendar.js?v=20260719e"></script>
+    <script src="../js/hub/main.js?v=20260720a"></script>
+    <script src="../js/hub/calendar.js?v=20260720a"></script>
     <script src="../js/hub/members.js?v=20260720"></script>
     <script src="../js/hub/notifications.js?v=20260224a"></script>
     <script src="../js/hub/venues.js?v=20260611"></script>
-    <script src="../js/hub/myevents.js?v=20260719b"></script>
-    <script src="../js/hub/admin.js?v=20260720"></script>
+    <script src="../js/hub/myevents.js?v=20260720a"></script>
+    <script src="../js/hub/admin.js?v=20260720a"></script>
 
     <script>
         // タブの切り替えに応じてフローティングボタンの表示を制御
