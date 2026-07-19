@@ -18,6 +18,11 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         'parent':  '保護者'
     };
 
+    // ユーザーの子供IDの解決（メンバー側を正とする）は FCOjima.Utils.resolveChildrenIds に集約
+    Admin._resolveChildrenIds = function(u, members) {
+        return FCOjima.Utils.resolveChildrenIds(u, members);
+    };
+
     /**
      * 管理タブの初期化
      */
@@ -95,7 +100,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
      */
     Admin.createPendingCard = function(u) {
         var members = app.Hub.members || [];
-        var childNames = (u.childrenIds || []).map(function(cid) {
+        var childNames = Admin._resolveChildrenIds(u, members).map(function(cid) {
             var m = members.find(function(mem) { return String(mem.id) === String(cid); });
             return m ? m.name : cid;
         }).join('、') || '（なし）';
@@ -172,7 +177,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             var members = app.Hub.members || [];
 
             approved.forEach(function(u) {
-                var childNames = (u.childrenIds || []).map(function(cid) {
+                var childNames = Admin._resolveChildrenIds(u, members).map(function(cid) {
                     var m = members.find(function(mem) { return String(mem.id) === String(cid); });
                     return m ? m.name : cid;
                 }).join('、') || '（なし）';
