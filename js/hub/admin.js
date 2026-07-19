@@ -27,6 +27,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         Admin.initAttendanceMatrixModal();
         Admin.initEventDetailModal();
         Admin.initDriverStatsModal();
+        Admin.initDutyGroupsModal();
     };
 
     Admin.initEventDetailModal = function() {
@@ -685,6 +686,188 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         } catch (e) {
             container.innerHTML = '<p style="color:#c00;">読み込みエラー: ' + e.message + '</p>';
             console.error('送迎貢献度の集計エラー:', e);
+        }
+    };
+
+    // =============================================
+    //  当番表（グループ設定）
+    // =============================================
+
+    var _dutyGroups = null;   // 読み込み済みグループ一覧のキャッシュ
+    var _dutySettings = null;
+
+    Admin.initDutyGroupsModal = function() {
+        var btn = document.getElementById('btn-duty-groups');
+        var modal = document.getElementById('duty-groups-modal');
+        var closeBtn = document.getElementById('duty-groups-modal-close');
+        var addBtn = document.getElementById('duty-group-add-btn');
+        var toggle = document.getElementById('duty-enabled-toggle');
+        if (!btn || !modal) return;
+
+        btn.addEventListener('click', function() {
+            modal.style.display = 'flex';
+            Admin.loadDutyGroups();
+        });
+        closeBtn && closeBtn.addEventListener('click', function() {
+            modal.style.display = 'none';
+        });
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) modal.style.display = 'none';
+        });
+        addBtn && addBtn.addEventListener('click', function() {
+            var name = prompt('グループ名を入力してください（例: Aグループ）');
+            if (!name || !name.trim()) return;
+            Admin.createDutyGroup(name.trim());
+        });
+        toggle && toggle.addEventListener('change', function() {
+            Admin.saveDutyEnabled(toggle.checked);
+        });
+    };
+
+    /**
+     * 当番表機能のON/OFF設定＋グループ一覧を読み込んで表示
+     */
+    Admin.loadDutyGroups = async function() {
+        var container = document.getElementById('duty-groups-container');
+        var toggle = document.getElementById('duty-enabled-toggle');
+        if (!container) return;
+        container.innerHTML = '<p class="loading">読み込み中...</p>';
+
+        try {
+            var settings = await FCOjima.DB.loadDutySettings();
+            _dutySettings = settings;
+            if (toggle) toggle.checked = !!settings.enabled;
+
+            var groups = await FCOjima.DB.loadDutyGroups();
+            _dutyGroups = groups;
+
+            // 候補メンバー: 指導者（coach/assist）・父・母
+            var candidates = (FCOjima.Hub.members || []).filter(function(m) {
+                return ['coach', 'assist', 'father', 'mother'].includes(m.role);
+            });
+
+            container.innerHTML = '';
+            if (groups.length === 0) {
+                container.innerHTML = '<p style="color:#999;padding:8px;">グループがまだありません。「グループを追加」から作成してください。</p>';
+                return;
+            }
+
+            groups.forEach(function(group) {
+                container.appendChild(Admin._buildDutyGroupCard(group, candidates));
+            });
+        } catch (e) {
+            container.innerHTML = '<p style="color:#c00;">読み込みエラー: ' + e.message + '</p>';
+            console.error('当番グループの読み込みエラー:', e);
+        }
+    };
+
+    /** 1グループ分のカードDOMを構築 */
+    Admin._buildDutyGroupCard = function(group, candidates) {
+        var UI = FCOjima.UI;
+        var card = document.createElement('div');
+        card.className = 'duty-group-card';
+
+        var head = document.createElement('div');
+        head.className = 'duty-group-head';
+        var nameSpan = document.createElement('span');
+        nameSpan.className = 'duty-group-name';
+        nameSpan.textContent = group.name;
+        var renameBtn = document.createElement('button');
+        renameBtn.type = 'button';
+        renameBtn.className = 'duty-group-icon-btn';
+        renameBtn.textContent = '✏️';
+        renameBtn.title = 'グループ名を変更';
+        renameBtn.addEventListener('click', function() {
+            var newName = prompt('グループ名を変更', group.name);
+            if (!newName || !newName.trim() || newName.trim() === group.name) return;
+            Admin.renameDutyGroup(group, newName.trim());
+        });
+        var delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'duty-group-icon-btn';
+        delBtn.textContent = '🗑️';
+        delBtn.title = 'グループを削除';
+        delBtn.addEventListener('click', function() {
+            if (!confirm('「' + group.name + '」を削除しますか？（所属メンバーの割り当ても削除されます）')) return;
+            Admin.deleteDutyGroup(group);
+        });
+        head.appendChild(nameSpan);
+        head.appendChild(renameBtn);
+        head.appendChild(delBtn);
+        card.appendChild(head);
+
+        var memberIds = (group.memberIds || []).map(String);
+        var body = document.createElement('div');
+        body.className = 'duty-group-members';
+        if (candidates.length === 0) {
+            body.innerHTML = '<p style="color:#999;font-size:12px;margin:4px 0;">指導者・父・母のメンバーが登録されていません。</p>';
+        } else {
+            candidates.forEach(function(m) {
+                var chip = document.createElement('label');
+                chip.className = 'duty-member-chip' + (memberIds.includes(String(m.id)) ? ' checked' : '');
+                var cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.checked = memberIds.includes(String(m.id));
+                cb.addEventListener('change', function() {
+                    chip.classList.toggle('checked', cb.checked);
+                    Admin.toggleDutyGroupMember(group, m.id, cb.checked);
+                });
+                chip.appendChild(cb);
+                chip.appendChild(document.createTextNode(m.name + (ROLE_LABELS[m.role] ? '（' + (m.role === 'coach' ? '監督' : m.role === 'assist' ? 'コーチ' : m.role === 'father' ? '父' : '母') + '）' : '')));
+                body.appendChild(chip);
+            });
+        }
+        card.appendChild(body);
+        return card;
+    };
+
+    Admin.saveDutyEnabled = async function(enabled) {
+        try {
+            await FCOjima.DB.saveDutySettings({ enabled: enabled });
+            _dutySettings = { enabled: enabled };
+        } catch (e) {
+            alert('設定の保存に失敗しました: ' + e.message);
+        }
+    };
+
+    Admin.createDutyGroup = async function(name) {
+        try {
+            await FCOjima.DB.saveDutyGroup({ name: name, memberIds: [] });
+            Admin.loadDutyGroups();
+        } catch (e) {
+            alert('グループの作成に失敗しました: ' + e.message);
+        }
+    };
+
+    Admin.renameDutyGroup = async function(group, newName) {
+        try {
+            await FCOjima.DB.saveDutyGroup({ id: group.id, name: newName, memberIds: group.memberIds || [] });
+            Admin.loadDutyGroups();
+        } catch (e) {
+            alert('グループ名の変更に失敗しました: ' + e.message);
+        }
+    };
+
+    Admin.deleteDutyGroup = async function(group) {
+        try {
+            await FCOjima.DB.deleteDutyGroup(group.id);
+            Admin.loadDutyGroups();
+        } catch (e) {
+            alert('グループの削除に失敗しました: ' + e.message);
+        }
+    };
+
+    Admin.toggleDutyGroupMember = async function(group, memberId, checked) {
+        try {
+            var memberIds = (group.memberIds || []).map(String);
+            var idStr = String(memberId);
+            if (checked && !memberIds.includes(idStr)) memberIds.push(idStr);
+            if (!checked) memberIds = memberIds.filter(function(id) { return id !== idStr; });
+            group.memberIds = memberIds;
+            await FCOjima.DB.saveDutyGroup({ id: group.id, name: group.name, memberIds: memberIds });
+        } catch (e) {
+            alert('メンバーの更新に失敗しました: ' + e.message);
+            Admin.loadDutyGroups();
         }
     };
 
