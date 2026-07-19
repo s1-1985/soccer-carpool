@@ -73,14 +73,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                 if (s !== seat && s.dataset.person) assignedPeople.push(s.dataset.person);
             });
 
-            // イベント対象者でフィルタリング（欠席者除く）
-            var absentNamesModal = new Set(
-                (app.Carpool.appData.attendance || [])
-                    .filter(function(a) { return a.status === 'absent'; })
-                    .map(function(a) { return a.name; })
-            );
+            // イベント対象者でフィルタリング（欠席者はgetEventFilteredMembers内で除外済み）
             const available = Assignment.getEventFilteredMembers().filter(function(m) {
-                if (m.role === 'player' && absentNamesModal.has(m.name)) return false;
                 return !assignedPeople.includes(m.name);
             });
             available.push({ id: 'luggage', name: '荷物', role: 'other' });
@@ -206,61 +200,84 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     };
 
     /**
-     * イベント対象者でフィルタリングされたメンバーリストを返す
-     * openSeatEditModal, generateRandomAssignments で共用
+     * イベント対象者でフィルタリングされたメンバーリストを返す。
+     * 配車割り当て画面（メンバードック・統計バー・ランダム配置・座席編集モーダル・
+     * 共有カード生成）が参照する唯一の対象者算出ロジック。
+     *
+     * かつてはこの関数と各呼び出し箇所（updateMembersList/updateStatsBar/
+     * generateRandomAssignments）がそれぞれ独自に対象者を再計算しており、
+     * 互いの条件が少しずつズレていた（例: 自分自身が出欠で参加表明した保護者が
+     * ドック一覧には出ないのに統計バーの人数には数えられる、指導者の欠席が
+     * 一部の画面でしか反映されない、等）。ここに一本化し、全呼び出し箇所は
+     * この関数の結果を加工するだけにする。
+     *
+     * 対象の定義:
+     *  - 監督・コーチ: 常に対象。ただし本人が「欠席」登録していれば除外
+     *  - 選手: 対象学年（event.target）または学年外追加選手（event.extraPlayers）。
+     *    「欠席」登録していれば除外（「未回答」は座席計画上まだ確定していないだけなので含む）
+     *  - 保護者（父・母）: 本人が「参加」登録している、または子供が上記の対象選手として
+     *    「参加」登録している場合に対象。本人が「欠席」登録していれば除外
      */
     Assignment.getEventFilteredMembers = function() {
         var event = Storage.getSelectedEvent();
         var members = app.Carpool.members || [];
+        var attendance = (app.Carpool.appData && app.Carpool.appData.attendance) || [];
         var targetGrades = (event && event.target && event.target.length > 0) ? event.target : [];
 
-        // スタッフは常に含む
-        var filtered = members.filter(function(m) { return m.role === 'coach' || m.role === 'assist'; });
+        var absentNames = new Set(
+            attendance.filter(function(a) { return a.status === 'absent'; }).map(function(a) { return a.name; })
+        );
+        var presentNames = new Set(
+            attendance.filter(function(a) { return a.status === 'present'; }).map(function(a) { return a.name; })
+        );
+
+        // スタッフ（監督・コーチ）：本人が欠席登録していれば除外
+        var filtered = members.filter(function(m) {
+            return (m.role === 'coach' || m.role === 'assist') && !absentNames.has(m.name);
+        });
 
         // 対象学年の選手
+        var players;
         if (targetGrades.length > 0) {
-            filtered = filtered.concat(members.filter(function(m) {
+            players = members.filter(function(m) {
                 return m.role === 'player' && m.grade && targetGrades.some(function(g) { return String(g) === String(m.grade); });
-            }));
+            });
         } else {
-            filtered = filtered.concat(members.filter(function(m) { return m.role === 'player'; }));
+            players = members.filter(function(m) { return m.role === 'player'; });
         }
-
         // 学年外追加選手
         if (event && event.extraPlayers && event.extraPlayers.length > 0) {
-            var existingNames = new Set(filtered.map(function(m) { return m.name; }));
+            var existingNames = new Set(players.map(function(m) { return m.name; }));
             event.extraPlayers.forEach(function(name) {
                 if (!existingNames.has(name)) {
                     var m = members.find(function(x) { return x.name === name; });
-                    if (m) { filtered.push(m); existingNames.add(name); }
+                    if (m) { players.push(m); existingNames.add(name); }
                 }
             });
         }
+        // 欠席確定の選手を除外
+        players = players.filter(function(m) { return !absentNames.has(m.name); });
+        filtered = filtered.concat(players);
 
-        // 参加確定保護者（自分自身が出欠で参加表明 OR 子供が参加確定）
-        var attendance = app.Carpool.appData.attendance;
-        if (attendance && attendance.length > 0) {
-            var presentNames = new Set(
-                attendance.filter(function(a) { return a.status === 'present'; }).map(function(a) { return a.name; })
-            );
-            var presentPlayerIds = new Set(
-                members
-                    .filter(function(p) { return p.role === 'player' && presentNames.has(p.name); })
-                    .map(function(p) { return String(p.id); })
-            );
-            var existingNames2 = new Set(filtered.map(function(m) { return m.name; }));
-            filtered = filtered.concat(members.filter(function(m) {
-                if (m.role !== 'father' && m.role !== 'mother') return false;
-                if (existingNames2.has(m.name)) return false;
-                // 自分自身が参加表明している
-                if (presentNames.has(m.name)) return true;
-                // 子供が参加確定している
-                if (m.childrenIds && m.childrenIds.length > 0) {
-                    return m.childrenIds.some(function(cid) { return presentPlayerIds.has(String(cid)); });
-                }
-                return false;
-            }));
-        }
+        // 参加確定保護者（自分自身が出欠で参加表明 OR 子供が参加確定）。本人が欠席登録していれば除外
+        var presentPlayerIds = new Set(
+            members
+                .filter(function(p) { return p.role === 'player' && presentNames.has(p.name); })
+                .map(function(p) { return String(p.id); })
+        );
+        var existingNames2 = new Set(filtered.map(function(m) { return m.name; }));
+        filtered = filtered.concat(members.filter(function(m) {
+            if (m.role !== 'father' && m.role !== 'mother') return false;
+            if (existingNames2.has(m.name)) return false;
+            if (absentNames.has(m.name)) return false;
+            // 自分自身が参加表明している
+            if (presentNames.has(m.name)) return true;
+            // 子供が参加確定している
+            if (m.childrenIds && m.childrenIds.length > 0) {
+                return m.childrenIds.some(function(cid) { return presentPlayerIds.has(String(cid)); });
+            }
+            return false;
+        }));
 
         // 重複排除
         var seen = new Set();
@@ -544,13 +561,11 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             return;
         }
         
-        // イベント対象学年でフィルタリングされた選手リスト（欠席確定者を除く）
-        const attendance = app.Carpool.appData.attendance;
-        const absentNames = new Set(
-            (attendance || []).filter(function(a) { return a.status === 'absent'; }).map(function(a) { return a.name; })
-        );
-        let targetPlayers = Assignment.getEventFilteredMembers()
-            .filter(function(m) { return m.role === 'player' && !absentNames.has(m.name); })
+        // 対象者算出はgetEventFilteredMembersに一本化（欠席確定者は除外済み）
+        var eligibleForRandom = Assignment.getEventFilteredMembers();
+
+        let targetPlayers = eligibleForRandom
+            .filter(function(m) { return m.role === 'player'; })
             .map(function(m) { return m.name; });
         console.log(`ランダム配置対象選手数: ${targetPlayers.length}人`);
 
@@ -559,33 +574,16 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
 
         // 非ドライバーのスタッフ（重複排除）
         var seenStaff = new Set();
-        var uniqueStaff = app.Carpool.members
-            .filter(function(m) { return (m.role === 'coach' || m.role === 'assist') && !driverNameSet.has(m.name) && !absentNames.has(m.name); })
+        var uniqueStaff = eligibleForRandom
+            .filter(function(m) { return (m.role === 'coach' || m.role === 'assist') && !driverNameSet.has(m.name); })
             .map(function(m) { return m.name; })
             .filter(function(n) { if (seenStaff.has(n)) return false; seenStaff.add(n); return true; });
         console.log(`非ドライバーのスタッフ: ${uniqueStaff.length}人`);
 
-        // 非ドライバーの参加確定保護者（自己出欠あり OR 子が参加確定）
-        var presentAttNames = new Set(
-            (attendance || []).filter(function(a) { return a.status === 'present'; }).map(function(a) { return a.name; })
-        );
-        var presentPlayerIds = new Set(
-            app.Carpool.members
-                .filter(function(p) { return p.role === 'player' && presentAttNames.has(p.name); })
-                .map(function(p) { return String(p.id); })
-        );
+        // 非ドライバーの参加確定保護者
         var seenParent = new Set();
-        var uniqueParents = app.Carpool.members
-            .filter(function(m) {
-                if (m.role !== 'father' && m.role !== 'mother') return false;
-                if (driverNameSet.has(m.name)) return false;
-                if (absentNames.has(m.name)) return false;
-                if (presentAttNames.has(m.name)) return true;
-                if (m.childrenIds && m.childrenIds.length > 0) {
-                    return m.childrenIds.some(function(cid) { return presentPlayerIds.has(String(cid)); });
-                }
-                return false;
-            })
+        var uniqueParents = eligibleForRandom
+            .filter(function(m) { return (m.role === 'father' || m.role === 'mother') && !driverNameSet.has(m.name); })
             .map(function(m) { return m.name; })
             .filter(function(n) { if (seenParent.has(n)) return false; seenParent.add(n); return true; });
         console.log(`非ドライバーの参加確定保護者: ${uniqueParents.length}人`);
@@ -2200,89 +2198,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         }
         
         membersContainer.innerHTML = '';
-        
-        // イベントの対象学年を取得
-        const event = Storage.getSelectedEvent();
-        let targetGrades = [];
-        
-        if (event && event.target && event.target.length > 0) {
-            targetGrades = event.target;
-            console.log(`対象学年: ${targetGrades.join(', ')}`);
-        } else {
-            console.log('対象学年が指定されていません');
-        }
-        
-        // 対象学年のメンバーと監督・コーチをフィルタリング
-        let filteredMembers = [];
-        const members = app.Carpool.members;
-        
-        // 監督・コーチは常に表示
-        const staffMembers = members.filter(m => m.role === 'coach' || m.role === 'assist');
-        filteredMembers = [...staffMembers];
-        
-        // 対象学年の選手を追加
-        if (targetGrades.length > 0) {
-            const targetPlayers = members.filter(m =>
-                m.role === 'player' &&
-                m.grade &&
-                targetGrades.some(g => String(g) === String(m.grade))
-            );
-            filteredMembers = [...filteredMembers, ...targetPlayers];
-        } else {
-            // 対象学年が指定されていない場合は全選手
-            const allPlayers = members.filter(m => m.role === 'player');
-            filteredMembers = [...filteredMembers, ...allPlayers];
-        }
 
-        // 学年外追加選手を追加（重複を除く）
-        if (event && event.extraPlayers && event.extraPlayers.length > 0) {
-            const existingNames = new Set(filteredMembers.map(m => m.name));
-            event.extraPlayers.forEach(name => {
-                if (!existingNames.has(name)) {
-                    const m = members.find(m => m.name === name);
-                    if (m) {
-                        filteredMembers.push(m);
-                        existingNames.add(name);
-                    }
-                }
-            });
-        }
-
-        // 出欠で参加確定している選手の保護者を追加
-        const attendance = app.Carpool.appData.attendance;
-        if (attendance && attendance.length > 0) {
-            const presentPlayerNames = attendance
-                .filter(a => a.status === 'present')
-                .map(a => a.name);
-
-            // presentPlayerNames に対応する選手IDを取得
-            const presentPlayerIds = new Set(
-                members
-                    .filter(function(p) { return p.role === 'player' && presentPlayerNames.includes(p.name); })
-                    .map(function(p) { return String(p.id); })
-            );
-
-            // childrenIds に参加確定選手が含まれる保護者を追加
-            const existingNames = new Set(filteredMembers.map(function(m) { return m.name; }));
-            const parentMembers = members.filter(function(m) {
-                if (m.role !== 'father' && m.role !== 'mother') return false;
-                if (existingNames.has(m.name)) return false;
-                if (!m.childrenIds || !m.childrenIds.length) return false;
-                return m.childrenIds.some(function(cid) { return presentPlayerIds.has(String(cid)); });
-            });
-
-            filteredMembers = [...filteredMembers, ...parentMembers];
-        }
-        
-        // 欠席確定の選手を配置待ちから除外
-        const absentNamesInList = new Set(
-            (app.Carpool.appData.attendance || [])
-                .filter(function(a) { return a.status === 'absent'; })
-                .map(function(a) { return a.name; })
-        );
-        filteredMembers = filteredMembers.filter(function(m) {
-            return m.role !== 'player' || !absentNamesInList.has(m.name);
-        });
+        // 対象者算出はgetEventFilteredMembersに一本化（欠席除外・自己出欠登録の保護者を含む）
+        let filteredMembers = Assignment.getEventFilteredMembers();
 
         // 既に座席に配置されているメンバーを除外（ドライバー座席も含む）
         const assignedMembers = [];
@@ -2394,56 +2312,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         ];
         if (!bars[0] && !bars[1]) return;
 
-        var members = app.Carpool.members || [];
-        var event = Storage.getSelectedEvent();
-        var targetGrades = (event && event.target && event.target.length > 0) ? event.target : [];
-
         // 参加人数：指導者+選手+保護者（欠席者除く、運転手除く、メンバー外乗員除く）
-        var staffMembers = members.filter(function(m) { return m.role === 'coach' || m.role === 'assist'; });
-        var eligiblePlayers = [];
-        if (targetGrades.length > 0) {
-            eligiblePlayers = members.filter(function(m) {
-                return m.role === 'player' && m.grade && targetGrades.some(function(g) { return String(g) === String(m.grade); });
-            });
-        } else {
-            eligiblePlayers = members.filter(function(m) { return m.role === 'player'; });
-        }
-        // 学年外追加選手
-        if (event && event.extraPlayers && event.extraPlayers.length > 0) {
-            var seen = new Set(eligiblePlayers.map(function(m) { return m.name; }));
-            event.extraPlayers.forEach(function(name) {
-                if (!seen.has(name)) {
-                    var m = members.find(function(x) { return x.name === name; });
-                    if (m) { eligiblePlayers.push(m); seen.add(name); }
-                }
-            });
-        }
-        // 欠席者除外
-        var absentNames = new Set(
-            (app.Carpool.appData.attendance || [])
-                .filter(function(a) { return a.status === 'absent'; })
-                .map(function(a) { return a.name; })
-        );
-        eligiblePlayers = eligiblePlayers.filter(function(m) { return !absentNames.has(m.name); });
-
-        // 参加確定保護者（自己出欠あり OR 子供が参加確定）
-        var presentAllNames = new Set(
-            (app.Carpool.appData.attendance || [])
-                .filter(function(a) { return a.status === 'present'; })
-                .map(function(a) { return a.name; })
-        );
-        var presentPIds = new Set(
-            members.filter(function(p) { return p.role === 'player' && presentAllNames.has(p.name); })
-                   .map(function(p) { return String(p.id); })
-        );
-        var eligibleParents = members.filter(function(m) {
-            if (m.role !== 'father' && m.role !== 'mother') return false;
-            if (presentAllNames.has(m.name)) return true;
-            if (m.childrenIds && m.childrenIds.length > 0) {
-                return m.childrenIds.some(function(cid) { return presentPIds.has(String(cid)); });
-            }
-            return false;
-        });
+        // 対象者算出はgetEventFilteredMembersに一本化
+        var eligibleAll = Assignment.getEventFilteredMembers();
 
         // 運転手名セット・車両数
         var carRegistrations = app.Carpool.appData.carRegistrations || [];
@@ -2452,15 +2323,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         var carCount = availableCars.length;
 
         // 参加人数（運転手除く）
-        var allEligible = [...staffMembers, ...eligiblePlayers, ...eligibleParents];
-        var seenElig = new Set();
-        allEligible = allEligible.filter(function(m) {
-            var key = String(m.id || m.name);
-            if (seenElig.has(key)) return false;
-            seenElig.add(key);
-            return true;
-        });
-        var participantCount = allEligible.filter(function(m) { return !driverNames.has(m.name); }).length;
+        var participantCount = eligibleAll.filter(function(m) { return !driverNames.has(m.name); }).length;
 
         // 座席数（運転手席除く全席）
         var totalSeats = availableCars.reduce(function(sum, car) {
