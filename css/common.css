@@ -465,6 +465,68 @@ tr:hover { background: #fbf6e8; }
 }
 @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 
+/* ---------- 送迎貢献度バー ---------- */
+.driver-stat-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    font-size: 13px;
+}
+.driver-stat-name {
+    min-width: 84px;
+    max-width: 84px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+}
+.driver-stat-bar-track {
+    flex: 1;
+    height: 14px;
+    background: var(--surface-2);
+    border-radius: var(--r-pill);
+    overflow: hidden;
+    border: 1px solid var(--line);
+}
+.driver-stat-bar-fill {
+    height: 100%;
+    background: var(--grad-gold);
+    border-radius: var(--r-pill);
+    transition: width .3s ease;
+}
+.driver-stat-count {
+    min-width: 32px;
+    text-align: right;
+    font-weight: 700;
+    color: var(--ink);
+}
+.driver-stat-zero {
+    color: var(--ink-soft);
+    font-size: 12px;
+    padding: 2px 0;
+}
+
+/* ---------- 天気チップ ---------- */
+.weather-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+    padding: 2px 10px;
+    border-radius: var(--r-pill);
+    background: var(--info-bg);
+    color: #24506e;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.weather-chip-muted {
+    background: var(--surface-2);
+    color: var(--ink-soft);
+    font-weight: 500;
+}
+
 /* ---------- ユーティリティ ---------- */
 .text-center { text-align: center; }
 .text-right { text-align: right; }

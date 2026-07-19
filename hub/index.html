@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FC 尾島ジュニア HUB</title>
     <link rel="icon" type="image/png" href="/img/favicon-64.png?v=2">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1C1600">
+    <link rel="apple-touch-icon" href="/img/icon-192.png">
     <link rel="stylesheet" href="../css/common.css?v=20260719b">
     <link rel="stylesheet" href="../css/hub/calendar.css?v=20260224a">
     <link rel="stylesheet" href="../css/hub/members.css?v=20260224a">
@@ -411,6 +414,10 @@
             <section style="margin-top:24px;">
                 <button id="btn-attendance-matrix" class="primary-button" style="width:100%;max-width:320px;">出欠状況</button>
             </section>
+
+            <section style="margin-top:12px;">
+                <button id="btn-driver-stats" class="primary-button" style="width:100%;max-width:320px;">🚗 送迎の貢献度</button>
+            </section>
         </div>
     </div>
 
@@ -457,6 +464,18 @@
             <span class="close" id="attendance-matrix-modal-close">&times;</span>
             <h2 style="font-size:16px;margin-bottom:8px;">出欠状況 <span style="font-size:11px;font-weight:normal;color:#888;">（ナイター除く・選手のみ）</span></h2>
             <div id="attendance-matrix-container">
+                <p class="loading">読み込み中...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 送迎の貢献度モーダル -->
+    <div id="driver-stats-modal" class="modal">
+        <div class="modal-content" style="max-width:520px;">
+            <span class="close" id="driver-stats-modal-close">&times;</span>
+            <h2 style="font-size:16px;margin-bottom:4px;">🚗 送迎の貢献度</h2>
+            <p id="driver-stats-season-label" style="font-size:11px;color:#888;margin:0 0 12px;"></p>
+            <div id="driver-stats-container">
                 <p class="loading">読み込み中...</p>
             </div>
         </div>
@@ -714,15 +733,16 @@
     <script src="../js/common/ui.js?v=20260224a"></script>
     <script src="../js/common/auth.js?v=20260224a"></script>
     <script src="../js/common/db.js?v=20260623"></script>
+    <script src="../js/common/weather.js?v=20260719"></script>
 
     <!-- HUBページ用モジュール -->
     <script src="../js/hub/main.js?v=20260224a"></script>
-    <script src="../js/hub/calendar.js?v=20260611"></script>
+    <script src="../js/hub/calendar.js?v=20260719"></script>
     <script src="../js/hub/members.js?v=20260611"></script>
     <script src="../js/hub/notifications.js?v=20260224a"></script>
     <script src="../js/hub/venues.js?v=20260611"></script>
     <script src="../js/hub/myevents.js?v=20260718"></script>
-    <script src="../js/hub/admin.js?v=20260718c"></script>
+    <script src="../js/hub/admin.js?v=20260719b"></script>
 
     <script>
         // タブの切り替えに応じてフローティングボタンの表示を制御

@@ -622,6 +622,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             <div class="detail-item">
                 <span class="detail-label">会場:</span> ${UI.escapeHTML(event.venue || '未設定')}
                 ${venueMapBtn}
+                <span id="event-weather-${event.id}"></span>
             </div>
             <div class="detail-item">
                 <span class="detail-label">時間:</span> ${event.startTime || '未設定'}${event.endTime ? ` - ${event.endTime}` : ''}
@@ -635,7 +636,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             ${attendanceDisplay}
             ${eventLogDisplay}
         `;
-        
+
         // ボタンにイベントIDを設定
         document.getElementById('manage-event').setAttribute('data-event-id', event.id);
         document.getElementById('edit-event').setAttribute('data-event-id', event.id);
@@ -647,6 +648,25 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
 
         // モーダルを表示
         UI.openModal('event-details-modal');
+
+        // 会場の天気（非同期。取得失敗してもモーダル自体は壊れない）
+        Calendar._renderWeatherChip(event);
+    };
+
+    /**
+     * イベントの会場天気を取得して差し込む
+     * @param {Object} event - イベント
+     */
+    Calendar._renderWeatherChip = function(event) {
+        if (!event.venue || !app.Weather || !app.Weather.getForecast) return;
+        var target = document.getElementById('event-weather-' + event.id);
+        if (!target) return;
+        var venueData = (app.Hub.venues || []).find(function(v) { return v.name === event.venue; });
+        target.innerHTML = '<span class="weather-chip weather-chip-muted">天気を取得中...</span>';
+        app.Weather.getForecast(event.venue, venueData && venueData.address, event.date).then(function(result) {
+            var el = document.getElementById('event-weather-' + event.id);
+            if (el) el.innerHTML = app.Weather.formatChip(result);
+        });
     };
     
     /**

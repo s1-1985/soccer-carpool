@@ -26,6 +26,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         Admin.refresh();
         Admin.initAttendanceMatrixModal();
         Admin.initEventDetailModal();
+        Admin.initDriverStatsModal();
     };
 
     Admin.initEventDetailModal = function() {
@@ -519,6 +520,129 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
     };
 
     // =============================================
+    //  送迎の貢献度・公平性の可視化
+    // =============================================
+
+    Admin.initDriverStatsModal = function() {
+        var btn = document.getElementById('btn-driver-stats');
+        var modal = document.getElementById('driver-stats-modal');
+        var closeBtn = document.getElementById('driver-stats-modal-close');
+        if (!btn || !modal) return;
+
+        btn.addEventListener('click', function() {
+            modal.style.display = 'flex';
+            Admin.loadDriverStats();
+        });
+        closeBtn && closeBtn.addEventListener('click', function() {
+            modal.style.display = 'none';
+        });
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) modal.style.display = 'none';
+        });
+    };
+
+    /**
+     * 今シーズン（直近の4/1〜）の開始日をISO文字列で返す
+     * 学年の繰り上げ（Utils.calculateGrade）と同じ4/1基準に揃える
+     */
+    Admin._seasonStartISO = function() {
+        var today = new Date();
+        var year = today.getFullYear();
+        var apr1 = new Date(year, 3, 1); // 0-indexedで3が4月
+        if (today < apr1) year -= 1;
+        return year + '-04-01';
+    };
+
+    /**
+     * 送迎の貢献度（今シーズンの運転回数）を集計して表示
+     */
+    Admin.loadDriverStats = async function() {
+        var container = document.getElementById('driver-stats-container');
+        var seasonLabel = document.getElementById('driver-stats-season-label');
+        if (!container) return;
+        container.innerHTML = '<p class="loading">読み込み中...</p>';
+
+        try {
+            var seasonStart = Admin._seasonStartISO();
+            if (seasonLabel) {
+                seasonLabel.textContent = seasonStart.slice(0, 4) + '年' + seasonStart.slice(5, 7) + '月〜 今シーズンの集計';
+            }
+
+            // 1. 今シーズンのイベントのみ取得（過去含む・ナイターも含めて集計対象とする）
+            var events = await FCOjima.DB.loadEvents();
+            var seasonEvents = events.filter(function(ev) { return ev.date && ev.date >= seasonStart; });
+
+            if (seasonEvents.length === 0) {
+                container.innerHTML = '<p style="color:#999;padding:8px;">今シーズンのイベントがありません。</p>';
+                return;
+            }
+
+            // 2. 各イベントの車両登録を並列取得
+            var dataArr = await Promise.all(
+                seasonEvents.map(function(ev) { return FCOjima.DB.loadEventData(ev.id); })
+            );
+
+            // 3. parent名で運転回数を集計（canDrive!=='no'のみ）
+            var counts = {};
+            dataArr.forEach(function(data) {
+                var regs = (data && data.carRegistrations) ? data.carRegistrations : [];
+                regs.forEach(function(reg) {
+                    if (!reg.parent || reg.canDrive === 'no') return;
+                    counts[reg.parent] = (counts[reg.parent] || 0) + 1;
+                });
+            });
+
+            var ranked = Object.keys(counts)
+                .map(function(name) { return { name: name, count: counts[name] }; })
+                .sort(function(a, b) { return b.count - a.count; });
+
+            var maxCount = ranked.length > 0 ? ranked[0].count : 0;
+
+            container.innerHTML = '';
+
+            if (ranked.length > 0) {
+                var listTitle = document.createElement('h3');
+                listTitle.style.cssText = 'font-size:13px;color:#666;margin:0 0 8px;';
+                listTitle.textContent = '運転回数ランキング';
+                container.appendChild(listTitle);
+
+                ranked.forEach(function(item) {
+                    var row = document.createElement('div');
+                    row.className = 'driver-stat-row';
+                    var pct = maxCount > 0 ? Math.round(item.count / maxCount * 100) : 0;
+                    row.innerHTML =
+                        '<span class="driver-stat-name" title="' + FCOjima.UI.escapeHTML(item.name) + '">' + FCOjima.UI.escapeHTML(item.name) + '</span>' +
+                        '<span class="driver-stat-bar-track"><span class="driver-stat-bar-fill" style="width:' + pct + '%;"></span></span>' +
+                        '<span class="driver-stat-count">' + item.count + '回</span>';
+                    container.appendChild(row);
+                });
+            } else {
+                container.innerHTML = '<p style="color:#999;padding:8px;">今シーズンの車両登録がありません。</p>';
+            }
+
+            // 一度も運転していない父母（登録0件）も表示 → 声かけの参考になる
+            var driverNames = new Set(Object.keys(counts));
+            var zeroDrivers = (FCOjima.Hub.members || [])
+                .filter(function(m) { return (m.role === 'father' || m.role === 'mother') && !driverNames.has(m.name); })
+                .map(function(m) { return m.name; });
+
+            if (zeroDrivers.length > 0) {
+                var zeroTitle = document.createElement('h3');
+                zeroTitle.style.cssText = 'font-size:13px;color:#666;margin:16px 0 6px;';
+                zeroTitle.textContent = '今シーズン未登録の保護者';
+                container.appendChild(zeroTitle);
+                var zeroP = document.createElement('p');
+                zeroP.className = 'driver-stat-zero';
+                zeroP.textContent = zeroDrivers.join('、');
+                container.appendChild(zeroP);
+            }
+        } catch (e) {
+            container.innerHTML = '<p style="color:#c00;">読み込みエラー: ' + e.message + '</p>';
+            console.error('送迎貢献度の集計エラー:', e);
+        }
+    };
+
+    // =============================================
     //  参加イベント移動（出欠マトリクスから）
     // =============================================
 
@@ -713,9 +837,10 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         if (ev.venue) {
             var vv = venues.find(function(v) { return v.name === ev.venue; });
             var vq = encodeURIComponent((vv && vv.address) ? vv.address : ev.venue);
-            html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px;">'
+            html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px;flex-wrap:wrap;">'
                 + '<span style="color:#888;min-width:52px;">会場</span>'
                 + '<span>' + UI.escapeHTML(ev.venue) + '</span>'
+                + '<span id="event-weather-' + ev.id + '"></span>'
                 + '<button onclick="window.open(\'https://www.google.com/maps/search/?api=1&query=' + vq + '\',\'_blank\')" style="margin-left:auto;background:#E8A200;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">地図を開く</button>'
                 + '</div>';
         }
@@ -735,6 +860,20 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
 
         body.innerHTML = html;
         modal.style.display = 'flex';
+
+        // 会場の天気（非同期。取得失敗してもモーダル自体は壊れない）
+        if (ev.venue && FCOjima.Weather && FCOjima.Weather.getForecast) {
+            var weatherTarget = document.getElementById('event-weather-' + ev.id);
+            if (weatherTarget) {
+                var venueDataForWeather = venues.find(function(v) { return v.name === ev.venue; });
+                weatherTarget.innerHTML = '<span class="weather-chip weather-chip-muted">天気を取得中...</span>';
+                FCOjima.Weather.getForecast(ev.venue, venueDataForWeather && venueDataForWeather.address, ev.date).then(function(result) {
+                    var el = document.getElementById('event-weather-' + ev.id);
+                    if (el) el.innerHTML = FCOjima.Weather.formatChip(result);
+                });
+            }
+        }
+
         var filesWrapper = document.getElementById('event-files-wrapper');
         if (filesWrapper) filesWrapper.style.display = (showFiles === false) ? 'none' : '';
         if (showFiles !== false) Admin.loadEventFiles(ev.id);
