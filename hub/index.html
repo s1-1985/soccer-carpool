@@ -8,7 +8,7 @@
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#1C1600">
     <link rel="apple-touch-icon" href="/img/icon-192.png">
-    <link rel="stylesheet" href="../css/common.css?v=20260719b">
+    <link rel="stylesheet" href="../css/common.css?v=20260719c">
     <link rel="stylesheet" href="../css/hub/calendar.css?v=20260224a">
     <link rel="stylesheet" href="../css/hub/members.css?v=20260224a">
     <link rel="stylesheet" href="../css/hub/notifications.css?v=20260224a">
@@ -134,6 +134,19 @@
         .mx-legend b.p { color: #27ae60; }
         .mx-legend b.u { color: #e0a020; }
         .mx-legend b.a { color: #e74c3c; }
+
+        /* ── 未回答が多い選手の横断サマリー ── */
+        .mx-unanswered {
+            margin-bottom: 10px; padding: 8px 12px;
+            background: #fff8e6; border: 1px solid #E8A200; border-radius: 8px;
+        }
+        .mx-unanswered-head { font-size: 12px; font-weight: bold; color: #7a5a00; margin-bottom: 6px; }
+        .mx-unanswered-items { display: flex; flex-wrap: wrap; gap: 6px; }
+        .mx-unanswered-chip {
+            display: inline-flex; align-items: center;
+            background: #fff; border: 1px solid #e0c98a; border-radius: 12px;
+            padding: 3px 10px; font-size: 12px; color: #5c4300; white-space: nowrap;
+        }
 
         /* ── 単一行ヘッダー（イベント列） ── */
         .attendance-matrix .mx-evt {
@@ -734,15 +747,16 @@
     <script src="../js/common/auth.js?v=20260224a"></script>
     <script src="../js/common/db.js?v=20260623"></script>
     <script src="../js/common/weather.js?v=20260719"></script>
+    <script src="../js/common/checklist.js?v=20260719"></script>
 
     <!-- HUBページ用モジュール -->
     <script src="../js/hub/main.js?v=20260224a"></script>
-    <script src="../js/hub/calendar.js?v=20260719"></script>
+    <script src="../js/hub/calendar.js?v=20260719c"></script>
     <script src="../js/hub/members.js?v=20260611"></script>
     <script src="../js/hub/notifications.js?v=20260224a"></script>
     <script src="../js/hub/venues.js?v=20260611"></script>
-    <script src="../js/hub/myevents.js?v=20260718"></script>
-    <script src="../js/hub/admin.js?v=20260719b"></script>
+    <script src="../js/hub/myevents.js?v=20260719"></script>
+    <script src="../js/hub/admin.js?v=20260719c"></script>
 
     <script>
         // タブの切り替えに応じてフローティングボタンの表示を制御

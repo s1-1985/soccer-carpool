@@ -627,6 +627,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             <div class="detail-item">
                 <span class="detail-label">時間:</span> ${event.startTime || '未設定'}${event.endTime ? ` - ${event.endTime}` : ''}
             </div>
+            ${app.Checklist ? app.Checklist.formatChips(event.type, event.checklistExtra) : ''}
             ${event.notes ? `
             <div class="detail-item">
                 <span class="detail-label">備考:</span><br>
