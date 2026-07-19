@@ -431,6 +431,10 @@
             <section style="margin-top:12px;">
                 <button id="btn-driver-stats" class="primary-button" style="width:100%;max-width:320px;">🚗 送迎の貢献度</button>
             </section>
+
+            <section style="margin-top:12px;">
+                <button id="btn-duty-groups" class="primary-button" style="width:100%;max-width:320px;">🔔 当番グループ設定</button>
+            </section>
         </div>
     </div>
 
@@ -489,6 +493,28 @@
             <h2 style="font-size:16px;margin-bottom:4px;">🚗 送迎の貢献度</h2>
             <p id="driver-stats-season-label" style="font-size:11px;color:#888;margin:0 0 12px;"></p>
             <div id="driver-stats-container">
+                <p class="loading">読み込み中...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 当番グループ設定モーダル -->
+    <div id="duty-groups-modal" class="modal">
+        <div class="modal-content" style="max-width:520px;">
+            <span class="close" id="duty-groups-modal-close">&times;</span>
+            <h2 style="font-size:16px;margin-bottom:4px;">🔔 当番グループ設定</h2>
+            <label class="duty-enabled-row">
+                <span class="duty-toggle-switch">
+                    <input type="checkbox" id="duty-enabled-toggle">
+                    <span class="duty-toggle-slider"></span>
+                </span>
+                当番表機能を有効にする
+            </label>
+            <p style="font-size:11px;color:#888;margin:2px 0 14px;">オフの場合、当番表は他の画面に表示されません（グループ設定自体は保存されます）。</p>
+            <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+                <button type="button" id="duty-group-add-btn" class="secondary-button" style="font-size:13px;padding:8px 14px;">＋ グループを追加</button>
+            </div>
+            <div id="duty-groups-container">
                 <p class="loading">読み込み中...</p>
             </div>
         </div>
@@ -737,7 +763,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
-    <script src="../js/common/firebase-config.js?v=20260611"></script>
+    <script src="../js/common/firebase-config.js?v=20260719"></script>
 
     <!-- 共通モジュール -->
     <script src="../js/common/global.js?v=20260224a"></script>
@@ -745,7 +771,7 @@
     <script src="../js/common/storage.js?v=20260224a"></script>
     <script src="../js/common/ui.js?v=20260224a"></script>
     <script src="../js/common/auth.js?v=20260224a"></script>
-    <script src="../js/common/db.js?v=20260623"></script>
+    <script src="../js/common/db.js?v=20260719"></script>
     <script src="../js/common/weather.js?v=20260719"></script>
     <script src="../js/common/checklist.js?v=20260719"></script>
 

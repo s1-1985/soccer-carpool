@@ -271,4 +271,40 @@ FCOjima.DB = FCOjima.DB || {};
             .collection('users').doc(uid).update({ role });
     };
 
+    // ========== 当番表（グループ設定）==========
+
+    DB.loadDutySettings = async function() {
+        const doc = await Collections.dutySettings().get();
+        return doc.exists ? doc.data() : { enabled: false };
+    };
+
+    DB.saveDutySettings = async function(settings) {
+        await Collections.dutySettings().set(settings, { merge: true });
+    };
+
+    DB.loadDutyGroups = async function() {
+        const snapshot = await Collections.dutyGroups().get();
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    };
+
+    DB.saveDutyGroup = async function(group) {
+        if (group.id) {
+            const id = String(group.id);
+            const data = Object.assign({}, group);
+            delete data.id;
+            await Collections.dutyGroups().doc(id).set(data, { merge: true });
+            return id;
+        } else {
+            const ref = await Collections.dutyGroups().add({
+                name: group.name,
+                memberIds: group.memberIds || []
+            });
+            return ref.id;
+        }
+    };
+
+    DB.deleteDutyGroup = async function(groupId) {
+        await Collections.dutyGroups().doc(String(groupId)).delete();
+    };
+
 })(FCOjima.DB);

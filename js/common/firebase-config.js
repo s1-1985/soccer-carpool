@@ -48,7 +48,9 @@ const Collections = {
   events:        () => _db.collection('teams').doc(TEAM_ID).collection('events'),
   notifications: () => _db.collection('teams').doc(TEAM_ID).collection('notifications'),
   logs:          () => _db.collection('teams').doc(TEAM_ID).collection('logs'),
-  eventData:     (eventId) => _db.collection('teams').doc(TEAM_ID).collection('eventData').doc(String(eventId))
+  eventData:     (eventId) => _db.collection('teams').doc(TEAM_ID).collection('eventData').doc(String(eventId)),
+  dutyGroups:    () => _db.collection('teams').doc(TEAM_ID).collection('dutyGroups'),
+  dutySettings:  () => _db.collection('teams').doc(TEAM_ID).collection('dutySettings').doc('main')
 };
 
 window.FCOjimaFirebase = { db: _db, auth: _auth, Collections, TEAM_ID };

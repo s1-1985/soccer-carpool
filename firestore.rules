@@ -115,6 +115,18 @@ service cloud.firestore {
       match /eventData/{dataId} {
         allow read, write: if isAuth() && isApproved(teamId);
       }
+
+      // ----- 当番表 設定（機能ON/OFF）-----
+      match /dutySettings/{settingId} {
+        allow read:  if isAuth() && isApproved(teamId);
+        allow write: if isAuth() && isManager(teamId);
+      }
+
+      // ----- 当番グループ（当番の割り当て単位）-----
+      match /dutyGroups/{groupId} {
+        allow read:  if isAuth() && isApproved(teamId);
+        allow write: if isAuth() && isManager(teamId);
+      }
     }
   }
 }

@@ -1,8 +1,42 @@
 # 引き継ぎドキュメント (handover)
 
 最終更新: 2026-07-19
-mainの最新コミット: `40009b6` (2026-07-19)「feat: 会場の現地天気表示を追加＋次期5機能の詳細設計（todo.md） (#83)」
+mainの最新コミット: `1256537` (2026-07-19)「feat: 持ち物チェックリスト＋未回答者の横断ビューを追加 (#84)」
 本番URL: https://fc-ojimajr-hub.web.app （Firebase Hosting / プロジェクト `fc-ojimajr-hub`）
+
+---
+
+## 2026-07-19 当番表機能 Phase 1（グループ管理・ON/OFF切替）
+
+ユーザーヒアリング結果：当番表はマスト機能ではないためON/OFFトグルで切替可能にする。
+分け方は「グループ制」（お茶当番/旗当番のような種類別ではない）。管理タブで
+①グループを作成（名称を決める）→②グループごとにメンバーを選ぶ、の2段階。
+メンバー候補は指導者（coach/assist）・父・母のみ（選手は対象外）。
+
+このセッションで実装したのは**グループ管理の器（Phase 1）のみ**。「どのイベントに
+どのグループを割り当てるか」の実際の当番割り当てロジックはまだ未実装（todo.mdの
+「4. 当番表機能」Phase 2に要ヒアリング事項として記録済み）。
+
+### 実装内容
+- Firestore新規コレクション: `teams/fc-ojima/dutySettings/main`（`{enabled: boolean}`）、
+  `teams/fc-ojima/dutyGroups/{groupId}`（`{name, memberIds: string[]}`）
+- `firestore.rules`: 両方とも`read: isApproved`／`write: isManager`
+  （`venues`と同じパターンで、一般保護者による書き込みは拒否されることをE2Eで確認済み）
+- `js/common/firebase-config.js`: `Collections.dutyGroups`/`Collections.dutySettings`を追加
+- `js/common/db.js`: `DB.loadDutySettings`/`saveDutySettings`/`loadDutyGroups`/`saveDutyGroup`/`deleteDutyGroup`
+- `js/hub/admin.js`: 管理タブに「🔔 当番グループ設定」ボタン→モーダル
+  （ON/OFFトグル・グループ追加/改名/削除・メンバー選択チップ）
+- `css/common.css`: `.duty-toggle-switch`（トグルスイッチ）、`.duty-group-card`/`.duty-member-chip`
+
+### 検証
+Firebaseエミュレータ+Playwrightで、管理者ロールにて：
+- トグルON/OFF、グループ作成、メンバー割り当てがすべてページリロード後も永続化されること（11項目PASS）
+- 一般保護者（承認済みだが非マネージャー）による`dutyGroups`直接書き込みが
+  `permission-denied`で拒否されること（セキュリティ確認1項目PASS）
+
+### キャッシュバスト
+`firebase-config.js?v=20260719`（全ページ）、`db.js?v=20260719`（Firestore利用ページ）、
+`admin.js?v=20260719c`、`common.css?v=20260719c`（hub/index.htmlのみ）
 
 ---
 
