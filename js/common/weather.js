@@ -66,7 +66,8 @@ FCOjima.Weather = FCOjima.Weather || {};
      * @returns {Promise<{lat:number, lon:number}|null>}
      */
     function geocode(venueName, address) {
-        var cacheKey = 'fcojima_geocode_v2_' + (venueName || '') + '|' + (address || '');
+        // v3: v2は都道府県付きクエリで失敗した当日missキャッシュが残っている可能性があるため更新
+        var cacheKey = 'fcojima_geocode_v3_' + (venueName || '') + '|' + (address || '');
         try {
             var cached = localStorage.getItem(cacheKey);
             if (cached) {
@@ -79,8 +80,18 @@ FCOjima.Weather = FCOjima.Weather || {};
 
         var queries = [];
         if (address) {
-            var m = address.match(/^.{2,4}[都道府県].{1,7}?[市区町村郡]/);
-            queries.push(m ? m[0] : address);
+            // GeoNames（Open-Meteoの地名DB）は「太田市」で当たるが「群馬県太田市」では
+            // 当たらない（実測確認済み）。都道府県を除いた市区町村名を最優先で試す
+            var m = address.match(/^(.{2,4}[都道府県])?(.{1,10}?[市区町村])/);
+            if (m && m[2]) {
+                var city = m[2];
+                // 「邑楽郡大泉町」のような郡付きは町村名だけでも試す
+                var gunIdx = city.indexOf('郡');
+                if (gunIdx > 0 && gunIdx < city.length - 1) queries.push(city.slice(gunIdx + 1));
+                queries.push(city);
+            } else {
+                queries.push(address);
+            }
         }
         if (venueName) {
             var stripped = venueName.replace(/(グラウンド|グランド|サッカー場|野球場|運動公園|総合公園|公園|小学校|中学校|高校|高等学校|体育館|運動場|競技場|スポーツ広場|多目的広場|河川敷|緑地)$/, '');
@@ -121,7 +132,7 @@ FCOjima.Weather = FCOjima.Weather || {};
         if (diff > MAX_FORECAST_DAYS) return Promise.resolve({ ok: false, reason: 'too-far' });
         if (!venueName && !address) return Promise.resolve({ ok: false, reason: 'no-venue' });
 
-        var sessionKey = 'fcojima_weather_' + (venueName || address) + '_' + dateISO + '_' + todayISO();
+        var sessionKey = 'fcojima_weather_v2_' + (venueName || address) + '_' + dateISO + '_' + todayISO();
         try {
             var cached = sessionStorage.getItem(sessionKey);
             if (cached) return Promise.resolve(JSON.parse(cached));
@@ -165,9 +176,9 @@ FCOjima.Weather = FCOjima.Weather || {};
         if (!result || !result.ok) {
             var msg = {
                 'past': '', // 過去イベントは何も出さない
-                'too-far': '天気予報はまだ取得できません（開催7日前頃から表示）',
+                'too-far': '天気予報はまだ取得できません（開催16日前頃から表示）',
                 'no-venue': '',
-                'geocode-failed': '天気情報を取得できませんでした',
+                'geocode-failed': '天気: 会場の場所を特定できません（会場登録で住所を設定すると表示されます）',
                 'no-data': '天気情報を取得できませんでした',
                 'network-error': '天気情報を取得できませんでした',
                 'no-date': ''

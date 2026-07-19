@@ -124,6 +124,7 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
                     venue: ev.venue || '',
                     type: ev.type,
                     checklistExtra: ev.checklistExtra,
+                    checklist: ev.checklist,
                     dutyGroupName: dutyAssignment ? dutyAssignment.groupName : null,
                     kids: kids
                 });
@@ -323,13 +324,21 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
                 }
 
                 if (app.Checklist) {
-                    var checklistHtml = app.Checklist.formatChips(it.type, it.checklistExtra);
+                    var checklistHtml = app.Checklist.formatChips(it.type, it.checklistExtra, it.checklist);
                     if (checklistHtml) {
                         var checklistWrap = document.createElement('div');
                         checklistWrap.innerHTML = checklistHtml;
                         card.appendChild(checklistWrap.firstChild);
                     }
                 }
+
+                // カードタップでカレンダーのイベント詳細モーダルを開く
+                card.style.cursor = 'pointer';
+                card.addEventListener('click', function() {
+                    if (app.Hub.Calendar && app.Hub.Calendar.showEventDetails) {
+                        app.Hub.Calendar.showEventDetails(it.eventId);
+                    }
+                });
 
                 if (it.dutyGroupName) {
                     var dutyMeta = document.createElement('div');

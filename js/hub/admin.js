@@ -385,13 +385,17 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 breakdown.push({ present: present, absent: absent, unknown: targetN - present - absent, target: targetN });
             });
 
-            // 未回答者の横断集計（選手ごとに、表示中イベントの中で「未回答」の数を数える）
+            // 未回答者の横断集計（選手ごとに「未回答」の数を数える）
+            // ※ 「過去も表示」をONにしても、このサマリーは常に今後のイベントのみで集計する。
+            //   過去イベントの未回答は今さら回答できず件数が膨れ上がるだけのため
+            //   （2026-07-20実機報告: 過去表示ONでサマリーが画面を埋め尽くした）
             var unansweredCounts = {};
             members.forEach(function(m) {
                 var key = m.id != null ? String(m.id) : m.name;
                 unansweredCounts[key] = { member: m, count: 0 };
             });
             targetEvents.forEach(function(ev) {
+                if (!ev.date || ev.date < todayISO) return; // 過去イベントは集計対象外
                 var evMap = statusMap[ev.id];
                 members.forEach(function(m) {
                     if (!isTargetFor(m, ev)) return;

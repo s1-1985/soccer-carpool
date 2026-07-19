@@ -140,7 +140,11 @@ header h1::before {
 
 /* ---------- タブ ---------- */
 .tab {
-    overflow: hidden;
+    /* タブは今後増えるため横スクロール可能にする（スクロールバーは非表示） */
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
     background: var(--grad-ink);
     display: flex;
     flex-wrap: nowrap;
@@ -148,6 +152,7 @@ header h1::before {
     position: relative;
     box-shadow: var(--sh-sm);
 }
+.tab::-webkit-scrollbar { display: none; }
 .tab::after {
     content: '';
     position: absolute; left: 0; right: 0; bottom: 0;
@@ -158,7 +163,7 @@ header h1::before {
 }
 
 .tablinks {
-    flex: 1;
+    flex: 1 0 auto;
     background: transparent;
     color: rgba(243,236,216,.62);
     border: none;
