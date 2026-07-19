@@ -1,8 +1,49 @@
 # 引き継ぎドキュメント (handover)
 
 最終更新: 2026-07-19
-mainの最新コミット: `62610cb` (2026-07-19)「design: アプリ全体を黄×黒ストライプ基調で刷新（ログイン画面・デザインシステム） (#81)」
+mainの最新コミット: `40009b6` (2026-07-19)「feat: 会場の現地天気表示を追加＋次期5機能の詳細設計（todo.md） (#83)」
 本番URL: https://fc-ojimajr-hub.web.app （Firebase Hosting / プロジェクト `fc-ojimajr-hub`）
+
+---
+
+## 2026-07-19 持ち物チェックリスト＋未回答者の横断ビュー
+
+todo.mdの壁打ちで決まった6機能のうち⑤⑥を実装（①②③は前セッションでPR #83にてマージ済み）。
+
+### ⑤ 持ち物チェックリスト
+- `js/common/checklist.js` を新規作成、`FCOjima.Checklist` 名前空間
+  - `Checklist.getItems(type, extra)` / `Checklist.formatChips(type, extra)`
+  - イベント種別（game/practice/event/nighter/other）ごとの持ち物をハードコードした辞書を返す最小実装
+  - `event.checklistExtra`（イベント個別の追加持ち物）に対応済みだが、現状どのUIからも
+    `checklistExtra`を書き込む導線は未実装（拡張の余地として残す）。**もし今後
+    イベント編集モーダルからchecklistExtraを編集できるようにする場合は、
+    `Calendar.saveEvent`（js/hub/calendar.js:881-896付近）の固定フィールド再構築ロジックに
+    `checklistExtra`を明示的に追加しないと、他のフィールド編集保存時に消える**ので要注意
+- 表示箇所3か所: `js/hub/myevents.js`（参加予定タブの各カード）、
+  `js/hub/calendar.js`の`Calendar.showEventDetails`（保護者向けイベント詳細）、
+  `js/hub/admin.js`の`Admin.openEventDetailModal`（管理者向け概要モーダル）
+- CSS: `css/common.css`に`.checklist-chips`/`.checklist-chip`/`.checklist-label`を追加
+
+### ⑥ 未回答者の横断ビュー
+- `js/hub/admin.js`の`Admin.loadAttendanceMatrix`内に実装（別関数に分けず、
+  マトリクス読み込み時の副産物として集計 — todo.mdのCodexレビュー指摘どおり案Aを採用し、
+  出欠状況モーダルの中だけに表示。管理タブを開いただけでは表示されない仕様）
+  - 表示中のイベント（過去表示トグルの状態に連動）の中で「未回答」が3件以上ある選手を
+    多い順にチップ表示。0〜2件の選手は表示しない（`UNANSWERED_THRESHOLD = 3`で調整可能）
+  - `isTargetFor`判定を通しているため、対象外（na）は未回答としてカウントされない
+- CSS: `hub/index.html`のインラインstyleに`.mx-unanswered`系を追加（既存の
+  `.mx-toolbar`等と同じ場所に集約されているページなので、ここに追記するのが既存踏襲）
+
+### 検証
+- Firebaseエミュレータ+Playwrightで検証（管理者・保護者の両ロールでログインし確認）。
+  - 未回答が閾値以上の選手がチップ表示されること
+  - 持ち物チップが管理者向けモーダル・保護者向けモーダル・参加予定タブカードの3箇所すべてに
+    正しいイベント種別の持ち物で表示されること
+  - 全6項目PASS
+
+### キャッシュバスト
+`hub/index.html`: `checklist.js?v=20260719`（新規）、`calendar.js?v=20260719c`、
+`admin.js?v=20260719c`、`myevents.js?v=20260719`、`common.css?v=20260719c`
 
 ---
 

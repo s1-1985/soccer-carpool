@@ -311,6 +311,27 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 return bar;
             }
 
+            // ─── 未回答が多い選手の横断サマリー ───
+            function buildUnansweredSummary(list) {
+                if (!list || list.length === 0) return null;
+                var box = document.createElement('div');
+                box.className = 'mx-unanswered';
+                var head = document.createElement('div');
+                head.className = 'mx-unanswered-head';
+                head.textContent = '📋 未回答が' + UNANSWERED_THRESHOLD + '件以上ある選手';
+                box.appendChild(head);
+                var items = document.createElement('div');
+                items.className = 'mx-unanswered-items';
+                list.forEach(function(u) {
+                    var chip = document.createElement('span');
+                    chip.className = 'mx-unanswered-chip';
+                    chip.textContent = (u.member.name || '') + '（' + u.count + '件）';
+                    items.appendChild(chip);
+                });
+                box.appendChild(items);
+                return box;
+            }
+
             if (targetEvents.length === 0) {
                 el.innerHTML = '';
                 el.appendChild(buildToolbar());
@@ -357,6 +378,29 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 });
                 breakdown.push({ present: present, absent: absent, unknown: targetN - present - absent, target: targetN });
             });
+
+            // 未回答者の横断集計（選手ごとに、表示中イベントの中で「未回答」の数を数える）
+            var unansweredCounts = {};
+            members.forEach(function(m) {
+                var key = m.id != null ? String(m.id) : m.name;
+                unansweredCounts[key] = { member: m, count: 0 };
+            });
+            targetEvents.forEach(function(ev) {
+                var evMap = statusMap[ev.id];
+                members.forEach(function(m) {
+                    if (!isTargetFor(m, ev)) return;
+                    var st = evMap[m.name] || evMap[String(m.id)] || 'unknown';
+                    if (st === 'unknown') {
+                        var key = m.id != null ? String(m.id) : m.name;
+                        unansweredCounts[key].count++;
+                    }
+                });
+            });
+            var UNANSWERED_THRESHOLD = 3;
+            var unansweredList = Object.keys(unansweredCounts)
+                .map(function(k) { return unansweredCounts[k]; })
+                .filter(function(u) { return u.count >= UNANSWERED_THRESHOLD; })
+                .sort(function(a, b) { return b.count - a.count; });
 
             // 直近イベント（今日以降で最初）のインデックス
             var upcomingIdx = -1;
@@ -499,6 +543,8 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             wrap.appendChild(table);
             el.innerHTML = '';
             el.appendChild(buildToolbar());
+            var unansweredBox = buildUnansweredSummary(unansweredList);
+            if (unansweredBox) el.appendChild(unansweredBox);
             el.appendChild(wrap);
 
             // 直近イベント列が見えるよう横スクロール位置を調整
@@ -849,6 +895,11 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         if (ev.target && ev.target.length > 0) {
             var grades = ev.target.map(function(g) { return Utils.getGradeLabel(g); }).join('、');
             html += '<div style="margin-bottom:8px;font-size:13px;"><span style="color:#888;">対象: </span>' + grades + '</div>';
+        }
+
+        // 持ち物チェックリスト
+        if (FCOjima.Checklist) {
+            html += FCOjima.Checklist.formatChips(ev.type, ev.checklistExtra);
         }
 
         // 備考（イベントのフィールド名は notes。旧データの description にも対応）

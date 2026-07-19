@@ -119,6 +119,8 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
                     title: ev.title || Utils.getEventTypeLabel(ev.type),
                     startTime: ev.startTime || '',
                     venue: ev.venue || '',
+                    type: ev.type,
+                    checklistExtra: ev.checklistExtra,
                     kids: kids
                 });
             }
@@ -314,6 +316,15 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
                     meta.className = 'me-meta';
                     meta.textContent = '会場: ' + it.venue;
                     card.appendChild(meta);
+                }
+
+                if (app.Checklist) {
+                    var checklistHtml = app.Checklist.formatChips(it.type, it.checklistExtra);
+                    if (checklistHtml) {
+                        var checklistWrap = document.createElement('div');
+                        checklistWrap.innerHTML = checklistHtml;
+                        card.appendChild(checklistWrap.firstChild);
+                    }
                 }
 
                 var kidsDiv = document.createElement('div');
