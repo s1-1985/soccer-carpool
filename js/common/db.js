@@ -206,7 +206,22 @@ FCOjima.DB = FCOjima.DB || {};
         } catch (e) {
             console.warn('ログの読み込みをスキップ（権限がない可能性）:', e && e.code ? e.code : e);
         }
-        return { members, venues, events, notifications, logs };
+
+        let dutySettings = { enabled: false }, dutyGroups = [], dutyAssignments = [];
+        try {
+            const [ds, dg, da] = await Promise.all([
+                DB.loadDutySettings(),
+                DB.loadDutyGroups(),
+                DB.loadDutyAssignments()
+            ]);
+            dutySettings = ds;
+            dutyGroups = dg;
+            dutyAssignments = da;
+        } catch (e) {
+            console.warn('当番表データの読み込みをスキップ:', e && e.code ? e.code : e);
+        }
+
+        return { members, venues, events, notifications, logs, dutySettings, dutyGroups, dutyAssignments };
     };
 
     // ========== ユーザー管理（保護者承認・役割管理） ==========
@@ -319,6 +334,21 @@ FCOjima.DB = FCOjima.DB || {};
 
     DB.deleteDutyGroup = async function(groupId) {
         await Collections.dutyGroups().doc(String(groupId)).delete();
+    };
+
+    // ========== 当番割り当て（イベント×グループ）==========
+
+    DB.loadDutyAssignments = async function() {
+        const snapshot = await Collections.dutyAssignments().get();
+        return snapshot.docs.map(doc => ({ eventId: doc.id, ...doc.data() }));
+    };
+
+    DB.saveDutyAssignment = async function(eventId, data) {
+        await Collections.dutyAssignments().doc(String(eventId)).set(data);
+    };
+
+    DB.deleteDutyAssignment = async function(eventId) {
+        await Collections.dutyAssignments().doc(String(eventId)).delete();
     };
 
 })(FCOjima.DB);

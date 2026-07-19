@@ -513,7 +513,19 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 <button type="button" class="map-button" onclick="window.open('${meetingMapUrl}','_blank')" style="margin-left:8px;font-size:11px;padding:2px 8px;background:#4285f4;color:#fff;border:none;border-radius:4px;cursor:pointer;">地図を開く</button>
             </div>`;
         }
-        
+
+        // 当番グループ（機能が有効かつ割り当てがある場合のみ表示。閲覧のみ・変更は管理タブから）
+        let dutyDisplay = '';
+        if (app.Hub.dutyEnabled) {
+            var dutyAssignmentForEvent = (app.Hub.dutyAssignments || []).find(function(a) { return String(a.eventId) === String(event.id); });
+            if (dutyAssignmentForEvent) {
+                dutyDisplay = `
+            <div class="detail-item">
+                <span class="detail-label">当番:</span> 🔔 ${UI.escapeHTML(dutyAssignmentForEvent.groupName)}
+            </div>`;
+            }
+        }
+
         // 会場マップボタン（会場登録の住所を優先）
         var venueMapBtn = '';
         if (event.venue) {
@@ -628,6 +640,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 <span class="detail-label">時間:</span> ${event.startTime || '未設定'}${event.endTime ? ` - ${event.endTime}` : ''}
             </div>
             ${app.Checklist ? app.Checklist.formatChips(event.type, event.checklistExtra) : ''}
+            ${dutyDisplay}
             ${event.notes ? `
             <div class="detail-item">
                 <span class="detail-label">備考:</span><br>

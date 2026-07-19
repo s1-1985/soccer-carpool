@@ -127,6 +127,14 @@ service cloud.firestore {
         allow read:  if isAuth() && isApproved(teamId);
         allow write: if isAuth() && isManager(teamId);
       }
+
+      // ----- 当番割り当て（イベント×グループ）-----
+      // eventDataやeventsは承認済みなら誰でも書き込み可のため、当番割り当ては
+      // マネージャー限定にするために別コレクションに分離している
+      match /dutyAssignments/{eventId} {
+        allow read:  if isAuth() && isApproved(teamId);
+        allow write: if isAuth() && isManager(teamId);
+      }
     }
   }
 }

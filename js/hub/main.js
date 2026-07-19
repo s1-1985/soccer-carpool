@@ -16,6 +16,9 @@ FCOjima.Hub.init = async function() {
             FCOjima.Hub.events        = data.events;
             FCOjima.Hub.notifications = data.notifications;
             FCOjima.Hub.logs          = data.logs;
+            FCOjima.Hub.dutyEnabled     = data.dutySettings ? !!data.dutySettings.enabled : false;
+            FCOjima.Hub.dutyGroups      = data.dutyGroups || [];
+            FCOjima.Hub.dutyAssignments = data.dutyAssignments || [];
             console.log('Firestoreからデータをロードしました');
         } catch (e) {
             console.warn('Firestoreロード失敗 → localStorageを使用:', e);
@@ -24,6 +27,9 @@ FCOjima.Hub.init = async function() {
             FCOjima.Hub.events        = FCOjima.Storage.loadEvents();
             FCOjima.Hub.notifications = FCOjima.Storage.loadNotifications();
             FCOjima.Hub.logs          = FCOjima.Storage.loadLogs();
+            FCOjima.Hub.dutyEnabled     = false;
+            FCOjima.Hub.dutyGroups      = [];
+            FCOjima.Hub.dutyAssignments = [];
         }
     } else {
         FCOjima.Hub.members       = FCOjima.Storage.loadMembers();
@@ -31,6 +37,9 @@ FCOjima.Hub.init = async function() {
         FCOjima.Hub.events        = FCOjima.Storage.loadEvents();
         FCOjima.Hub.notifications = FCOjima.Storage.loadNotifications();
         FCOjima.Hub.logs          = FCOjima.Storage.loadLogs();
+        FCOjima.Hub.dutyEnabled     = false;
+        FCOjima.Hub.dutyGroups      = [];
+        FCOjima.Hub.dutyAssignments = [];
     }
 
     // 現在の日付を設定
