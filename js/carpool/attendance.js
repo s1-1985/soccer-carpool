@@ -608,17 +608,28 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
             unknown: 0
         };
         
-        // 対象学年のメンバー数をカウント
+        // 対象学年のメンバー数をカウント（学年外追加選手も含む。autoPopulateFromTargetGradesと揃える）
         const members = FCOjima.Carpool.members;
+        let targetPlayers;
         if (event.target && event.target.length > 0) {
-            stats.total = members.filter(member =>
+            targetPlayers = members.filter(member =>
                 member.role === 'player' &&
                 member.grade &&
                 event.target.some(g => String(g) === String(member.grade))
-            ).length;
+            );
         } else {
-            stats.total = members.filter(member => member.role === 'player').length;
+            targetPlayers = members.filter(member => member.role === 'player');
         }
+        if (event.extraPlayers && event.extraPlayers.length > 0) {
+            const existingNames = new Set(targetPlayers.map(m => m.name));
+            event.extraPlayers.forEach(name => {
+                if (!existingNames.has(name)) {
+                    const m = members.find(m => m.name === name);
+                    if (m) { targetPlayers.push(m); existingNames.add(name); }
+                }
+            });
+        }
+        stats.total = targetPlayers.length;
         
         // 参加状況をカウント
         attendance.forEach(item => {

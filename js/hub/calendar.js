@@ -185,18 +185,22 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
 
         var members = app.Hub.members || [];
         var myChildIds = profile.childrenIds;
-        var myChildGrades = [];
-        myChildIds.forEach(function(cid) {
-            var child = members.find(function(m) { return String(m.id) === String(cid); });
-            if (child && child.grade) myChildGrades.push(child.grade);
-        });
+        var myChildren = myChildIds
+            .map(function(cid) { return members.find(function(m) { return String(m.id) === String(cid); }); })
+            .filter(Boolean);
 
-        if (myChildGrades.length === 0) return events;
+        if (myChildren.length === 0) return events;
 
+        // 対象判定はisTargetFor（学年一致 or 学年外追加選手）と揃える。
+        // ここを学年一致だけにすると、extraPlayersで学年外追加された自分の子の
+        // イベントが「自分の子供のみ」フィルターから消えてしまう
         return events.filter(function(ev) {
-            if (!ev.target || ev.target.length === 0) return true; // 対象学年なし＝全員対象
-            return ev.target.some(function(g) {
-                return myChildGrades.some(function(cg) { return String(cg) === String(g); });
+            var evTargets = (ev.target && ev.target.length > 0) ? ev.target : null;
+            var extraPlayers = ev.extraPlayers || [];
+            if (!evTargets) return true; // 対象学年なし＝全員対象
+            return myChildren.some(function(child) {
+                return (child.grade && evTargets.some(function(g) { return String(g) === String(child.grade); }))
+                    || extraPlayers.includes(child.name);
             });
         });
     };
