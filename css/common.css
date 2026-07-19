@@ -131,7 +131,7 @@ header h1::before {
     vertical-align: -9px;
     margin-right: 9px;
     width: 30px; height: 32px;
-    background-image: url("/img/logo-sm.webp");
+    background-image: url("/img/logo-sm.webp?v=2");
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
@@ -484,7 +484,10 @@ tr:hover { background: #fbf6e8; }
     header h1 { font-size: 17px; gap: 8px; }
     header h1::before { width: 22px; height: 26px; }
     .modal-content { width: 94%; padding: 16px; margin: 14px auto; border-radius: var(--r); }
-    .tablinks { padding: 13px 6px; font-size: 12.5px; }
+    /* タブは6個入るよう詰める（右端の「管理」見切れ対策） */
+    .tab { padding: 0; }
+    .tablinks { padding: 12px 2px; font-size: 11px; letter-spacing: 0; min-width: 0; }
+    .tablinks.active::after { left: 8%; right: 8%; }
     .action-buttons { flex-direction: row; flex-wrap: wrap; gap: 8px; }
     .action-buttons button { flex: 1; min-width: 0; }
     .main-nav ul { gap: 6px; }
