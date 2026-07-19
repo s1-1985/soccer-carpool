@@ -303,6 +303,20 @@ FCOjima.DB = FCOjima.DB || {};
         }
     };
 
+    // メンバーの追加・削除はarrayUnion/arrayRemoveで行う（読み取り→全件書き戻し方式だと、
+    // 複数マネージャーが同時に別メンバーを追加/削除した場合に後勝ちで一方が消える）
+    DB.addDutyGroupMember = async function(groupId, memberId) {
+        await Collections.dutyGroups().doc(String(groupId)).update({
+            memberIds: firebase.firestore.FieldValue.arrayUnion(String(memberId))
+        });
+    };
+
+    DB.removeDutyGroupMember = async function(groupId, memberId) {
+        await Collections.dutyGroups().doc(String(groupId)).update({
+            memberIds: firebase.firestore.FieldValue.arrayRemove(String(memberId))
+        });
+    };
+
     DB.deleteDutyGroup = async function(groupId) {
         await Collections.dutyGroups().doc(String(groupId)).delete();
     };
