@@ -319,7 +319,10 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
         });
 
         var roleLabels = { 'coach': '監督', 'assist': 'コーチ', 'officer': '役員', 'player': '選手', 'father': '父', 'mother': '母', 'other': '部員外' };
+        var roleIcons = { 'coach': '🧢', 'assist': '📋', 'officer': '💼', 'player': '⚽', 'father': '👨', 'mother': '👩', 'other': '👤' };
         var genderLabels = { 'male': '男性', 'female': '女性' };
+        // 未就学（年少/年中/年長）はグレード配色をひとつにまとめる
+        var gradeColorKey = { '年少': 'pre', '年中': 'pre', '年長': 'pre' };
 
         sorted.forEach(function(member) {
             var card = document.createElement('div');
@@ -327,8 +330,12 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
             card.dataset.memberId = member.id;
             card.dataset.role = member.role;
             card.dataset.grade = member.grade || '';
+            if (member.role === 'player' && member.grade) {
+                card.dataset.gradeColor = gradeColorKey[member.grade] || member.grade;
+            }
             card.style.cursor = 'pointer';
 
+            var icon = roleIcons[member.role] || '';
             var abbrHtml = member.abbr ?
                 ' <span style="font-size:0.8em;color:#888;font-weight:normal;">（' + UI.escapeHTML(member.abbr) + '）</span>' : '';
 
@@ -362,7 +369,7 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
                 '<div class="member-info-line" style="color:#888;font-size:0.8em;">' + UI.escapeHTML(member.notes) + '</div>' : '';
 
             card.innerHTML =
-                '<h3>' + UI.escapeHTML(member.name) + abbrHtml + '</h3>' +
+                '<h3>' + (icon ? '<span class="member-role-icon">' + icon + '</span> ' : '') + UI.escapeHTML(member.name) + abbrHtml + '</h3>' +
                 infoHtml + notesHtml;
 
             card.addEventListener('click', function(e) {

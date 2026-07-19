@@ -36,25 +36,51 @@
     justify-content: flex-end;
 }
 
-/* 役割によって色分け */
+/* 役割によって色分け（背景をうっすら色付けし、左ボーダーで強調） */
 .member-card.coach {
     border-left: 4px solid #28a745; /* 緑 */
+    background: linear-gradient(90deg, rgba(40,167,69,.08), #fff 60px);
 }
 
 .member-card.assist {
     border-left: 4px solid #17a2b8; /* 青緑 */
+    background: linear-gradient(90deg, rgba(23,162,184,.08), #fff 60px);
 }
 
-.member-card.player {
-    border-left: 4px solid #E8A200; /* 山吹色 */
+.member-card.officer {
+    border-left: 4px solid #6f42c1; /* 紫 */
+    background: linear-gradient(90deg, rgba(111,66,193,.08), #fff 60px);
 }
 
-.member-card.parent {
-    border-left: 4px solid #6c757d; /* グレー */
+.member-card.father {
+    border-left: 4px solid #3d6ea5; /* 青 */
+    background: linear-gradient(90deg, rgba(61,110,165,.08), #fff 60px);
+}
+
+.member-card.mother {
+    border-left: 4px solid #d9639c; /* ピンク */
+    background: linear-gradient(90deg, rgba(217,99,156,.08), #fff 60px);
 }
 
 .member-card.other {
-    border-left: 4px solid #6f42c1; /* 紫 */
+    border-left: 4px solid #6c757d; /* グレー */
+    background: linear-gradient(90deg, rgba(108,117,125,.08), #fff 60px);
+}
+
+/* 選手カードは既定で山吹色。学年ごとに左ボーダー色を変えて一目で区別できるようにする */
+.member-card.player {
+    border-left: 4px solid #E8A200; /* 山吹色（フォールバック） */
+}
+.member-card.player[data-grade-color="6"] { border-left-color: #E8A200; } /* 6年: 山吹（最上級生） */
+.member-card.player[data-grade-color="5"] { border-left-color: #F2994A; } /* 5年: オレンジ */
+.member-card.player[data-grade-color="4"] { border-left-color: #17a2b8; } /* 4年: 青緑 */
+.member-card.player[data-grade-color="3"] { border-left-color: #28a745; } /* 3年: 緑 */
+.member-card.player[data-grade-color="2"] { border-left-color: #4a90d9; } /* 2年: 青 */
+.member-card.player[data-grade-color="1"] { border-left-color: #7c5cff; } /* 1年: 紫 */
+.member-card.player[data-grade-color="pre"] { border-left-color: #d9639c; } /* 年少/年中/年長: ピンク */
+
+.member-role-icon {
+    font-size: 0.9em;
 }
 
 /* メンバー情報表示 */

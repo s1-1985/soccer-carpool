@@ -315,8 +315,27 @@ FCOjima.Utils = FCOjima.Utils || {};
      */
     Utils.createMapButton = function(address, buttonText = 'Google Mapで開く') {
         if (!address) return '';
-        
+
         const mapUrl = Utils.createMapUrl(address);
         return `<button type="button" class="map-button" onclick="window.open('${mapUrl}', '_blank')">${buttonText}</button>`;
+    };
+
+    /**
+     * ユーザー/保護者の子供IDを解決する。
+     * usersコレクションのchildrenIdsは登録申請時点のスナップショットで、その後
+     * 「メンバー」タブで保護者メンバーのchildrenIdsを編集しても同期されない
+     * （別々のドキュメントのため）。メンバー側を正とする方針により、氏名が一致する
+     * 父/母メンバーが見つかればそちらのchildrenIdsを優先する
+     * （見つからない場合のみ引数のchildrenIdsにフォールバック）
+     * @param {{name: string, childrenIds?: Array}} userLike - name必須のユーザー/プロフィールオブジェクト
+     * @param {Array} members - FCOjima.Hub.members相当のメンバー一覧
+     * @returns {Array} 解決済みchildrenIds
+     */
+    Utils.resolveChildrenIds = function(userLike, members) {
+        if (!userLike) return [];
+        var parentMember = (members || []).find(function(m) {
+            return (m.role === 'father' || m.role === 'mother') && m.name === userLike.name;
+        });
+        return parentMember ? (parentMember.childrenIds || []) : (userLike.childrenIds || []);
     };
 })();
