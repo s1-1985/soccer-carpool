@@ -79,6 +79,29 @@ FC尾島ジュニア（少年サッカーチーム）の運営支援Webアプリ
 - **2026-06-23**: Fable 5による全体徹底点検。Playwrightテスト68項目（後述）。重大バグ2件含む多数修正（PR #71）
 - **2026-07-17**: 選手学年の自動更新バグを修正（PR #73）
 
+## 2026-07-19 PWA化（ホーム画面にアイコン追加できるように）
+
+### 概要
+スマホのホーム画面にアプリアイコンを追加でき、ブラウザURL欄を経由せず直接開けるようにした。
+
+### 実装
+- `manifest.json`（リポジトリルート）: `start_url: /hub/login.html`, `display: standalone`,
+  `theme_color`/`background_color` はチームカラー`#1C1600`
+- アイコンは公式ロゴ（Higgsfieldで背景除去済みの`hf_trim.png`）から生成。
+  **透過のままだとホーム画面で浮くため、`#1C1600`の正方形背景に合成**してから書き出し
+  （`img/icon-192.png` / `icon-512.png` / `icon-512-maskable.png`（Android用に安全マージン20%広め））
+- 全10HTMLの`<head>`に`<link rel="manifest">` / `<meta name="theme-color">` /
+  `<link rel="apple-touch-icon">`を追加
+- **Service Workerは意図的に作らない**（オフライン対応はスコープ外。キャッシュバスト運用と
+  衝突するリスクを避け、3原則のメンテナンスフリーを優先。todo.md参照）
+
+### 検証
+Playwright + CDP `Page.getAppManifest`（Chrome自身にマニフェストをパースさせる）で
+パースエラー0件を確認。3ページ（index/hub/carpool配下）すべてで`manifest.json`への
+リンクが正しく張られていることも確認。5項目全パス。
+
+---
+
 ## 2026-07-19 送迎の貢献度・公平性の可視化（管理タブ）
 
 ### 概要
