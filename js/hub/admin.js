@@ -802,18 +802,26 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         if (candidates.length === 0) {
             body.innerHTML = '<p style="color:#999;font-size:12px;margin:4px 0;">指導者・父・母のメンバーが登録されていません。</p>';
         } else {
+            var MEMBER_ROLE_LABELS = { coach: '監督', assist: 'コーチ', father: '父', mother: '母' };
             candidates.forEach(function(m) {
+                var isChecked = memberIds.includes(String(m.id));
                 var chip = document.createElement('label');
-                chip.className = 'duty-member-chip' + (memberIds.includes(String(m.id)) ? ' checked' : '');
+                chip.className = 'duty-member-chip' + (isChecked ? ' checked' : '');
                 var cb = document.createElement('input');
                 cb.type = 'checkbox';
-                cb.checked = memberIds.includes(String(m.id));
-                cb.addEventListener('change', function() {
-                    chip.classList.toggle('checked', cb.checked);
-                    Admin.toggleDutyGroupMember(group, m.id, cb.checked);
-                });
+                cb.checked = isChecked;
                 chip.appendChild(cb);
-                chip.appendChild(document.createTextNode(m.name + (ROLE_LABELS[m.role] ? '（' + (m.role === 'coach' ? '監督' : m.role === 'assist' ? 'コーチ' : m.role === 'father' ? '父' : '母') + '）' : '')));
+                chip.appendChild(document.createTextNode(m.name + (MEMBER_ROLE_LABELS[m.role] ? '（' + MEMBER_ROLE_LABELS[m.role] + '）' : '')));
+                // 実機のモバイルChromeではlabel→内包checkboxへの暗黙のタップ転送が
+                // 効かないことがある（キャンバスモードのタップ問題と同種）。
+                // click側でpreventDefaultして手動でトグルし、実装を1本化する
+                chip.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var next = !cb.checked;
+                    cb.checked = next;
+                    chip.classList.toggle('checked', next);
+                    Admin.toggleDutyGroupMember(group, m.id, next);
+                });
                 body.appendChild(chip);
             });
         }
