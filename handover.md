@@ -79,6 +79,29 @@ FC尾島ジュニア（少年サッカーチーム）の運営支援Webアプリ
 - **2026-06-23**: Fable 5による全体徹底点検。Playwrightテスト68項目（後述）。重大バグ2件含む多数修正（PR #71）
 - **2026-07-17**: 選手学年の自動更新バグを修正（PR #73）
 
+## 2026-07-19 送迎の貢献度・公平性の可視化（管理タブ）
+
+### 概要
+管理タブに「今シーズン誰が何回運転したか」のランキングを表示し、負担の偏りを見える化する。
+
+### 実装（`js/hub/admin.js` / `hub/index.html` / `css/common.css`）
+- 管理タブに「🚗 送迎の貢献度」ボタン＋モーダル（`Admin.initDriverStatsModal` / `Admin.loadDriverStats`）
+- **集計は「今シーズン」＝直近の4/1〜に限定**（`Admin._seasonStartISO()`。学年繰り上げの
+  `Utils.calculateGrade`と同じ4/1基準に合わせた。全期間集計だと過去のデータが混ざりミスリードに
+  なるというCodexレビュー指摘を反映）
+- `FCOjima.DB.loadEvents()`→シーズン内イベントのみ`Promise.all`で`loadEventData`取得
+  →`carRegistrations`を`parent`名で集計（`canDrive==='no'`は除外）→棒グラフ表示
+- 「今シーズン未登録の保護者」（father/mother roleで登録0件）も併記し、声かけの参考にできるように
+- 新規Firestoreフィールドなし。既存の`carRegistrations`データを読むだけ
+
+### 検証
+エミュレータ+Playwrightで7項目全パス（シーズン内外の混入なし・`canDrive=no`除外・
+未登録保護者リスト表示・モーダル開閉）。
+
+キャッシュバスト: admin.js → `?v=20260719b`
+
+---
+
 ## 2026-07-19 会場の現地天気表示（イベントモーダル）
 
 ### 概要

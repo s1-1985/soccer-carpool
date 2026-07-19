@@ -411,6 +411,10 @@
             <section style="margin-top:24px;">
                 <button id="btn-attendance-matrix" class="primary-button" style="width:100%;max-width:320px;">出欠状況</button>
             </section>
+
+            <section style="margin-top:12px;">
+                <button id="btn-driver-stats" class="primary-button" style="width:100%;max-width:320px;">🚗 送迎の貢献度</button>
+            </section>
         </div>
     </div>
 
@@ -457,6 +461,18 @@
             <span class="close" id="attendance-matrix-modal-close">&times;</span>
             <h2 style="font-size:16px;margin-bottom:8px;">出欠状況 <span style="font-size:11px;font-weight:normal;color:#888;">（ナイター除く・選手のみ）</span></h2>
             <div id="attendance-matrix-container">
+                <p class="loading">読み込み中...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 送迎の貢献度モーダル -->
+    <div id="driver-stats-modal" class="modal">
+        <div class="modal-content" style="max-width:520px;">
+            <span class="close" id="driver-stats-modal-close">&times;</span>
+            <h2 style="font-size:16px;margin-bottom:4px;">🚗 送迎の貢献度</h2>
+            <p id="driver-stats-season-label" style="font-size:11px;color:#888;margin:0 0 12px;"></p>
+            <div id="driver-stats-container">
                 <p class="loading">読み込み中...</p>
             </div>
         </div>
@@ -723,7 +739,7 @@
     <script src="../js/hub/notifications.js?v=20260224a"></script>
     <script src="../js/hub/venues.js?v=20260611"></script>
     <script src="../js/hub/myevents.js?v=20260718"></script>
-    <script src="../js/hub/admin.js?v=20260719"></script>
+    <script src="../js/hub/admin.js?v=20260719b"></script>
 
     <script>
         // タブの切り替えに応じてフローティングボタンの表示を制御
