@@ -465,6 +465,26 @@ tr:hover { background: #fbf6e8; }
 }
 @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 
+/* ---------- 天気チップ ---------- */
+.weather-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+    padding: 2px 10px;
+    border-radius: var(--r-pill);
+    background: var(--info-bg);
+    color: #24506e;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.weather-chip-muted {
+    background: var(--surface-2);
+    color: var(--ink-soft);
+    font-weight: 500;
+}
+
 /* ---------- ユーティリティ ---------- */
 .text-center { text-align: center; }
 .text-right { text-align: right; }

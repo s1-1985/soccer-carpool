@@ -79,6 +79,35 @@ FC尾島ジュニア（少年サッカーチーム）の運営支援Webアプリ
 - **2026-06-23**: Fable 5による全体徹底点検。Playwrightテスト68項目（後述）。重大バグ2件含む多数修正（PR #71）
 - **2026-07-17**: 選手学年の自動更新バグを修正（PR #73）
 
+## 2026-07-19 会場の現地天気表示（イベントモーダル）
+
+### 概要
+イベント詳細モーダルの会場欄に、開催日・現地の天気予報を表示する。
+
+### 実装（`js/common/weather.js`新規／`js/hub/calendar.js`／`js/hub/admin.js`）
+- **Open-Meteo API**（APIキー不要・無料・商用利用制限なし）を採用。ジオコーディング
+  （`geocoding-api.open-meteo.com`）→ 緯度経度取得 → 天気予報（`api.open-meteo.com`）の2段構成
+- `FCOjima.Weather.getForecast(venueName, address, dateISO)` が本体。
+  - ジオコーディング結果は`localStorage`に永続キャッシュ（緯度経度は不変のため）
+  - 天気予報は`sessionStorage`に当日限りキャッシュ
+  - 過去日／16日超先（Open-Meteoの予報上限）／ジオコーディング失敗／ネットワークエラーは
+    すべて`{ok:false, reason:...}`で返し、呼び出し元のモーダルを絶対に壊さない設計
+  - 住所から都道府県+市区町村を正規表現で抜き出して検索精度を上げる（学校名等はヒット率が低いため）
+- `Calendar.showEventDetails`（HUB→イベント詳細）と`Admin.openEventDetailModal`
+  （管理タブ→出欠状況→イベント名タップの概要モーダル）の両方に、会場名の右に
+  `<span id="event-weather-{eventId}">`を差し込み、非同期で天気チップを描画
+- CSS: `css/common.css`に`.weather-chip`（情報色の丸ピル）を追加
+
+### 検証
+- Node単体テストでロジック6項目（未来日成功／キャッシュ効果／過去日／予報範囲外／
+  ジオコーディング失敗／ネットワークエラー）全パス
+- エミュレータ+Playwright（Open-Meteoをroute()でスタブ）で、カレンダー・管理タブ両方の
+  モーダルへのチップ表示を確認。5項目全パス
+
+キャッシュバスト: weather.js(新規) / calendar.js / admin.js → `?v=20260719`
+
+---
+
 ## 2026-07-19 アプリ全体のデザイン刷新
 
 ユニフォーム（黄×黒の横縞）に着想を得た「有料アプリ級」の見た目に刷新。

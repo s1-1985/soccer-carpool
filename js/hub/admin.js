@@ -713,9 +713,10 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         if (ev.venue) {
             var vv = venues.find(function(v) { return v.name === ev.venue; });
             var vq = encodeURIComponent((vv && vv.address) ? vv.address : ev.venue);
-            html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px;">'
+            html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px;flex-wrap:wrap;">'
                 + '<span style="color:#888;min-width:52px;">会場</span>'
                 + '<span>' + UI.escapeHTML(ev.venue) + '</span>'
+                + '<span id="event-weather-' + ev.id + '"></span>'
                 + '<button onclick="window.open(\'https://www.google.com/maps/search/?api=1&query=' + vq + '\',\'_blank\')" style="margin-left:auto;background:#E8A200;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">地図を開く</button>'
                 + '</div>';
         }
@@ -735,6 +736,20 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
 
         body.innerHTML = html;
         modal.style.display = 'flex';
+
+        // 会場の天気（非同期。取得失敗してもモーダル自体は壊れない）
+        if (ev.venue && FCOjima.Weather && FCOjima.Weather.getForecast) {
+            var weatherTarget = document.getElementById('event-weather-' + ev.id);
+            if (weatherTarget) {
+                var venueDataForWeather = venues.find(function(v) { return v.name === ev.venue; });
+                weatherTarget.innerHTML = '<span class="weather-chip weather-chip-muted">天気を取得中...</span>';
+                FCOjima.Weather.getForecast(ev.venue, venueDataForWeather && venueDataForWeather.address, ev.date).then(function(result) {
+                    var el = document.getElementById('event-weather-' + ev.id);
+                    if (el) el.innerHTML = FCOjima.Weather.formatChip(result);
+                });
+            }
+        }
+
         var filesWrapper = document.getElementById('event-files-wrapper');
         if (filesWrapper) filesWrapper.style.display = (showFiles === false) ? 'none' : '';
         if (showFiles !== false) Admin.loadEventFiles(ev.id);
