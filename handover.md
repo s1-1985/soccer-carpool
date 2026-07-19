@@ -1,8 +1,43 @@
 # 引き継ぎドキュメント (handover)
 
 最終更新: 2026-07-19
-mainの最新コミット: `b1e7860` (2026-07-19)「feat: 当番表機能 Phase 1（ON/OFF切替＋グループ管理）を追加 (#85)」
+mainの最新コミット: `8edcc09` (2026-07-19)「fix: 当番グループのメンバー追加・削除が実機で反応しないバグを修正 (#86)」
 本番URL: https://fc-ojimajr-hub.web.app （Firebase Hosting / プロジェクト `fc-ojimajr-hub`）
+
+---
+
+## 2026-07-19 当番グループ機能のCodexレビュー指摘4件を修正
+
+PR #86（実機タップ修正）マージ後、Codexの自動レビューで4件のP2指摘が入り、
+すべて修正（新規PR）。
+
+1. **チェックボックス直接操作の二重反転**: PR #86のタップ修正（`click`で
+   `preventDefault()`して手動トグル）が、キーボード操作（Tab+Space）や
+   スクリーンリーダーでcheckbox自体を直接アクティベートした場合に、
+   ブラウザが既に反転させたcheckedをさらに反転させてしまい、操作が無効化される
+   問題があった。`e.target === cb`（checkbox自体がクリックターゲットか）で分岐し、
+   checkbox直接操作時はネイティブの状態をそのまま尊重するよう修正
+   （`js/hub/admin.js` `Admin._buildDutyGroupCard`）
+2. **同時編集での上書き消失**: 複数の管理者が同時に別グループメンバーを
+   追加/削除すると、読み取り→全件書き戻し方式のため後勝ちで一方の変更が消える
+   リスクがあった。`FieldValue.arrayUnion`/`arrayRemove`を使った原子的な
+   更新に変更（`js/common/db.js`の`DB.addDutyGroupMember`/`removeDutyGroupMember`、
+   `Admin.toggleDutyGroupMember`から呼び出し）
+3. **設定トグル保存失敗時にUIが実態と乖離**: 当番表機能ON/OFFの保存が失敗しても
+   トグルの見た目は新しい状態のままだった。失敗時に直前の状態へ戻すよう修正
+   （`Admin.saveDutyEnabled`）
+4. **【運用リスク・CI変更】Firestoreルールのデプロイ失敗が本番デプロイをブロックしない**:
+   `.github/workflows/firebase-deploy.yml`の`continue-on-error: true`により、
+   `firebase deploy --only firestore:rules`が失敗しても本番Hostingデプロイが
+   続行されてしまう構成だった。新機能追加時にルールデプロイだけ失敗すると
+   「画面は出るが新規コレクションの読み書きが全部permission-denied」という
+   静かな事故になり得る（実際には今回実害なし。CIログで成功を確認済み）。
+   ユーザーに確認の上、firestore:rulesのデプロイ失敗時は本番Hostingデプロイを
+   ブロックするよう変更（storageルールは従来通りベストエフォート）
+
+### 検証
+Firebaseエミュレータ+Playwrightで4件それぞれを再現・修正確認（Space キー操作、
+保存失敗時のロールバック、2ブラウザコンテキストでの同時編集）。すべてPASS。
 
 ---
 

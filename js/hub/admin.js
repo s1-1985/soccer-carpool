@@ -814,8 +814,16 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 chip.appendChild(document.createTextNode(m.name + (MEMBER_ROLE_LABELS[m.role] ? '（' + MEMBER_ROLE_LABELS[m.role] + '）' : '')));
                 // 実機のモバイルChromeではlabel→内包checkboxへの暗黙のタップ転送が
                 // 効かないことがある（キャンバスモードのタップ問題と同種）。
-                // click側でpreventDefaultして手動でトグルし、実装を1本化する
+                // click側でpreventDefaultして手動でトグルし、実装を1本化する。
+                // ただしキーボード操作(Tab+Space)やスクリーンリーダーはcheckbox自体を
+                // 直接アクティベートするため、その場合はブラウザのネイティブなトグルを
+                // 尊重する（先にcheckedが反転済みなので、ここで再度反転させない）
                 chip.addEventListener('click', function(e) {
+                    if (e.target === cb) {
+                        chip.classList.toggle('checked', cb.checked);
+                        Admin.toggleDutyGroupMember(group, m.id, cb.checked);
+                        return;
+                    }
                     e.preventDefault();
                     var next = !cb.checked;
                     cb.checked = next;
@@ -830,11 +838,14 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
     };
 
     Admin.saveDutyEnabled = async function(enabled) {
+        var prevEnabled = _dutySettings ? !!_dutySettings.enabled : false;
         try {
             await FCOjima.DB.saveDutySettings({ enabled: enabled });
             _dutySettings = { enabled: enabled };
         } catch (e) {
             alert('設定の保存に失敗しました: ' + e.message);
+            var toggle = document.getElementById('duty-enabled-toggle');
+            if (toggle) toggle.checked = prevEnabled;
         }
     };
 
@@ -867,12 +878,17 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
 
     Admin.toggleDutyGroupMember = async function(group, memberId, checked) {
         try {
-            var memberIds = (group.memberIds || []).map(String);
             var idStr = String(memberId);
-            if (checked && !memberIds.includes(idStr)) memberIds.push(idStr);
-            if (!checked) memberIds = memberIds.filter(function(id) { return id !== idStr; });
-            group.memberIds = memberIds;
-            await FCOjima.DB.saveDutyGroup({ id: group.id, name: group.name, memberIds: memberIds });
+            var memberIds = (group.memberIds || []).map(String);
+            if (checked) {
+                if (!memberIds.includes(idStr)) memberIds.push(idStr);
+                group.memberIds = memberIds;
+                await FCOjima.DB.addDutyGroupMember(group.id, idStr);
+            } else {
+                memberIds = memberIds.filter(function(id) { return id !== idStr; });
+                group.memberIds = memberIds;
+                await FCOjima.DB.removeDutyGroupMember(group.id, idStr);
+            }
         } catch (e) {
             alert('メンバーの更新に失敗しました: ' + e.message);
             Admin.loadDutyGroups();
