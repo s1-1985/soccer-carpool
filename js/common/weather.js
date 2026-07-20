@@ -1,16 +1,31 @@
 /**
  * FC尾島ジュニア - 会場天気予報
- * Open-Meteo（APIキー不要・無料・商用利用制限なし）でジオコーディング＋天気予報を取得する。
- * ネットワーク不可・地名が当たらない等はすべて静かに失敗し、呼び出し元の画面を壊さない。
+ *
+ * 目的: 「今のリアルタイム天気」ではなく「イベント当日の会場の天気」を数日前から確認できること。
+ *
+ * 使用API（すべて無料・APIキー不要・クライアント端末から直接アクセス）:
+ * 1. 国土地理院 住所検索API（msearch.gsi.go.jp）
+ *    会場の登録住所 → ピンポイント座標（町丁目レベル）。CORS許可済み（実測確認）。
+ *    市の中心座標に固定しないための要。住所が未登録の会場のみOpen-Meteoの地名検索に
+ *    フォールバックする（市区町村レベルの精度になる）
+ * 2. Open-Meteo 予報API（api.open-meteo.com）
+ *    座標 → 日別予報（16日先まで）。今日〜イベント当日の数日分をウィジェット表示する。
+ *    無料枠は1日1万リクエスト/IP。座標はlocalStorageに永続キャッシュ・予報は
+ *    sessionStorageに当日中キャッシュするため、70人規模でも1人1日数リクエスト程度
+ *
+ * ネットワーク不可・座標特定失敗などはすべて静かに劣化し、
+ * 「当日の会場の天気を調べる」外部リンク（Google検索）だけでも必ず出す。
  */
 
 window.FCOjima = window.FCOjima || {};
 FCOjima.Weather = FCOjima.Weather || {};
 
 (function(Weather) {
+    var GSI_URL = 'https://msearch.gsi.go.jp/address-search/AddressSearch';
     var GEOCODE_URL = 'https://geocoding-api.open-meteo.com/v1/search';
     var FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
-    var MAX_FORECAST_DAYS = 16; // Open-Meteoの予報上限
+    var MAX_FORECAST_DAYS = 15; // Open-Meteoの予報上限（16日分＝今日+15日）
+    var MAX_WIDGET_DAYS = 6;    // ウィジェットに表示する最大日数
 
     // WMO weathercode → 絵文字・ラベル
     var CODE_MAP = {
@@ -25,6 +40,7 @@ FCOjima.Weather = FCOjima.Weather || {};
         85: ['🌨️', 'にわか雪'], 86: ['❄️', '強いにわか雪'],
         95: ['⛈️', '雷雨'], 96: ['⛈️', '雷雨（雹）'], 99: ['⛈️', '雷雨（雹）']
     };
+    var DOW = ['日', '月', '火', '水', '木', '金', '土'];
 
     function todayISO() {
         var d = new Date();
@@ -37,10 +53,24 @@ FCOjima.Weather = FCOjima.Weather || {};
         return Math.round((target - today) / 86400000);
     }
 
-    /**
-     * 1クエリぶんのジオコーディング検索
-     * @returns {Promise<{lat:number, lon:number}|null>}
-     */
+    /** 国土地理院APIで住所→ピンポイント座標 */
+    function geocodeGSI(address) {
+        if (!address) return Promise.resolve(null);
+        var url = GSI_URL + '?q=' + encodeURIComponent(address);
+        return fetch(url).then(function(res) {
+            if (!res.ok) throw new Error('gsi http ' + res.status);
+            return res.json();
+        }).then(function(data) {
+            var f = Array.isArray(data) && data[0];
+            var c = f && f.geometry && f.geometry.coordinates;
+            // GeoJSONは [経度, 緯度] 順
+            return (c && typeof c[1] === 'number') ? { lat: c[1], lon: c[0], precise: true } : null;
+        }).catch(function() {
+            return null;
+        });
+    }
+
+    /** Open-Meteo地名検索（1クエリ） */
     function geocodeQuery(query) {
         var url = GEOCODE_URL + '?name=' + encodeURIComponent(query) + '&count=1&language=ja&format=json';
         return fetch(url).then(function(res) {
@@ -48,68 +78,59 @@ FCOjima.Weather = FCOjima.Weather || {};
             return res.json();
         }).then(function(data) {
             var r = data && data.results && data.results[0];
-            return r ? { lat: r.latitude, lon: r.longitude } : null;
+            return r ? { lat: r.latitude, lon: r.longitude, precise: false } : null;
         }).catch(function() {
             return null;
         });
     }
 
     /**
-     * 会場名・住所からジオコーディングする。結果はlocalStorageに永続キャッシュ（緯度経度は変わらないため）。
-     *
-     * Open-Meteoのジオコーディングは地名DB（GeoNames）ベースで
-     * 「〇〇グラウンド」「〇〇小学校」のような施設名では当たらないことが多い。
-     * そのため複数クエリを順に試す: ①住所の市区町村部分 ②施設種別の接尾辞を
-     * 除いた会場名 ③会場名そのまま。
-     * ※ キャッシュキーは v2。旧実装が失敗結果(null)を永続キャッシュしており、
-     *    ロジック改善後も旧キーのままだと失敗が固定化されるためキーを変更した
-     * @returns {Promise<{lat:number, lon:number}|null>}
+     * 会場名・住所 → 座標。
+     * ①住所があれば国土地理院でピンポイント座標（最優先）
+     * ②失敗時はOpen-Meteo地名検索（市区町村名→接尾辞除去会場名→会場名）
+     * 成功はlocalStorageに永続キャッシュ、失敗は当日中のみキャッシュ
      */
     function geocode(venueName, address) {
-        // v3: v2は都道府県付きクエリで失敗した当日missキャッシュが残っている可能性があるため更新
-        var cacheKey = 'fcojima_geocode_v3_' + (venueName || '') + '|' + (address || '');
+        // v4: GSIピンポイント対応。旧バージョンの市区町村レベル座標キャッシュを引き継がない
+        var cacheKey = 'fcojima_geocode_v4_' + (venueName || '') + '|' + (address || '');
         try {
             var cached = localStorage.getItem(cacheKey);
             if (cached) {
                 var parsed = JSON.parse(cached);
                 if (parsed && typeof parsed.lat === 'number') return Promise.resolve(parsed);
-                // 失敗キャッシュ(null)は当日中のみ有効（翌日に再試行できるようにする）
                 if (parsed && parsed.miss === todayISO()) return Promise.resolve(null);
             }
         } catch (e) { /* キャッシュ読み込み失敗は無視して再取得 */ }
 
-        var queries = [];
-        if (address) {
-            // GeoNames（Open-Meteoの地名DB）は「太田市」で当たるが「群馬県太田市」では
-            // 当たらない（実測確認済み）。都道府県を除いた市区町村名を最優先で試す
-            var m = address.match(/^(.{2,4}[都道府県])?(.{1,10}?[市区町村])/);
-            if (m && m[2]) {
-                var city = m[2];
-                // 「邑楽郡大泉町」のような郡付きは町村名だけでも試す
-                var gunIdx = city.indexOf('郡');
-                if (gunIdx > 0 && gunIdx < city.length - 1) queries.push(city.slice(gunIdx + 1));
-                queries.push(city);
-            } else {
-                queries.push(address);
+        return geocodeGSI(address).then(function(loc) {
+            if (loc) return loc;
+            // フォールバック: Open-Meteo地名検索の連鎖
+            // （GeoNamesは「太田市」で当たるが「群馬県太田市」では当たらない・実測確認済み）
+            var queries = [];
+            if (address) {
+                var m = address.match(/^(.{2,4}[都道府県])?(.{1,10}?[市区町村])/);
+                if (m && m[2]) {
+                    var city = m[2];
+                    var gunIdx = city.indexOf('郡');
+                    if (gunIdx > 0 && gunIdx < city.length - 1) queries.push(city.slice(gunIdx + 1));
+                    queries.push(city);
+                } else {
+                    queries.push(address);
+                }
             }
-        }
-        if (venueName) {
-            var stripped = venueName.replace(/(グラウンド|グランド|サッカー場|野球場|運動公園|総合公園|公園|小学校|中学校|高校|高等学校|体育館|運動場|競技場|スポーツ広場|多目的広場|河川敷|緑地)$/, '');
-            if (stripped && stripped !== venueName) queries.push(stripped);
-            queries.push(venueName);
-        }
-        // 重複除去
-        queries = queries.filter(function(q, i) { return q && queries.indexOf(q) === i; });
-        if (queries.length === 0) return Promise.resolve(null);
+            if (venueName) {
+                var stripped = venueName.replace(/(グラウンド|グランド|サッカー場|野球場|運動公園|総合公園|公園|小学校|中学校|高校|高等学校|体育館|運動場|競技場|スポーツ広場|多目的広場|河川敷|緑地)$/, '');
+                if (stripped && stripped !== venueName) queries.push(stripped);
+                queries.push(venueName);
+            }
+            queries = queries.filter(function(q, i) { return q && queries.indexOf(q) === i; });
 
-        // 順に試して最初に当たったものを使う
-        var chain = Promise.resolve(null);
-        queries.forEach(function(q) {
-            chain = chain.then(function(loc) {
-                return loc || geocodeQuery(q);
+            var chain = Promise.resolve(null);
+            queries.forEach(function(q) {
+                chain = chain.then(function(hit) { return hit || geocodeQuery(q); });
             });
-        });
-        return chain.then(function(loc) {
+            return chain;
+        }).then(function(loc) {
             try {
                 localStorage.setItem(cacheKey, JSON.stringify(loc || { miss: todayISO() }));
             } catch (e) {}
@@ -118,21 +139,20 @@ FCOjima.Weather = FCOjima.Weather || {};
     }
 
     /**
-     * 指定日の天気予報を取得する。当日中だけ有効なsessionStorageキャッシュを使う。
-     * @param {string} venueName - 会場名（登録済み venue.name）
-     * @param {string} address - 会場住所（あれば精度が上がる）
-     * @param {string} dateISO - イベント日付 'YYYY-MM-DD'
-     * @returns {Promise<{ok:boolean, reason?:string, emoji?:string, label?:string, tempMax?:number, tempMin?:number, pop?:number}>}
+     * 今日〜イベント当日の日別予報を取得する。
+     * @returns {Promise<{ok:boolean, reason?:string, precise?:boolean,
+     *   days?:Array<{date:string, md:string, dow:string, emoji:string, label:string,
+     *                tempMax:number, tempMin:number, pop:number|null, isEventDay:boolean}>}>}
      */
-    Weather.getForecast = function(venueName, address, dateISO) {
-        if (!dateISO) return Promise.resolve({ ok: false, reason: 'no-date' });
+    Weather.getDailyForecast = function(venueName, address, eventDateISO) {
+        if (!eventDateISO) return Promise.resolve({ ok: false, reason: 'no-date' });
 
-        var diff = daysUntil(dateISO);
+        var diff = daysUntil(eventDateISO);
         if (diff < 0) return Promise.resolve({ ok: false, reason: 'past' });
         if (diff > MAX_FORECAST_DAYS) return Promise.resolve({ ok: false, reason: 'too-far' });
         if (!venueName && !address) return Promise.resolve({ ok: false, reason: 'no-venue' });
 
-        var sessionKey = 'fcojima_weather_v2_' + (venueName || address) + '_' + dateISO + '_' + todayISO();
+        var sessionKey = 'fcojima_weatherdays_v1_' + (venueName || address) + '_' + eventDateISO + '_' + todayISO();
         try {
             var cached = sessionStorage.getItem(sessionKey);
             if (cached) return Promise.resolve(JSON.parse(cached));
@@ -143,23 +163,31 @@ FCOjima.Weather = FCOjima.Weather || {};
             var url = FORECAST_URL +
                 '?latitude=' + loc.lat + '&longitude=' + loc.lon +
                 '&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max' +
-                '&timezone=Asia%2FTokyo&start_date=' + dateISO + '&end_date=' + dateISO;
+                '&timezone=Asia%2FTokyo&start_date=' + todayISO() + '&end_date=' + eventDateISO;
             return fetch(url).then(function(res) {
                 if (!res.ok) throw new Error('forecast http ' + res.status);
                 return res.json();
             }).then(function(data) {
                 var d = data && data.daily;
-                if (!d || !d.weathercode || d.weathercode.length === 0) return { ok: false, reason: 'no-data' };
-                var code = d.weathercode[0];
-                var disp = CODE_MAP[code] || ['🌡️', ''];
-                return {
-                    ok: true,
-                    emoji: disp[0],
-                    label: disp[1],
-                    tempMax: Math.round(d.temperature_2m_max[0]),
-                    tempMin: Math.round(d.temperature_2m_min[0]),
-                    pop: d.precipitation_probability_max ? d.precipitation_probability_max[0] : null
-                };
+                if (!d || !d.time || d.time.length === 0) return { ok: false, reason: 'no-data' };
+                var days = d.time.map(function(dateStr, i) {
+                    var disp = CODE_MAP[d.weathercode[i]] || ['🌡️', ''];
+                    var dt = new Date(dateStr + 'T00:00:00');
+                    return {
+                        date: dateStr,
+                        md: (dt.getMonth() + 1) + '/' + dt.getDate(),
+                        dow: DOW[dt.getDay()],
+                        emoji: disp[0],
+                        label: disp[1],
+                        tempMax: Math.round(d.temperature_2m_max[i]),
+                        tempMin: Math.round(d.temperature_2m_min[i]),
+                        pop: d.precipitation_probability_max ? d.precipitation_probability_max[i] : null,
+                        isEventDay: dateStr === eventDateISO
+                    };
+                });
+                // 長期間の場合は当日側（末尾）を優先して最大6日分
+                if (days.length > MAX_WIDGET_DAYS) days = days.slice(-MAX_WIDGET_DAYS);
+                return { ok: true, precise: !!loc.precise, days: days };
             });
         }).catch(function() {
             return { ok: false, reason: 'network-error' };
@@ -169,23 +197,70 @@ FCOjima.Weather = FCOjima.Weather || {};
         });
     };
 
-    /**
-     * 表示用HTML断片を生成（呼び出し元は返り値を innerHTML に差し込むだけでよい）
-     */
-    Weather.formatChip = function(result) {
-        if (!result || !result.ok) {
-            var msg = {
-                'past': '', // 過去イベントは何も出さない
-                'too-far': '天気予報はまだ取得できません（開催16日前頃から表示）',
-                'no-venue': '',
-                'geocode-failed': '天気: 会場の場所を特定できません（会場登録で住所を設定すると表示されます）',
-                'no-data': '天気情報を取得できませんでした',
-                'network-error': '天気情報を取得できませんでした',
-                'no-date': ''
-            }[result ? result.reason : ''] || '';
-            if (!msg) return '';
-            return '<span class="weather-chip weather-chip-muted">' + msg + '</span>';
+    /** 「当日の会場の天気を調べる」外部リンク（Google検索の天気カードに飛ぶ） */
+    Weather.buildExternalLink = function(venueName, address) {
+        // 会場名だけだとGoogleが場所を特定できないことがあるため、住所の市区町村を添える
+        var q = venueName || '';
+        if (address) {
+            var m = address.match(/^(.{2,4}[都道府県])?(.{1,10}?[市区町村])/);
+            if (m && m[2]) q = m[2] + ' ' + q;
         }
+        return 'https://www.google.com/search?q=' + encodeURIComponent((q + ' 天気').trim());
+    };
+
+    /**
+     * 数日分予報ウィジェットのHTMLを生成する。
+     * 予報が取得できない場合も外部リンクだけは必ず表示する。
+     */
+    Weather.formatWidget = function(result, venueName, address) {
+        var esc = (FCOjima.UI && FCOjima.UI.escapeHTML) ? FCOjima.UI.escapeHTML : function(s) { return s; };
+        var link = '<a class="weather-ext-link" href="' + Weather.buildExternalLink(venueName, address) +
+            '" target="_blank" rel="noopener">🔗 当日の会場の天気を調べる</a>';
+
+        if (!result || !result.ok) {
+            var reason = result ? result.reason : '';
+            if (reason === 'past' || reason === 'no-date' || reason === 'no-venue') return '';
+            var msg = {
+                'too-far': '天気予報は開催約2週間前から表示されます',
+                'geocode-failed': '', // 場所を特定できなくてもリンクは出す
+                'no-data': '',
+                'network-error': ''
+            }[reason] || '';
+            return '<div class="weather-widget weather-widget-fallback">' +
+                (msg ? '<span class="weather-chip weather-chip-muted">' + msg + '</span>' : '') +
+                link + '</div>';
+        }
+
+        var cells = result.days.map(function(day) {
+            var pop = (day.pop != null) ? day.pop + '%' : '-';
+            return '<div class="weather-day' + (day.isEventDay ? ' weather-day-event' : '') + '"' +
+                ' title="' + esc(day.label) + '">' +
+                '<div class="wd-date">' + day.md + '<span class="wd-dow">(' + day.dow + ')</span></div>' +
+                '<div class="wd-emoji">' + day.emoji + '</div>' +
+                '<div class="wd-temp"><span class="wd-max">' + day.tempMax + '</span>/<span class="wd-min">' + day.tempMin + '</span>℃</div>' +
+                '<div class="wd-pop">💧' + pop + '</div>' +
+                (day.isEventDay ? '<div class="wd-event-label">当日</div>' : '') +
+                '</div>';
+        }).join('');
+
+        return '<div class="weather-widget">' +
+            '<div class="weather-days">' + cells + '</div>' +
+            '<div class="weather-widget-foot">' +
+            '<span class="weather-precision">' + (result.precise ? '📍 会場周辺の予報' : '📍 市区町村の予報') + '</span>' +
+            link +
+            '</div></div>';
+    };
+
+    // ───── 旧API互換（他の呼び出し元が残っていても壊さない） ─────
+    Weather.getForecast = function(venueName, address, dateISO) {
+        return Weather.getDailyForecast(venueName, address, dateISO).then(function(r) {
+            if (!r.ok) return { ok: false, reason: r.reason };
+            var ev = r.days.filter(function(d) { return d.isEventDay; })[0] || r.days[r.days.length - 1];
+            return { ok: true, emoji: ev.emoji, label: ev.label, tempMax: ev.tempMax, tempMin: ev.tempMin, pop: ev.pop };
+        });
+    };
+    Weather.formatChip = function(result) {
+        if (!result || !result.ok) return '';
         var pop = (result.pop != null) ? '　降水' + result.pop + '%' : '';
         return '<span class="weather-chip">' + result.emoji + ' 現地 ' +
             result.tempMax + '℃/' + result.tempMin + '℃' + pop + '</span>';
