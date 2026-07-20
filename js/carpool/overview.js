@@ -289,17 +289,18 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
     };
 
     /**
-     * 会場の天気予報を取得して #overview-weather に差し込む
+     * 会場の天気予報（当日までの数日分ウィジェット）を #overview-weather に差し込む
      */
     Overview._renderWeather = function(event) {
-        if (!event || !event.venue || !app.Weather || !app.Weather.getForecast) return;
+        if (!event || !event.venue || !app.Weather || !app.Weather.getDailyForecast) return;
         var target = document.getElementById('overview-weather');
         if (!target) return;
         var allVenues = ((app.Hub && app.Hub.venues) ? app.Hub.venues : Storage.loadVenues()) || [];
         var venueData = allVenues.find(function(v) { return v.name === event.venue; });
-        app.Weather.getForecast(event.venue, venueData && venueData.address, event.date).then(function(result) {
+        var address = venueData && venueData.address;
+        app.Weather.getDailyForecast(event.venue, address, event.date).then(function(result) {
             var el = document.getElementById('overview-weather');
-            if (el) el.innerHTML = app.Weather.formatChip(result);
+            if (el) el.innerHTML = app.Weather.formatWidget(result, event.venue, address);
         });
     };
     
