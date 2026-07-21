@@ -33,6 +33,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         Admin.initEventDetailModal();
         Admin.initDriverStatsModal();
         Admin.initAttendanceRateModal();
+        Admin.initLuggageSettingsModal();
         Admin.initDutyGroupsModal();
     };
 
@@ -665,6 +666,83 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
     };
 
     // =============================================
+    //  荷物（共用備品）設定
+    // =============================================
+
+    Admin.initLuggageSettingsModal = function() {
+        var btn = document.getElementById('btn-luggage-settings');
+        var modal = document.getElementById('luggage-settings-modal');
+        var closeBtn = document.getElementById('luggage-settings-modal-close');
+        var addBtn = document.getElementById('luggage-add-btn');
+        var input = document.getElementById('luggage-name-input');
+        if (!btn || !modal) return;
+
+        btn.addEventListener('click', function() {
+            FCOjima.UI.openModal('luggage-settings-modal');
+            Admin.loadLuggageSettings();
+        });
+        closeBtn && closeBtn.addEventListener('click', function() { FCOjima.UI.closeModal('luggage-settings-modal'); });
+        modal.addEventListener('click', function(e) { if (e.target === modal) FCOjima.UI.closeModal('luggage-settings-modal'); });
+
+        addBtn && addBtn.addEventListener('click', async function() {
+            var name = (input.value || '').trim();
+            if (!name) return;
+            try {
+                var items = await FCOjima.DB.loadLuggageItems();
+                if (items.includes(name)) {
+                    alert('「' + name + '」はすでに登録されています');
+                    return;
+                }
+                items.push(name);
+                await FCOjima.DB.saveLuggageItems(items);
+                input.value = '';
+                Admin.loadLuggageSettings();
+            } catch (e) {
+                alert('荷物の登録に失敗しました: ' + e.message);
+            }
+        });
+    };
+
+    /** 登録済み荷物の一覧をチップで表示（✕で削除） */
+    Admin.loadLuggageSettings = async function() {
+        var container = document.getElementById('luggage-items-container');
+        if (!container) return;
+        container.innerHTML = '<p class="loading">読み込み中...</p>';
+        try {
+            var items = await FCOjima.DB.loadLuggageItems();
+            container.innerHTML = '';
+            if (items.length === 0) {
+                container.innerHTML = '<p style="color:#999;font-size:12px;">荷物がまだ登録されていません。</p>';
+                return;
+            }
+            items.forEach(function(name) {
+                var chip = document.createElement('span');
+                chip.className = 'duty-member-chip checked';
+                chip.appendChild(document.createTextNode(name));
+                var rm = document.createElement('button');
+                rm.type = 'button';
+                rm.className = 'duty-member-remove';
+                rm.textContent = '✕';
+                rm.title = name + ' を削除';
+                rm.addEventListener('click', async function() {
+                    if (!confirm('「' + name + '」を削除しますか？')) return;
+                    try {
+                        var cur = await FCOjima.DB.loadLuggageItems();
+                        await FCOjima.DB.saveLuggageItems(cur.filter(function(n) { return n !== name; }));
+                        Admin.loadLuggageSettings();
+                    } catch (e) {
+                        alert('削除に失敗しました: ' + e.message);
+                    }
+                });
+                chip.appendChild(rm);
+                container.appendChild(chip);
+            });
+        } catch (e) {
+            container.innerHTML = '<p style="color:#c00;">読み込みエラー: ' + e.message + '</p>';
+        }
+    };
+
+    // =============================================
     //  選手の参加率
     // =============================================
 
@@ -1290,9 +1368,10 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             html += '<div style="margin-bottom:8px;font-size:13px;"><span style="color:#888;">対象: </span>' + grades + '</div>';
         }
 
-        // 持ち物チェックリスト
+        // 持ち物チェックリスト＋荷物
         if (FCOjima.Checklist) {
-            html += FCOjima.Checklist.formatChips(ev.type, ev.checklistExtra);
+            html += FCOjima.Checklist.formatChips(ev.type, ev.checklistExtra, ev.checklist);
+            html += FCOjima.Checklist.formatLuggage(ev.luggage);
         }
 
         // 当番グループ割り当て（機能が有効な場合のみ・管理者が変更可）
@@ -1364,51 +1443,14 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         }
     };
 
-    Admin.loadEventFiles = async function(eventId) {
-        var list = document.getElementById('event-files-list');
-        if (!list) return;
-        list.innerHTML = '<p style="color:#999;font-size:12px;">読み込み中...</p>';
-        try {
-            var storage = firebase.storage();
-            var ref = storage.ref('teams/' + FCOjimaFirebase.TEAM_ID + '/events/' + eventId);
-            var result = await ref.listAll();
-            if (result.items.length === 0) {
-                list.innerHTML = '<p style="color:#999;font-size:12px;">ファイルなし</p>';
-                return;
-            }
-            list.innerHTML = '';
-            for (var i = 0; i < result.items.length; i++) {
-                var item = result.items[i];
-                var url = await item.getDownloadURL();
-                var a = document.createElement('a');
-                a.href = url;
-                a.target = '_blank';
-                a.className = 'event-file-link';
-                a.textContent = item.name;
-                list.appendChild(a);
-            }
-        } catch(e) {
-            list.innerHTML = '<p style="color:#c00;font-size:12px;">読み込みエラー</p>';
-            console.error('ファイル読み込みエラー:', e);
-        }
+    // 添付ファイルの実装は FCOjima.EventFiles（共通モジュール）に集約。
+    // 種類・サイズ制限（PDF/Excel/Word/画像/テキスト・10MB）もそちらで一元管理
+    Admin.loadEventFiles = function(eventId) {
+        return FCOjima.EventFiles.render(eventId, document.getElementById('event-files-list'));
     };
 
-    Admin.uploadEventFiles = async function(eventId, files) {
-        var list = document.getElementById('event-files-list');
-        var storage = firebase.storage();
-        var basePath = 'teams/' + FCOjimaFirebase.TEAM_ID + '/events/' + eventId + '/';
-        try {
-            for (var i = 0; i < files.length; i++) {
-                var file = files[i];
-                var ref = storage.ref(basePath + file.name);
-                if (list) list.innerHTML = '<p style="color:#999;font-size:12px;">アップロード中... (' + (i+1) + '/' + files.length + ')</p>';
-                await ref.put(file);
-            }
-            await Admin.loadEventFiles(eventId);
-        } catch(e) {
-            if (list) list.innerHTML = '<p style="color:#c00;font-size:12px;">アップロードエラー: ' + e.message + '</p>';
-            console.error('アップロードエラー:', e);
-        }
+    Admin.uploadEventFiles = function(eventId, files) {
+        return FCOjima.EventFiles.upload(eventId, files, document.getElementById('event-files-list'));
     };
 
 })(window.FCOjima);
