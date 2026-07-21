@@ -656,6 +656,21 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                 toUpload = v.ok;
                 if (toUpload.length === 0) return;
             }
+            // 1イベントあたりの添付上限（既存分込みで10個。共通モジュールに集約）
+            if (app.EventFiles && app.EventFiles.countFiles) {
+                var existingCount = 0;
+                try { existingCount = await app.EventFiles.countFiles(eventId); } catch (e) { /* 件数取得失敗時はチェックを諦める */ }
+                var MAX_FILES = 10;
+                var room = MAX_FILES - existingCount;
+                if (room <= 0) {
+                    UI.showAlert('添付ファイルは1イベントにつき最大' + MAX_FILES + '個までです（現在' + existingCount + '個）。新しいファイルを追加するには、先に不要なファイルを削除してください。');
+                    return;
+                }
+                if (toUpload.length > room) {
+                    UI.showAlert('添付ファイルは1イベントにつき最大' + MAX_FILES + '個までです（現在' + existingCount + '個・追加できるのは' + room + '個まで）。先頭' + room + '件のみアップロードします。');
+                    toUpload = toUpload.slice(0, room);
+                }
+            }
             var storage = firebase.storage();
             var basePath = 'teams/' + FCOjimaFirebase.TEAM_ID + '/events/' + eventId + '/';
             for (var i = 0; i < toUpload.length; i++) {

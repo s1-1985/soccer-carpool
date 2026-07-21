@@ -7,6 +7,7 @@
  * 制限（2026-07-21ユーザー指定）:
  *  - 種類: PDF / Excel / Word / 画像 / テキスト
  *  - 1ファイル 10MB まで（storage.rules でもサーバー側で強制）
+ *  - 1イベントにつき添付は 10個 まで（既存分も含めて数える）
  *
  * 自動削除:
  *  - イベント終了後 30日 経過した添付はクライアント起動時に自動削除する
@@ -19,6 +20,7 @@ FCOjima.EventFiles = FCOjima.EventFiles || {};
 
 (function(EventFiles) {
     var MAX_SIZE = 10 * 1024 * 1024; // 10MB
+    var MAX_FILES = 10;              // 1イベントあたりの添付上限（既存分込み）
     var RETENTION_DAYS = 30;         // イベント終了後の保持日数
 
     // 許可する拡張子（PDF / Excel / Word / 画像 / テキスト）
@@ -68,11 +70,12 @@ FCOjima.EventFiles = FCOjima.EventFiles || {};
         try {
             var ref = firebase.storage().ref(basePath(eventId));
             var result = await ref.listAll();
+            var countLabel = '<p class="event-file-count" style="color:#999;font-size:11px;margin:2px 0 6px;">添付 ' + result.items.length + '/' + MAX_FILES + '</p>';
             if (result.items.length === 0) {
-                listEl.innerHTML = '<p style="color:#999;font-size:12px;">ファイルなし</p>';
+                listEl.innerHTML = countLabel + '<p style="color:#999;font-size:12px;">ファイルなし</p>';
                 return;
             }
-            listEl.innerHTML = '';
+            listEl.innerHTML = countLabel;
             for (var i = 0; i < result.items.length; i++) {
                 var item = result.items[i];
                 var url = await item.getDownloadURL();
@@ -91,7 +94,16 @@ FCOjima.EventFiles = FCOjima.EventFiles || {};
     };
 
     /**
-     * ファイルを検証してアップロードし、一覧を再描画する
+     * イベントの現在の添付件数を返す
+     */
+    EventFiles.countFiles = async function(eventId) {
+        var result = await firebase.storage().ref(basePath(eventId)).listAll();
+        return result.items.length;
+    };
+
+    /**
+     * ファイルを検証してアップロードし、一覧を再描画する。
+     * 既存分込みで1イベント10個までに制限する（超える分はアップロードしない）。
      */
     EventFiles.upload = async function(eventId, files, listEl) {
         var v = EventFiles.validate(files);
@@ -102,10 +114,31 @@ FCOjima.EventFiles = FCOjima.EventFiles || {};
             if (listEl) await EventFiles.render(eventId, listEl);
             return;
         }
+
+        // 既存の添付数を数え、上限(10個)を超える分は弾く
+        var existingCount = 0;
         try {
-            for (var i = 0; i < v.ok.length; i++) {
-                var file = v.ok[i];
-                if (listEl) listEl.innerHTML = '<p style="color:#999;font-size:12px;">アップロード中... (' + (i + 1) + '/' + v.ok.length + ')</p>';
+            existingCount = await EventFiles.countFiles(eventId);
+        } catch (e) {
+            // 件数取得に失敗してもアップロード自体は試みる（上限チェックだけ諦める）
+            console.warn('添付件数の取得に失敗:', e);
+        }
+        var room = MAX_FILES - existingCount;
+        if (room <= 0) {
+            alert('添付ファイルは1イベントにつき最大' + MAX_FILES + '個までです（現在' + existingCount + '個）。新しいファイルを追加するには、先に不要なファイルを削除してください。');
+            if (listEl) await EventFiles.render(eventId, listEl);
+            return;
+        }
+        var toUpload = v.ok;
+        if (toUpload.length > room) {
+            alert('添付ファイルは1イベントにつき最大' + MAX_FILES + '個までです（現在' + existingCount + '個・追加できるのは' + room + '個まで）。先頭' + room + '件のみアップロードします。');
+            toUpload = toUpload.slice(0, room);
+        }
+
+        try {
+            for (var i = 0; i < toUpload.length; i++) {
+                var file = toUpload[i];
+                if (listEl) listEl.innerHTML = '<p style="color:#999;font-size:12px;">アップロード中... (' + (i + 1) + '/' + toUpload.length + ')</p>';
                 await firebase.storage().ref(basePath(eventId) + '/' + file.name).put(file);
             }
         } catch (e) {
