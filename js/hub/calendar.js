@@ -920,11 +920,17 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             });
 
             if (conflicts.length > 0) {
+                // ハードエラーにすると「4〜6年イベントに3年生を1人だけ追加した後、
+                // 同日に1〜3年イベントを作れない」という運用上の詰みが起きる
+                // （2026-07-20ユーザー報告）。重複を提示した上で登録を続行できるようにする。
                 const msgs = conflicts.map(function(c) {
                     return '・' + c.player + ' が「' + c.event + '」と重複しています';
                 });
-                UI.showAlert('イベントを登録できません:\n' + msgs.join('\n'), 'error');
-                return;
+                const proceed = confirm(
+                    '同日の他イベントと対象選手が重複しています:\n' + msgs.join('\n') +
+                    '\n\nこのまま登録しますか？\n（学年外追加などで意図した重複であればOKを押してください）'
+                );
+                if (!proceed) return;
             }
         }
 

@@ -213,8 +213,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
      *
      * 対象の定義:
      *  - 監督・コーチ: 常に対象。ただし本人が「欠席」登録していれば除外
-     *  - 選手: 対象学年（event.target）または学年外追加選手（event.extraPlayers）。
-     *    「欠席」登録していれば除外（「未回答」は座席計画上まだ確定していないだけなので含む）
+     *  - 選手: 対象学年（event.target）または学年外追加選手（event.extraPlayers）のうち、
+     *    出欠で「参加」と回答済みの選手のみ（2026-07-20ユーザー指示:
+     *    「出欠の確認がとれた選手しか割り当てには表示されない」。未回答・欠席は出さない）
      *  - 保護者（父・母）: 本人が「参加」登録している、または子供が上記の対象選手として
      *    「参加」登録している場合に対象。本人が「欠席」登録していれば除外
      */
@@ -255,8 +256,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                 }
             });
         }
-        // 欠席確定の選手を除外
-        players = players.filter(function(m) { return !absentNames.has(m.name); });
+        // 出欠「参加」と回答済みの選手のみ残す（未回答・欠席は割り当てに出さない）
+        players = players.filter(function(m) { return presentNames.has(m.name); });
         filtered = filtered.concat(players);
 
         // 参加確定保護者（自分自身が出欠で参加表明 OR 子供が参加確定）。本人が欠席登録していれば除外
