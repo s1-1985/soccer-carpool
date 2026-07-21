@@ -66,6 +66,9 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
 
     /** childrenIds に対応するメンバー（選手）を返す */
     MyEvents.getChildren = function() {
+        // _profile 未設定（init前・子なしユーザー）でも安全に空配列を返す。
+        // イベントのリアルタイム同期は全ユーザーで refresh を呼ぶため、ここでのnull安全が必要
+        if (!_profile) return [];
         var ids = (_profile.childrenIds || []).map(String);
         return (app.Hub.members || []).filter(function(m) {
             return ids.includes(String(m.id));
