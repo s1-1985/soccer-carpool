@@ -8,7 +8,7 @@
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#1C1600">
     <link rel="apple-touch-icon" href="/img/icon-192.png">
-    <link rel="stylesheet" href="../css/common.css?v=20260720b">
+    <link rel="stylesheet" href="../css/common.css?v=20260721">
     <link rel="stylesheet" href="../css/hub/calendar.css?v=20260224a">
     <link rel="stylesheet" href="../css/hub/members.css?v=20260719">
     <link rel="stylesheet" href="../css/hub/notifications.css?v=20260224a">
@@ -442,7 +442,11 @@
             </section>
 
             <section style="margin-top:12px;">
-                <button id="btn-driver-stats" class="primary-button" style="width:100%;max-width:320px;">🚗 送迎の貢献度</button>
+                <button id="btn-driver-stats" class="primary-button" style="width:100%;max-width:320px;">🚗 送迎回数</button>
+            </section>
+
+            <section style="margin-top:12px;">
+                <button id="btn-attendance-rate" class="primary-button" style="width:100%;max-width:320px;">📊 選手の参加率</button>
             </section>
 
             <section style="margin-top:12px;">
@@ -503,9 +507,21 @@
     <div id="driver-stats-modal" class="modal">
         <div class="modal-content" style="max-width:520px;">
             <span class="close" id="driver-stats-modal-close">&times;</span>
-            <h2 style="font-size:16px;margin-bottom:4px;">🚗 送迎の貢献度</h2>
+            <h2 style="font-size:16px;margin-bottom:4px;">🚗 送迎回数</h2>
             <p id="driver-stats-season-label" style="font-size:11px;color:#888;margin:0 0 12px;"></p>
             <div id="driver-stats-container">
+                <p class="loading">読み込み中...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 選手の参加率モーダル -->
+    <div id="attendance-rate-modal" class="modal">
+        <div class="modal-content" style="max-width:520px;">
+            <span class="close" id="attendance-rate-modal-close">&times;</span>
+            <h2 style="font-size:16px;margin-bottom:4px;">📊 選手の参加率</h2>
+            <p id="attendance-rate-season-label" style="font-size:11px;color:#888;margin:0 0 12px;"></p>
+            <div id="attendance-rate-container">
                 <p class="loading">読み込み中...</p>
             </div>
         </div>
@@ -791,16 +807,16 @@
     <script src="../js/common/auth.js?v=20260224a"></script>
     <script src="../js/common/db.js?v=20260719c"></script>
     <script src="../js/common/weather.js?v=20260720b"></script>
-    <script src="../js/common/checklist.js?v=20260720a"></script>
+    <script src="../js/common/checklist.js?v=20260721"></script>
 
     <!-- HUBページ用モジュール -->
     <script src="../js/hub/main.js?v=20260720a"></script>
-    <script src="../js/hub/calendar.js?v=20260720b"></script>
+    <script src="../js/hub/calendar.js?v=20260721"></script>
     <script src="../js/hub/members.js?v=20260720"></script>
     <script src="../js/hub/notifications.js?v=20260224a"></script>
     <script src="../js/hub/venues.js?v=20260611"></script>
     <script src="../js/hub/myevents.js?v=20260720a"></script>
-    <script src="../js/hub/admin.js?v=20260720b"></script>
+    <script src="../js/hub/admin.js?v=20260721"></script>
 
     <script>
         // タブの切り替えに応じてフローティングボタンの表示を制御

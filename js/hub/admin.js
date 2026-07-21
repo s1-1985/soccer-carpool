@@ -32,6 +32,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         Admin.initAttendanceMatrixModal();
         Admin.initEventDetailModal();
         Admin.initDriverStatsModal();
+        Admin.initAttendanceRateModal();
         Admin.initDutyGroupsModal();
     };
 
@@ -317,27 +318,6 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 return bar;
             }
 
-            // ─── 未回答が多い選手の横断サマリー ───
-            function buildUnansweredSummary(list) {
-                if (!list || list.length === 0) return null;
-                var box = document.createElement('div');
-                box.className = 'mx-unanswered';
-                var head = document.createElement('div');
-                head.className = 'mx-unanswered-head';
-                head.textContent = '📋 未回答が' + UNANSWERED_THRESHOLD + '件以上ある選手';
-                box.appendChild(head);
-                var items = document.createElement('div');
-                items.className = 'mx-unanswered-items';
-                list.forEach(function(u) {
-                    var chip = document.createElement('span');
-                    chip.className = 'mx-unanswered-chip';
-                    chip.textContent = (u.member.name || '') + '（' + u.count + '件）';
-                    items.appendChild(chip);
-                });
-                box.appendChild(items);
-                return box;
-            }
-
             if (targetEvents.length === 0) {
                 el.innerHTML = '';
                 el.appendChild(buildToolbar());
@@ -384,33 +364,6 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 });
                 breakdown.push({ present: present, absent: absent, unknown: targetN - present - absent, target: targetN });
             });
-
-            // 未回答者の横断集計（選手ごとに「未回答」の数を数える）
-            // ※ 「過去も表示」をONにしても、このサマリーは常に今後のイベントのみで集計する。
-            //   過去イベントの未回答は今さら回答できず件数が膨れ上がるだけのため
-            //   （2026-07-20実機報告: 過去表示ONでサマリーが画面を埋め尽くした）
-            var unansweredCounts = {};
-            members.forEach(function(m) {
-                var key = m.id != null ? String(m.id) : m.name;
-                unansweredCounts[key] = { member: m, count: 0 };
-            });
-            targetEvents.forEach(function(ev) {
-                if (!ev.date || ev.date < todayISO) return; // 過去イベントは集計対象外
-                var evMap = statusMap[ev.id];
-                members.forEach(function(m) {
-                    if (!isTargetFor(m, ev)) return;
-                    var st = evMap[m.name] || evMap[String(m.id)] || 'unknown';
-                    if (st === 'unknown') {
-                        var key = m.id != null ? String(m.id) : m.name;
-                        unansweredCounts[key].count++;
-                    }
-                });
-            });
-            var UNANSWERED_THRESHOLD = 3;
-            var unansweredList = Object.keys(unansweredCounts)
-                .map(function(k) { return unansweredCounts[k]; })
-                .filter(function(u) { return u.count >= UNANSWERED_THRESHOLD; })
-                .sort(function(a, b) { return b.count - a.count; });
 
             // 直近イベント（今日以降で最初）のインデックス
             var upcomingIdx = -1;
@@ -460,9 +413,10 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 var brkDiv = document.createElement('div');
                 brkDiv.className = 'e-brk';
                 brkDiv.innerHTML =
-                    '<span class="b-p' + (brk.present ? '' : ' z0') + '">' + brk.present + '</span>' +
-                    '<span class="b-u' + (brk.unknown ? '' : ' z0') + '">' + brk.unknown + '</span>' +
-                    '<span class="b-a' + (brk.absent ? '' : ' z0') + '">' + brk.absent + '</span>';
+                    // 0でも緑/黄/赤のまま表示する（2026-07-20ユーザー指示。灰色化しない）
+                    '<span class="b-p">' + brk.present + '</span>' +
+                    '<span class="b-u">' + brk.unknown + '</span>' +
+                    '<span class="b-a">' + brk.absent + '</span>';
 
                 th.appendChild(dateDiv);
                 th.appendChild(dowDiv);
@@ -565,8 +519,8 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             wrap.appendChild(table);
             el.innerHTML = '';
             el.appendChild(buildToolbar());
-            var unansweredBox = buildUnansweredSummary(unansweredList);
-            if (unansweredBox) el.appendChild(unansweredBox);
+            // ※ 「未回答が多い選手」サマリーは廃止（2026-07-20ユーザー指示:
+            //   面積を取りすぎてマトリクス下部の6年生が見えなくなるため）
             el.appendChild(wrap);
 
             // 直近イベント列が見えるよう横スクロール位置を調整
@@ -711,6 +665,126 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
     };
 
     // =============================================
+    //  選手の参加率
+    // =============================================
+
+    Admin.initAttendanceRateModal = function() {
+        var btn = document.getElementById('btn-attendance-rate');
+        var modal = document.getElementById('attendance-rate-modal');
+        var closeBtn = document.getElementById('attendance-rate-modal-close');
+        if (!btn || !modal) return;
+        btn.addEventListener('click', function() {
+            FCOjima.UI.openModal('attendance-rate-modal');
+            Admin.loadAttendanceRates();
+        });
+        closeBtn && closeBtn.addEventListener('click', function() { FCOjima.UI.closeModal('attendance-rate-modal'); });
+        modal.addEventListener('click', function(e) { if (e.target === modal) FCOjima.UI.closeModal('attendance-rate-modal'); });
+    };
+
+    /**
+     * 選手ごとの参加率を集計して表示する。
+     * 集計対象: 今シーズンの消化済みイベント（今日まで・ナイター除く）のうち
+     * その選手が対象（対象学年 or 学年外追加）だったもの。
+     * 参加＝出欠で「参加」と回答していたイベント数。
+     * 表示順: 6年→年少の学年降順、同学年は名前順
+     */
+    Admin.loadAttendanceRates = async function() {
+        var container = document.getElementById('attendance-rate-container');
+        var seasonLabel = document.getElementById('attendance-rate-season-label');
+        if (!container) return;
+        container.innerHTML = '<p class="loading">読み込み中...</p>';
+
+        try {
+            var seasonStart = Admin._seasonStartISO();
+            var now = new Date();
+            var todayISO = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2) + '-' + ('0' + now.getDate()).slice(-2);
+            if (seasonLabel) {
+                seasonLabel.textContent = seasonStart.slice(0, 4) + '年' + seasonStart.slice(5, 7) + '月〜本日までの消化済みイベント（ナイター除く）で集計';
+            }
+
+            var events = await FCOjima.DB.loadEvents();
+            var doneEvents = events.filter(function(ev) {
+                return ev.type !== 'nighter' && ev.date && ev.date >= seasonStart && ev.date <= todayISO;
+            });
+
+            if (doneEvents.length === 0) {
+                container.innerHTML = '<p style="color:#999;padding:8px;">集計対象のイベントがまだありません。</p>';
+                return;
+            }
+
+            var dataArr = await Promise.all(
+                doneEvents.map(function(ev) { return FCOjima.DB.loadEventData(ev.id); })
+            );
+
+            // 対象判定（出欠マトリクスと同じ定義）
+            function isTargetFor(member, ev) {
+                var evTargets = (ev.target && ev.target.length > 0) ? ev.target : null;
+                var extraPlayers = ev.extraPlayers || [];
+                return !evTargets
+                    || (member.grade && evTargets.some(function(g) { return String(g) === String(member.grade); }))
+                    || extraPlayers.includes(member.name);
+            }
+
+            var gradeNumMap = { '年少': -3, '年中': -2, '年長': -1 };
+            function gradeVal(g) {
+                if (gradeNumMap[g] !== undefined) return gradeNumMap[g];
+                var n = parseInt(g, 10);
+                return isNaN(n) ? -99 : n;
+            }
+
+            var players = (FCOjima.Hub.members || [])
+                .filter(function(m) { return m.role === 'player'; })
+                .slice()
+                .sort(function(a, b) {
+                    var d = gradeVal(b.grade) - gradeVal(a.grade); // 6年が先頭
+                    if (d !== 0) return d;
+                    return (a.name || '').localeCompare(b.name || '', 'ja');
+                });
+
+            var rows = players.map(function(m) {
+                var targetN = 0, presentN = 0;
+                doneEvents.forEach(function(ev, i) {
+                    if (!isTargetFor(m, ev)) return;
+                    targetN++;
+                    var att = (dataArr[i] && dataArr[i].attendance) || [];
+                    var rec = att.find(function(a) {
+                        return (a.memberId != null && String(a.memberId) === String(m.id)) || a.name === m.name;
+                    });
+                    if (rec && rec.status === 'present') presentN++;
+                });
+                var pct = targetN > 0 ? Math.round(presentN / targetN * 100) : null;
+                return { member: m, target: targetN, present: presentN, pct: pct };
+            });
+
+            container.innerHTML = '';
+            var esc = FCOjima.UI.escapeHTML;
+            var currentGrade = null;
+            rows.forEach(function(r) {
+                var g = r.member.grade || '未設定';
+                if (g !== currentGrade) {
+                    currentGrade = g;
+                    var gh = document.createElement('h3');
+                    gh.style.cssText = 'font-size:13px;color:#666;margin:14px 0 6px;border-bottom:1px solid #eee;padding-bottom:4px;';
+                    gh.textContent = FCOjima.Utils.getGradeLabel ? FCOjima.Utils.getGradeLabel(g) : g;
+                    container.appendChild(gh);
+                }
+                var row = document.createElement('div');
+                row.className = 'driver-stat-row';
+                var pctText = (r.pct === null) ? '対象なし' : r.pct + '％';
+                var barPct = r.pct === null ? 0 : r.pct;
+                row.innerHTML =
+                    '<span class="driver-stat-name" title="' + esc(r.member.name) + '">' + esc(r.member.name) + '</span>' +
+                    '<span class="driver-stat-bar-track"><span class="driver-stat-bar-fill" style="width:' + barPct + '%;"></span></span>' +
+                    '<span class="rate-stat-detail">' + r.present + '/' + r.target + '回　<b>' + pctText + '</b></span>';
+                container.appendChild(row);
+            });
+        } catch (e) {
+            container.innerHTML = '<p style="color:#c00;">読み込みエラー: ' + e.message + '</p>';
+            console.error('参加率の集計エラー:', e);
+        }
+    };
+
+    // =============================================
     //  当番表（グループ設定）
     // =============================================
 
@@ -819,45 +893,92 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         head.appendChild(delBtn);
         card.appendChild(head);
 
+        // メンバー表示: 「所属メンバーの一覧＋✕削除」＋「selectで追加」方式。
+        // 旧実装（全候補チェックボックスのタップでトグル）は実機モバイルChromeで
+        // 2度タップ不良が報告されたため、ネイティブUI（button/select）のみで構成する。
+        // グループは作成時メンバー0人で、あとから追加していく。他グループとの重複所属OK
+        var MEMBER_ROLE_LABELS = { coach: '監督', assist: 'コーチ', father: '父', mother: '母' };
         var memberIds = (group.memberIds || []).map(String);
         var body = document.createElement('div');
         body.className = 'duty-group-members';
-        if (candidates.length === 0) {
-            body.innerHTML = '<p style="color:#999;font-size:12px;margin:4px 0;">指導者・父・母のメンバーが登録されていません。</p>';
+
+        var currentMembers = memberIds
+            .map(function(id) { return candidates.find(function(m) { return String(m.id) === id; }); })
+            .filter(Boolean);
+
+        if (currentMembers.length === 0) {
+            var emptyP = document.createElement('p');
+            emptyP.style.cssText = 'color:#999;font-size:12px;margin:4px 0;';
+            emptyP.textContent = 'メンバーがいません。下の「＋メンバーを追加」から追加してください。';
+            body.appendChild(emptyP);
         } else {
-            var MEMBER_ROLE_LABELS = { coach: '監督', assist: 'コーチ', father: '父', mother: '母' };
-            candidates.forEach(function(m) {
-                var isChecked = memberIds.includes(String(m.id));
-                var chip = document.createElement('label');
-                chip.className = 'duty-member-chip' + (isChecked ? ' checked' : '');
-                var cb = document.createElement('input');
-                cb.type = 'checkbox';
-                cb.checked = isChecked;
-                chip.appendChild(cb);
+            currentMembers.forEach(function(m) {
+                var chip = document.createElement('span');
+                chip.className = 'duty-member-chip checked';
                 chip.appendChild(document.createTextNode(m.name + (MEMBER_ROLE_LABELS[m.role] ? '（' + MEMBER_ROLE_LABELS[m.role] + '）' : '')));
-                // 実機のモバイルChromeではlabel→内包checkboxへの暗黙のタップ転送が
-                // 効かないことがある（キャンバスモードのタップ問題と同種）。
-                // click側でpreventDefaultして手動でトグルし、実装を1本化する。
-                // ただしキーボード操作(Tab+Space)やスクリーンリーダーはcheckbox自体を
-                // 直接アクティベートするため、その場合はブラウザのネイティブなトグルを
-                // 尊重する（先にcheckedが反転済みなので、ここで再度反転させない）
-                chip.addEventListener('click', function(e) {
-                    if (e.target === cb) {
-                        chip.classList.toggle('checked', cb.checked);
-                        Admin.toggleDutyGroupMember(group, m.id, cb.checked);
-                        return;
-                    }
-                    e.preventDefault();
-                    var next = !cb.checked;
-                    cb.checked = next;
-                    chip.classList.toggle('checked', next);
-                    Admin.toggleDutyGroupMember(group, m.id, next);
+                var rm = document.createElement('button');
+                rm.type = 'button';
+                rm.className = 'duty-member-remove';
+                rm.textContent = '✕';
+                rm.title = m.name + ' をグループから外す';
+                rm.addEventListener('click', function() {
+                    Admin.removeDutyGroupMemberUI(group, m.id);
                 });
+                chip.appendChild(rm);
                 body.appendChild(chip);
             });
         }
         card.appendChild(body);
+
+        // 追加用select（所属済みは選択肢から除外。ネイティブUIなので実機タップ問題が起きない）
+        var addable = candidates.filter(function(m) { return !memberIds.includes(String(m.id)); });
+        if (addable.length > 0) {
+            var sel = document.createElement('select');
+            sel.className = 'duty-add-select';
+            var ph = document.createElement('option');
+            ph.value = '';
+            ph.textContent = '＋ メンバーを追加...';
+            sel.appendChild(ph);
+            addable.forEach(function(m) {
+                var opt = document.createElement('option');
+                opt.value = String(m.id);
+                opt.textContent = m.name + (MEMBER_ROLE_LABELS[m.role] ? '（' + MEMBER_ROLE_LABELS[m.role] + '）' : '');
+                sel.appendChild(opt);
+            });
+            sel.addEventListener('change', function() {
+                if (!sel.value) return;
+                Admin.addDutyGroupMemberUI(group, sel.value);
+            });
+            card.appendChild(sel);
+        } else if (candidates.length === 0) {
+            var noCand = document.createElement('p');
+            noCand.style.cssText = 'color:#999;font-size:12px;margin:4px 0;';
+            noCand.textContent = '指導者・父・母のメンバーが登録されていません。';
+            card.appendChild(noCand);
+        }
         return card;
+    };
+
+    /** グループにメンバーを追加（追加後に一覧を再描画） */
+    Admin.addDutyGroupMemberUI = async function(group, memberId) {
+        try {
+            await FCOjima.DB.addDutyGroupMember(group.id, String(memberId));
+            Admin.loadDutyGroups();
+        } catch (e) {
+            alert('メンバーの追加に失敗しました: ' + e.message);
+            Admin.loadDutyGroups();
+        }
+    };
+
+    /** グループからメンバーを外す（削除後に一覧を再描画） */
+    Admin.removeDutyGroupMemberUI = async function(group, memberId) {
+        try {
+            await FCOjima.DB.removeDutyGroupMember(group.id, String(memberId));
+            Admin.loadDutyGroups();
+        } catch (e) {
+            alert('メンバーの削除に失敗しました: ' + e.message);
+            Admin.loadDutyGroups();
+        }
     };
 
     Admin.saveDutyEnabled = async function(enabled) {
@@ -897,25 +1018,6 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             Admin.loadDutyGroups();
         } catch (e) {
             alert('グループの削除に失敗しました: ' + e.message);
-        }
-    };
-
-    Admin.toggleDutyGroupMember = async function(group, memberId, checked) {
-        try {
-            var idStr = String(memberId);
-            var memberIds = (group.memberIds || []).map(String);
-            if (checked) {
-                if (!memberIds.includes(idStr)) memberIds.push(idStr);
-                group.memberIds = memberIds;
-                await FCOjima.DB.addDutyGroupMember(group.id, idStr);
-            } else {
-                memberIds = memberIds.filter(function(id) { return id !== idStr; });
-                group.memberIds = memberIds;
-                await FCOjima.DB.removeDutyGroupMember(group.id, idStr);
-            }
-        } catch (e) {
-            alert('メンバーの更新に失敗しました: ' + e.message);
-            Admin.loadDutyGroups();
         }
     };
 
