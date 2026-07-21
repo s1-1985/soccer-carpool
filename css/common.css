@@ -653,6 +653,43 @@ tr:hover { background: #fbf6e8; }
     font-weight: 700;
 }
 
+/* ---------- 荷物（共用備品）ピッカー ---------- */
+.luggage-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 4px;
+    border-bottom: 1px solid var(--line);
+}
+.luggage-row-name {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.luggage-row.has-count .luggage-row-name { color: #7a5a00; }
+.luggage-count-btn {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.luggage-count-btn:active { background: var(--grad-gold); }
+.luggage-row-count {
+    min-width: 28px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 800;
+}
+.luggage-row.has-count .luggage-row-count { color: #E8A200; }
+
 /* ---------- 天気チップ ---------- */
 .weather-chip {
     display: inline-flex;
@@ -680,6 +717,11 @@ tr:hover { background: #fbf6e8; }
     background: var(--surface-2, #f7f4ea);
     border: 1px solid var(--line);
     border-radius: var(--r);
+    /* 親がcontent幅にならないよう、また左右にはみ出さないよう明示的に内包する
+       （2026-07-21実機報告: 配車概要で天気が左右にはみ出していた） */
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow: hidden;
 }
 .weather-widget-fallback {
     display: flex;

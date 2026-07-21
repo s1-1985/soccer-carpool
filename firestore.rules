@@ -122,6 +122,12 @@ service cloud.firestore {
         allow write: if isAuth() && isManager(teamId);
       }
 
+      // ----- 荷物（共用備品）マスタ（管理タブで登録）-----
+      match /luggageSettings/{settingId} {
+        allow read:  if isAuth() && isApproved(teamId);
+        allow write: if isAuth() && isManager(teamId);
+      }
+
       // ----- 当番グループ（当番の割り当て単位）-----
       match /dutyGroups/{groupId} {
         allow read:  if isAuth() && isApproved(teamId);

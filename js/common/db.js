@@ -336,6 +336,17 @@ FCOjima.DB = FCOjima.DB || {};
         await Collections.dutyGroups().doc(String(groupId)).delete();
     };
 
+    // ========== 荷物（共用備品）マスタ ==========
+
+    DB.loadLuggageItems = async function() {
+        const doc = await Collections.luggageSettings().get();
+        return (doc.exists && Array.isArray(doc.data().items)) ? doc.data().items : [];
+    };
+
+    DB.saveLuggageItems = async function(items) {
+        await Collections.luggageSettings().set({ items: items }, { merge: true });
+    };
+
     // ========== 当番割り当て（イベント×グループ）==========
 
     DB.loadDutyAssignments = async function() {

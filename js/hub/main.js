@@ -54,6 +54,13 @@ FCOjima.Hub.init = async function() {
     // イベントのリアルタイム同期を開始
     FCOjima.Hub.startEventsRealtimeSync();
 
+    // 添付ファイルの自動削除（イベント終了後30日で掃除。マネージャーのみ・1日1回）
+    var profile = FCOjima.Auth && FCOjima.Auth.currentUserProfile;
+    if (profile && ['admin', 'coach', 'assist', 'officer'].includes(profile.role) &&
+        FCOjima.EventFiles && FCOjima.EventFiles.cleanupOldFiles) {
+        FCOjima.EventFiles.cleanupOldFiles(FCOjima.Hub.events);
+    }
+
     console.log('HUB 初期化完了');
 };
 

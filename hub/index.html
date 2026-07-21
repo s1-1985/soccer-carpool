@@ -8,7 +8,7 @@
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#1C1600">
     <link rel="apple-touch-icon" href="/img/icon-192.png">
-    <link rel="stylesheet" href="../css/common.css?v=20260721">
+    <link rel="stylesheet" href="../css/common.css?v=20260721a">
     <link rel="stylesheet" href="../css/hub/calendar.css?v=20260224a">
     <link rel="stylesheet" href="../css/hub/members.css?v=20260719">
     <link rel="stylesheet" href="../css/hub/notifications.css?v=20260224a">
@@ -452,6 +452,10 @@
             <section style="margin-top:12px;">
                 <button id="btn-duty-groups" class="primary-button" style="width:100%;max-width:320px;">🔔 当番グループ設定</button>
             </section>
+
+            <section style="margin-top:12px;">
+                <button id="btn-luggage-settings" class="primary-button" style="width:100%;max-width:320px;">📦 荷物設定</button>
+            </section>
         </div>
     </div>
 
@@ -511,6 +515,37 @@
             <p id="driver-stats-season-label" style="font-size:11px;color:#888;margin:0 0 12px;"></p>
             <div id="driver-stats-container">
                 <p class="loading">読み込み中...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 荷物設定モーダル（管理タブ・マネージャーのみ） -->
+    <div id="luggage-settings-modal" class="modal">
+        <div class="modal-content" style="max-width:480px;">
+            <span class="close" id="luggage-settings-modal-close">&times;</span>
+            <h2 style="font-size:16px;margin-bottom:4px;">📦 荷物設定</h2>
+            <p style="font-size:11px;color:#888;margin:0 0 12px;">チームの共用荷物（テント・ベンチ等）を登録します。イベント登録時に数量を指定できます。</p>
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+                <input type="text" id="luggage-name-input" placeholder="荷物の名前（例: テント）" style="flex:1;">
+                <button type="button" id="luggage-add-btn" class="primary-button" style="white-space:nowrap;padding:8px 16px;">登録</button>
+            </div>
+            <div id="luggage-items-container" style="display:flex;flex-wrap:wrap;gap:8px;">
+                <p class="loading">読み込み中...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- イベント荷物ピッカーモーダル（イベント登録・編集時） -->
+    <div id="event-luggage-modal" class="modal" style="z-index:1060;">
+        <div class="modal-content" style="max-width:420px;">
+            <span class="close" id="event-luggage-modal-close">&times;</span>
+            <h2 style="font-size:16px;margin-bottom:4px;">📦 荷物を選ぶ</h2>
+            <p style="font-size:11px;color:#888;margin:0 0 12px;">このイベントに持っていく荷物の数量を設定します。</p>
+            <div id="event-luggage-rows">
+                <p class="loading">読み込み中...</p>
+            </div>
+            <div class="form-actions" style="margin-top:14px;">
+                <button type="button" id="event-luggage-apply" class="primary-button" style="width:100%;padding:12px;">登録</button>
             </div>
         </div>
     </div>
@@ -614,9 +649,20 @@
                     <input type="time" id="event-end-time">
                 </div>
                 <div class="form-group">
-                    <label for="event-checklist">🎒 持ち物（「、」またはカンマ区切りで自由に編集）</label>
-                    <textarea id="event-checklist" rows="2" placeholder="例: ゼッケン、すね当て、水筒"></textarea>
-                    <div style="font-size:11px;color:#888;margin-top:2px;">種類を変えるとテンプレが入ります。自由に追加・削除できます。</div>
+                    <label for="event-checklist">🎒 個人持ち物（「、」またはカンマ区切りで自由に編集）</label>
+                    <textarea id="event-checklist" rows="2" placeholder="例: ユニフォーム、シューズ、シンガード"></textarea>
+                </div>
+                <div class="form-group">
+                    <button type="button" id="event-luggage-btn" class="secondary-button" style="display:flex;align-items:center;gap:8px;">
+                        📦 荷物
+                    </button>
+                    <div id="event-luggage-summary" style="font-size:13px;color:#555;margin-top:6px;"></div>
+                    <input type="hidden" id="event-luggage" value="">
+                </div>
+                <div class="form-group">
+                    <label for="event-form-files">📎 添付ファイル（PDF・Excel・Word・画像・テキスト / 1ファイル10MBまで）</label>
+                    <input type="file" id="event-form-files" multiple
+                        accept=".pdf,.xls,.xlsx,.csv,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp,.heic,.txt,.md">
                 </div>
                 <div class="form-group">
                     <label for="event-notes">備考</label>
@@ -797,7 +843,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
-    <script src="../js/common/firebase-config.js?v=20260719b"></script>
+    <script src="../js/common/firebase-config.js?v=20260721a"></script>
 
     <!-- 共通モジュール -->
     <script src="../js/common/global.js?v=20260224a"></script>
@@ -805,18 +851,19 @@
     <script src="../js/common/storage.js?v=20260224a"></script>
     <script src="../js/common/ui.js?v=20260224a"></script>
     <script src="../js/common/auth.js?v=20260224a"></script>
-    <script src="../js/common/db.js?v=20260719c"></script>
+    <script src="../js/common/db.js?v=20260721a"></script>
     <script src="../js/common/weather.js?v=20260720b"></script>
-    <script src="../js/common/checklist.js?v=20260721"></script>
+    <script src="../js/common/checklist.js?v=20260721a"></script>
+    <script src="../js/common/eventfiles.js?v=20260721a"></script>
 
     <!-- HUBページ用モジュール -->
-    <script src="../js/hub/main.js?v=20260720a"></script>
-    <script src="../js/hub/calendar.js?v=20260721"></script>
+    <script src="../js/hub/main.js?v=20260721a"></script>
+    <script src="../js/hub/calendar.js?v=20260721a"></script>
     <script src="../js/hub/members.js?v=20260720"></script>
     <script src="../js/hub/notifications.js?v=20260224a"></script>
     <script src="../js/hub/venues.js?v=20260611"></script>
     <script src="../js/hub/myevents.js?v=20260720a"></script>
-    <script src="../js/hub/admin.js?v=20260721"></script>
+    <script src="../js/hub/admin.js?v=20260721a"></script>
 
     <script>
         // タブの切り替えに応じてフローティングボタンの表示を制御

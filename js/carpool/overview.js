@@ -258,6 +258,13 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                 </div>`;
             }
             
+            // 個人持ち物＋荷物（2026-07-21ユーザー要望: イベント概要にも表示）
+            var checklistSection = '';
+            if (app.Checklist) {
+                checklistSection = (app.Checklist.formatChips(event.type, event.checklistExtra, event.checklist) || '')
+                    + (app.Checklist.formatLuggage(event.luggage) || '');
+            }
+
             // 備考
             var notesSection = '';
             if (event.notes) {
@@ -280,6 +287,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                     ${dateTimeInfo}
                     ${locationInfo}
                     ${targetDisplay}
+                    ${checklistSection}
                     ${notesSection}
                 </div>`;
 
@@ -638,10 +646,20 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
             if (!firebase.storage || typeof firebase.storage !== 'function') {
                 throw new Error('Storage SDK未読み込み');
             }
+            // 種類・サイズ検証（PDF/Excel/Word/画像/テキスト・10MB。共通モジュールに集約）
+            var toUpload = files;
+            if (app.EventFiles && app.EventFiles.validate) {
+                var v = app.EventFiles.validate(files);
+                if (v.errors.length > 0) {
+                    UI.showAlert('添付できないファイルがあります:\n' + v.errors.join('\n'));
+                }
+                toUpload = v.ok;
+                if (toUpload.length === 0) return;
+            }
             var storage = firebase.storage();
             var basePath = 'teams/' + FCOjimaFirebase.TEAM_ID + '/events/' + eventId + '/';
-            for (var i = 0; i < files.length; i++) {
-                var file = files[i];
+            for (var i = 0; i < toUpload.length; i++) {
+                var file = toUpload[i];
                 var ref = storage.ref(basePath + file.name);
                 await ref.put(file);
             }

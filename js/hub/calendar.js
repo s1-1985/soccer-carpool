@@ -36,8 +36,129 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         
         // イベントリスナーの設定
         this.setupEventListeners();
-        
+
+        // 荷物ピッカーの初期化
+        this.initLuggagePicker();
+
         console.log('カレンダー機能の初期化が完了しました');
+    };
+
+    // =============================================
+    //  荷物（共用備品）ピッカー
+    //  管理タブで登録された荷物マスタから、イベントごとの数量を設定する
+    // =============================================
+
+    /** hidden入力(#event-luggage)の現在値をパース */
+    Calendar._getLuggageValue = function() {
+        var el = document.getElementById('event-luggage');
+        if (!el || !el.value) return [];
+        try {
+            var arr = JSON.parse(el.value);
+            return Array.isArray(arr) ? arr : [];
+        } catch (e) { return []; }
+    };
+
+    /** hidden入力とサマリー表示（テント×2、ベンチ×3）を更新 */
+    Calendar._setLuggageValue = function(luggage) {
+        var el = document.getElementById('event-luggage');
+        var summary = document.getElementById('event-luggage-summary');
+        var clean = (luggage || []).filter(function(it) { return it && it.name && it.count > 0; });
+        if (el) el.value = clean.length > 0 ? JSON.stringify(clean) : '';
+        if (summary) {
+            summary.textContent = clean.length > 0
+                ? clean.map(function(it) { return it.name + '×' + it.count; }).join('、')
+                : '（荷物なし）';
+        }
+    };
+
+    Calendar.initLuggagePicker = function() {
+        var btn = document.getElementById('event-luggage-btn');
+        var modal = document.getElementById('event-luggage-modal');
+        var closeBtn = document.getElementById('event-luggage-modal-close');
+        var applyBtn = document.getElementById('event-luggage-apply');
+        if (!btn || !modal) return;
+
+        btn.addEventListener('click', function() {
+            Calendar._openLuggagePicker();
+        });
+        closeBtn && closeBtn.addEventListener('click', function() { UI.closeModal('event-luggage-modal'); });
+        modal.addEventListener('click', function(e) { if (e.target === modal) UI.closeModal('event-luggage-modal'); });
+        applyBtn && applyBtn.addEventListener('click', function() {
+            // 行から数量を収集してhidden入力へ反映し、イベント登録モーダルに戻る
+            var rows = document.querySelectorAll('#event-luggage-rows .luggage-row');
+            var luggage = [];
+            rows.forEach(function(row) {
+                var count = parseInt(row.dataset.count, 10) || 0;
+                if (count > 0) luggage.push({ name: row.dataset.name, count: count });
+            });
+            Calendar._setLuggageValue(luggage);
+            UI.closeModal('event-luggage-modal');
+        });
+    };
+
+    /** 荷物ピッカーを開く（マスタ一覧＋現在の数量を行表示） */
+    Calendar._openLuggagePicker = async function() {
+        var rowsEl = document.getElementById('event-luggage-rows');
+        if (!rowsEl) return;
+        UI.openModal('event-luggage-modal');
+        rowsEl.innerHTML = '<p class="loading">読み込み中...</p>';
+
+        var items = [];
+        try {
+            items = await FCOjima.DB.loadLuggageItems();
+        } catch (e) {
+            rowsEl.innerHTML = '<p style="color:#c00;font-size:12px;">荷物マスタの読み込みに失敗しました</p>';
+            return;
+        }
+        if (items.length === 0) {
+            rowsEl.innerHTML = '<p style="color:#999;font-size:12px;">荷物が登録されていません。管理タブの「📦 荷物設定」から登録してください。</p>';
+            return;
+        }
+
+        var current = {};
+        Calendar._getLuggageValue().forEach(function(it) { current[it.name] = it.count; });
+
+        rowsEl.innerHTML = '';
+        items.forEach(function(name) {
+            var row = document.createElement('div');
+            row.className = 'luggage-row';
+            row.dataset.name = name;
+            row.dataset.count = String(current[name] || 0);
+
+            var label = document.createElement('span');
+            label.className = 'luggage-row-name';
+            label.textContent = name;
+
+            var minus = document.createElement('button');
+            minus.type = 'button';
+            minus.className = 'luggage-count-btn';
+            minus.textContent = '−';
+
+            var countEl = document.createElement('span');
+            countEl.className = 'luggage-row-count';
+            countEl.textContent = row.dataset.count;
+
+            var plus = document.createElement('button');
+            plus.type = 'button';
+            plus.className = 'luggage-count-btn';
+            plus.textContent = '＋';
+
+            function setCount(n) {
+                var v = Math.max(0, n); // 0未満には減らない
+                row.dataset.count = String(v);
+                countEl.textContent = String(v);
+                row.classList.toggle('has-count', v > 0);
+            }
+            minus.addEventListener('click', function() { setCount((parseInt(row.dataset.count, 10) || 0) - 1); });
+            plus.addEventListener('click', function() { setCount((parseInt(row.dataset.count, 10) || 0) + 1); });
+            setCount(parseInt(row.dataset.count, 10) || 0);
+
+            row.appendChild(label);
+            row.appendChild(minus);
+            row.appendChild(countEl);
+            row.appendChild(plus);
+            rowsEl.appendChild(row);
+        });
     };
     
     /**
@@ -650,6 +771,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 <span class="detail-label">時間:</span> ${event.startTime || '未設定'}${event.endTime ? ` - ${event.endTime}` : ''}
             </div>
             ${app.Checklist ? app.Checklist.formatChips(event.type, event.checklistExtra, event.checklist) : ''}
+            ${app.Checklist ? app.Checklist.formatLuggage(event.luggage) : ''}
             ${dutyDisplay}
             ${event.notes ? `
             <div class="detail-item">
@@ -658,8 +780,29 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             </div>
             ` : ''}
             ${attendanceDisplay}
+            <div class="detail-item" style="margin-top:10px;">
+                <span class="detail-label">📎 添付ファイル:</span>
+                <div id="calendar-event-files" style="margin:6px 0;display:flex;flex-direction:column;gap:4px;"></div>
+                <button type="button" id="calendar-event-file-btn" class="secondary-button" style="font-size:13px;padding:8px 16px;">ファイルを追加</button>
+                <input type="file" id="calendar-event-file-input" multiple style="display:none;"
+                    accept=".pdf,.xls,.xlsx,.csv,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp,.heic,.txt,.md">
+            </div>
             ${eventLogDisplay}
         `;
+
+        // 添付ファイル（配車管理画面と同じStorageパスを参照＝同期される）
+        if (app.EventFiles) {
+            var filesEl = document.getElementById('calendar-event-files');
+            app.EventFiles.render(event.id, filesEl);
+            var fileBtn = document.getElementById('calendar-event-file-btn');
+            var fileInput = document.getElementById('calendar-event-file-input');
+            if (fileBtn && fileInput) {
+                fileBtn.addEventListener('click', function() { fileInput.value = ''; fileInput.click(); });
+                fileInput.addEventListener('change', function() {
+                    if (fileInput.files.length) app.EventFiles.upload(event.id, fileInput.files, filesEl);
+                });
+            }
+        }
 
         // ボタンにイベントIDを設定
         document.getElementById('manage-event').setAttribute('data-event-id', event.id);
@@ -740,6 +883,9 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             var typeEl = document.getElementById('event-type');
             clEl.value = app.Checklist.getTemplate(typeEl ? typeEl.value : 'game').join('、');
         }
+
+        // 荷物をリセット
+        Calendar._setLuggageValue([]);
 
         // モーダルを表示
         UI.openModal('event-modal');
@@ -883,6 +1029,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         // ※ undefinedはFirestoreが拒否するため必ず配列にする
         const checklistEl = document.getElementById('event-checklist');
         const checklist = (app.Checklist && checklistEl) ? app.Checklist.parseInput(checklistEl.value) : [];
+        // 荷物（共用備品）: [{name, count}] の配列
+        const luggage = Calendar._getLuggageValue();
         
         // バリデーション（タイトルのみ必須）
         if (!date || !title) {
@@ -961,7 +1109,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                     startTime,
                     endTime,
                     notes,
-                    checklist
+                    checklist,
+                    luggage
                 };
                 
                 // ログに記録（eventId付き）
@@ -985,7 +1134,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 startTime,
                 endTime,
                 notes,
-                checklist
+                checklist,
+                luggage
             });
 
             // ログに記録（eventId付き）
@@ -994,6 +1144,17 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         
         // イベントを保存してUIを更新
         Storage.saveEvents(events);
+
+        // フォームで選択された添付ファイルをアップロード（保存されたイベントIDに紐付け）
+        var formFilesInput = document.getElementById('event-form-files');
+        if (formFilesInput && formFilesInput.files.length > 0 && app.EventFiles) {
+            var savedEventId = eventFormId || newId;
+            app.EventFiles.upload(savedEventId, formFilesInput.files, null).then(function() {
+                console.log('イベント登録時の添付ファイルをアップロードしました');
+            });
+            formFilesInput.value = '';
+        }
+
         this.renderCalendar();
         this.renderEventsList();
         
@@ -1056,6 +1217,9 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         if (clEl && app.Checklist) {
             clEl.value = app.Checklist.getItems(event.type, event.checklistExtra, event.checklist).join('、');
         }
+
+        // 荷物を復元
+        Calendar._setLuggageValue(event.luggage || []);
 
         // 対象学年のチェックボックスを生成
         this.generateGradeCheckboxes();

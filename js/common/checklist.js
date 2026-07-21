@@ -9,12 +9,14 @@ FCOjima.Checklist = FCOjima.Checklist || {};
 (function(app) {
     var Checklist = app.Checklist;
 
+    // 個人持ち物のデフォルトテンプレ（2026-07-21ユーザー指定で全種別共通の基本セットに）
+    var DEFAULT_ITEMS = ['ユニフォーム', 'シューズ', 'シンガード', 'ジャグ', 'お弁当'];
     var ITEMS_BY_TYPE = {
-        game: ['ゼッケン', 'すね当て', '水筒', '着替え', '雨具（念のため）'],
-        practice: ['水筒', 'すね当て', 'ボール（自分の）'],
-        event: ['筆記用具', '水筒'],
-        nighter: ['ライト付きシューズ推奨', '防寒着'],
-        other: ['水筒']
+        game: DEFAULT_ITEMS.slice(),
+        practice: DEFAULT_ITEMS.slice(),
+        event: DEFAULT_ITEMS.slice(),
+        nighter: DEFAULT_ITEMS.slice(),
+        other: DEFAULT_ITEMS.slice()
     };
 
     /**
@@ -66,7 +68,22 @@ FCOjima.Checklist = FCOjima.Checklist || {};
         var chips = items.map(function(item) {
             return '<span class="checklist-chip">' + UI.escapeHTML(item) + '</span>';
         }).join('');
-        return '<div class="checklist-chips"><span class="checklist-label">🎒 持ち物:</span>' + chips + '</div>';
+        return '<div class="checklist-chips"><span class="checklist-label">🎒 個人持ち物:</span>' + chips + '</div>';
+    };
+
+    /**
+     * 荷物（共用備品）チップ群のHTML文字列を返す
+     * @param {Array<{name:string, count:number}>} luggage
+     * @returns {string}
+     */
+    Checklist.formatLuggage = function(luggage) {
+        var list = (luggage || []).filter(function(it) { return it && it.name && it.count > 0; });
+        if (list.length === 0) return '';
+        var UI = app.UI;
+        var chips = list.map(function(it) {
+            return '<span class="checklist-chip">' + UI.escapeHTML(it.name) + '×' + it.count + '</span>';
+        }).join('');
+        return '<div class="checklist-chips"><span class="checklist-label">📦 荷物:</span>' + chips + '</div>';
     };
 
 })(window.FCOjima);
