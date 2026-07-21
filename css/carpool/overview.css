@@ -1,66 +1,29 @@
 /* FC尾島ジュニア - 配車管理概要スタイル */
 
-/* イベント情報カード */
-.event-info-card {
-    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-    color: white;
-    margin-bottom: 30px;
-    position: relative;
-    overflow: hidden;
-}
-
-.event-info-card::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -50%;
-    width: 100%;
-    height: 100%;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-    transform: rotate(45deg);
-}
-
-.event-info {
-    position: relative;
-    z-index: 1;
-}
-
+/* イベントタイトル（#event-summaryの中に実際に生成される .event-detail-card 内で使用） */
 .event-title {
     font-size: 24px;
     font-weight: bold;
     margin-bottom: 10px;
 }
 
+/*
+ * 注意: 以前ここにあった .event-info-card / .event-info / .event-details(display:grid) /
+ * .event-detail-item 等は、旧バージョンのイベント概要カード用CSSで、
+ * 現在のoverview.js（.event-detail-cardを生成する実装）はこれらのクラスを
+ * 一切使っていなかった（削除前に確認済み）。
+ * ところが #event-summary 自体に class="event-details" が付いており、
+ * この削除前の .event-details{display:grid; grid-template-columns:...} が
+ * 意図せず適用されてしまっていた。CSS Gridの子要素はデフォルトで
+ * min-width:auto（コンテンツの内在最小幅）を持つため、天気ウィジェットの
+ * 横スクロール行のような「折り返さない幅広コンテンツ」を追加した途端、
+ * グリッドトラックごと押し広げられ、ページ全体が左右にはみ出す実機バグの
+ * 原因になっていた（2026-07-21実機報告）。使われていない定義だったため削除。
+ */
+#event-summary.event-details,
 .event-details {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin-top: 15px;
-}
-
-.event-detail-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.event-detail-icon {
-    font-size: 18px;
-    width: 24px;
-    text-align: center;
-}
-
-.event-detail-text {
-    font-size: 14px;
-}
-
-.event-detail-label {
-    font-weight: 500;
-    opacity: 0.9;
-}
-
-.event-detail-value {
-    margin-top: 2px;
+    /* 万一同名クラスが将来また使われても暴走しないよう明示的にブロック要素にする */
+    display: block;
 }
 
 .event-deadline-warning {
@@ -366,11 +329,6 @@
 
 /* レスポンシブ対応 */
 @media screen and (max-width: 768px) {
-    .event-details {
-        grid-template-columns: 1fr;
-        gap: 15px;
-    }
-    
     .progress-item {
         flex-direction: column;
         text-align: center;
