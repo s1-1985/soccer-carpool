@@ -6,6 +6,102 @@ mainの最新コミット: `a23124c` (2026-07-19)「fix: 保護者の子供情�
 
 ---
 
+## 2026-07-24 コードベース徹底監査＋Playwright実操作によるUI改善
+
+**ユーザー指示**: 「コードベースで徹底的にバグを探して修整して。それが完了したら
+playwriteで実際にアプリを操作してuiの改善箇所等を見つけて直しておいて」
+
+### バグ監査で見つけて修正した点
+1. **`isTargetFor`ロジックの重複** — `js/hub/admin.js`の`loadAttendanceMatrix`と
+   `loadAttendanceRates`に、対象学年・追加選手を判定する同一ロジックが
+   2箇所に手書きで重複していた（将来の改修で片方だけ直して食い違う
+   ドリフトのリスク）。`FCOjima.Utils.isTargetFor`に一本化して共通化。
+2. **連絡事項検索のself-XSS** — `js/carpool/notifications.js`の
+   `searchNotifications`で、検索キーワードをエスケープせず`innerHTML`に
+   直接埋め込んでいた箇所が2箇所（該当なしメッセージ・検索結果ヘッダー）。
+   `UI.escapeHTML()`でエスケープするよう修正。
+3. **出欠確認ページの期限表示が空でも枠だけ残る** — `js/carpool/attendance.js`の
+   出欠確認ページで、イベントに出欠期限（`attendanceDeadline`）が
+   設定されていない場合、`#attendance-deadline`の中身を空にするだけで
+   `class`（背景色・左ボーダー付き）は残したままにしていたため、
+   何も書かれていない空の枠だけが画面に表示され続けていた。
+   期限未設定時は`display:none`で要素ごと隠すよう修正。
+
+### Playwrightで実際に操作して見つけたUI改善点
+- メンバータブなどの3〜4個並ぶアクションボタンが、モバイル幅で
+  1ボタンずつ3行に折り返され、しかも単語の途中で改行されていた
+  → `.action-buttons`をflex-wrapから2列CSS Gridに変更（ボタン単体の
+  場合は1行フル幅になるよう`:only-child`も対応）。
+- 検索ボックスの「検索」ボタンが2行に折り返される → 
+  `.search-box button, .filter-controls button`に
+  `flex-shrink:0; white-space:nowrap`を追加。
+- 添付ファイルの`<input type="file">`が素のブラウザ標準スタイルのままで
+  アプリのデザインと不釣り合い → `::file-selector-button`にデザイン
+  システムに合わせたスタイルを追加。
+
+### 検証
+- 既存回帰スイート `e2e-feedback7.mjs`（13項目）・
+  `e2e-overflow-filelimit.mjs`（8項目）を再実行し全PASS、回帰なし。
+- 出欠期限の修正は新規に`e2e-deadline-fix.mjs`で
+  「期限未設定時に`#attendance-deadline`が`display:none`になり
+  空枠が残らない」ことを確認（PASS）。
+- Playwrightでhub/carpool全25画面（カレンダー・各種モーダル・管理画面・
+  メンバー・会場登録・保護者ビュー・配車管理全タブ）を実際に操作して
+  スクリーンショットを取得し目視確認。
+
+### キャッシュバスト
+`utils.js`/`admin.js`/`notifications.js` → `?v=20260722`、
+`attendance.js` → `?v=20260724`、`common.css` → `?v=20260724`
+
+---
+
+## 2026-07-24（続き） 座席割り当て（assignment.js）の追加監査
+
+上記と同じ指示の継続で、サブエージェントに`js/carpool/assignment.js`（座席
+ドラッグ&ドロップ＋キャンバスモード）・`js/common/eventfiles.js`・
+`js/common/checklist.js`・`js/common/storage.js`の深掘りレビューを依頼し、
+見つかった2件を修正した。
+
+1. **ドックからのドロップ/タップ配置が、既に埋まっている座席を無言で
+   上書きする** — `Assignment.setSeatOccupant`は、HTML5ドラッグ・
+   タッチドラッグ・キャンバスモードのタップ配置のいずれの経路でも、
+   ドロップ先の座席に既に別の乗員（例: コーチ）がいるかどうかを
+   確認せずに`dataset.person`を無条件で上書きしていた（座席同士の
+   入れ替え専用の`handleSeatExchange`とは別経路）。上書きされた
+   元の乗員は次の`updateMembersList()`でドックに戻るため完全に
+   消えはしないが、通知が一切ないため管理者が「配置し忘れた」ことに
+   気づけないリスクがあった。`setSeatOccupant`の先頭で、上書き前の
+   `dataset.person`が別人だった場合に`UI.showAlert`で
+   「○○さんをこの座席から外し、△△さんを配置しました」と通知する
+   ようにした。
+2. **運転席をドラッグすると`dragging`クラスが外れないまま残る** —
+   `Assignment.createDriverSeat`は運転席を`draggable=true`にして
+   `dragstart`は設定していたが、対になる`dragend`リスナー
+   （`dragging`クラスの除去）が抜けていた（通常の座席
+   `createSeat`にはペアで存在する）。運転席への誤ドラッグ操作後、
+   車両一覧が再描画されるまで運転席が視覚的に「ドラッグ中」の
+   薄暗い表示のまま固定される不具合があったため、`dragend`で
+   `dragging`クラスを除去するリスナーを追加。
+
+### 検証
+- 新規`e2e-seat-evict-fix.mjs`で、初回配置では通知が出ないこと・
+  既存乗員がいる座席への上書き時のみ通知が出ること・上書き後の
+  乗員が正しく設定されることを確認（3項目PASS）。
+- 既存の座席割り当て回帰スイート`e2e-assignment-fix.mjs`（6項目）・
+  `e2e-feedback7.mjs`（13項目）・`e2e-overflow-filelimit.mjs`（8項目）・
+  `e2e-deadline-fix.mjs`（1項目）を再実行し全PASS、回帰なし。
+- 併せてPlaywrightで実際に車両登録フォーム・メンバー追加フォーム・
+  連絡事項投稿フォームを実送信して動作確認（サブミット処理そのものは
+  正常。ただし調査中、Firebase Authの`onAuthStateChanged`によるログイン
+  状態復元がテスト環境で数秒かかることがあると判明した＝アプリ側の
+  不具合ではなくテスト側の待機時間不足が原因だったため、既存のE2E
+  ヘルパー群にも今後同種の待機不足に注意）。
+
+### キャッシュバスト
+`assignment.js` → `?v=20260724`
+
+---
+
 ## 2026-07-21 天気はみ出しの根本原因を特定・修正＋添付ファイル1イベント10個上限
 
 **ユーザー報告（実機スクショ2枚）**: 「配車管理画面のイベント概要で天気予報が左右にはみ出す」

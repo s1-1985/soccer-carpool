@@ -426,7 +426,7 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
         });
         
         if (filteredNotifications.length === 0) {
-            notificationsList.innerHTML = UI.createAlert('info', `"${keyword}" を含む連絡事項は見つかりませんでした。`);
+            notificationsList.innerHTML = UI.createAlert('info', `"${UI.escapeHTML(keyword)}" を含む連絡事項は見つかりませんでした。`);
             return;
         }
         
@@ -440,7 +440,7 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
         // 検索結果ヘッダー
         const searchHeader = document.createElement('div');
         searchHeader.className = 'search-header';
-        searchHeader.innerHTML = `"${keyword}" の検索結果: ${filteredNotifications.length}件`;
+        searchHeader.innerHTML = `"${UI.escapeHTML(keyword)}" の検索結果: ${filteredNotifications.length}件`;
         notificationsList.appendChild(searchHeader);
         
         // 検索結果を表示

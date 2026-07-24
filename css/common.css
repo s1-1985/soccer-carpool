@@ -252,6 +252,10 @@ button:hover { background: var(--grad-gold-hover); box-shadow: var(--sh-gold); }
 button:active { transform: translateY(1px) scale(.99); box-shadow: var(--sh-sm); }
 button:focus-visible { outline: none; box-shadow: var(--focus); }
 button:disabled { opacity: .5; cursor: not-allowed; filter: grayscale(.3); box-shadow: none; }
+/* flex行内で検索欄などの入力と並ぶボタンは、幅を詰められて文字が
+   縦に折り返さないようにする（例: メンバータブの「検索」ボタン。
+   2026-07-22 Playwright実操作レビューで発見） */
+.search-box button, .filter-controls button { flex-shrink: 0; white-space: nowrap; }
 
 /* セカンダリ = ゴースト（枠線） */
 button.secondary-button {
@@ -302,6 +306,34 @@ select:focus, textarea:focus {
     background: #fffdf8;
 }
 textarea { resize: vertical; min-height: 100px; }
+
+/* ファイル選択（添付ファイル欄）。ブラウザ標準の英語ボタンのままだと
+   他の日本語フォームUIから浮いて見えるため、アプリのトーンに合わせる
+   （2026-07-22 Playwright実操作レビューで発見） */
+input[type="file"] {
+    width: 100%;
+    padding: 8px 0;
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--text-2);
+}
+input[type="file"]::file-selector-button {
+    padding: 9px 16px;
+    margin-right: 10px;
+    border: 1.5px solid var(--line-strong);
+    border-radius: var(--r-sm);
+    background: var(--surface);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .18s, border-color .18s;
+}
+input[type="file"]::file-selector-button:hover {
+    background: var(--surface-2);
+    border-color: var(--brand);
+}
 .form-actions { margin-top: 20px; display: flex; gap: 10px; }
 
 /* ---------- テーブル ---------- */
@@ -837,7 +869,14 @@ tr:hover { background: #fbf6e8; }
     .tab { padding: 0; }
     .tablinks { padding: 12px 2px; font-size: 11px; letter-spacing: 0; min-width: 0; }
     .tablinks.active::after { left: 8%; right: 8%; }
-    .action-buttons { flex-direction: row; flex-wrap: wrap; gap: 8px; }
-    .action-buttons button { flex: 1; min-width: 0; }
+    /* 3個以上並ぶ行（メンバー/連絡事項/会場登録タブの操作ボタン等）は、
+       1行に詰め込むと「メンバ/ーを追/加」のように文字が3行に折り返されて
+       読みにくくなる（2026-07-22 Playwright実操作レビューで発見）。
+       2列グリッドに変更し、ボタン内の文字が最大2行に収まるようにする */
+    .action-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .action-buttons button { min-width: 0; width: 100%; }
+    /* ボタンが1個だけの行（例: 車提供ページの「登録」）は2列グリッドで
+       半分だけ埋まると不自然なので、全幅にする */
+    .action-buttons button:only-child { grid-column: 1 / -1; }
     .main-nav ul { gap: 6px; }
 }
