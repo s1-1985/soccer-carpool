@@ -334,14 +334,8 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 targetEvents.map(function(ev) { return FCOjima.DB.loadEventData(ev.id); })
             );
 
-            // 対象選手かどうか判定
-            function isTargetFor(member, ev) {
-                var evTargets = (ev.target && ev.target.length > 0) ? ev.target : null;
-                var extraPlayers = ev.extraPlayers || [];
-                return !evTargets
-                    || (member.grade && evTargets.some(function(g) { return String(g) === String(member.grade); }))
-                    || extraPlayers.includes(member.name);
-            }
+            // 対象選手かどうか判定（共通ヘルパーに委譲。Utils.isTargetFor参照）
+            var isTargetFor = Utils.isTargetFor;
 
             // 4. マップ構築 + 内訳集計（参加/未回答/欠席）
             var statusMap = {};
@@ -794,14 +788,8 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 doneEvents.map(function(ev) { return FCOjima.DB.loadEventData(ev.id); })
             );
 
-            // 対象判定（出欠マトリクスと同じ定義）
-            function isTargetFor(member, ev) {
-                var evTargets = (ev.target && ev.target.length > 0) ? ev.target : null;
-                var extraPlayers = ev.extraPlayers || [];
-                return !evTargets
-                    || (member.grade && evTargets.some(function(g) { return String(g) === String(member.grade); }))
-                    || extraPlayers.includes(member.name);
-            }
+            // 対象判定（共通ヘルパーに委譲。出欠マトリクスと完全に同じ定義）
+            var isTargetFor = FCOjima.Utils.isTargetFor;
 
             var gradeNumMap = { '年少': -3, '年中': -2, '年長': -1 };
             function gradeVal(g) {

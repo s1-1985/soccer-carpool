@@ -101,8 +101,10 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
                 deadlineEl.innerHTML = '<span class="deadline-icon">⏰</span> 出欠回答期限: ' +
                     d.toLocaleString('ja-JP') + (expired ? ' <strong>（期限切れ）</strong>' : '');
                 deadlineEl.className = 'attendance-deadline' + (expired ? ' expired' : '');
+                deadlineEl.style.display = '';
             } else {
                 deadlineEl.innerHTML = '';
+                deadlineEl.style.display = 'none';
             }
         }
     };

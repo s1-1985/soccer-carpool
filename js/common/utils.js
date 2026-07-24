@@ -399,4 +399,21 @@ FCOjima.Utils = FCOjima.Utils || {};
             });
         });
     };
+
+    /**
+     * 選手メンバーがイベントの対象かどうかを判定する（学年一致 or 学年外追加選手）。
+     * このロジックは以前、admin.js内に2箇所独立実装されており、ドリフトの温床に
+     * なりかけたため共通化した。出欠マトリクス・参加率集計など、選手の対象判定を
+     * 行うすべての箇所はこの関数に委譲すること。
+     * @param {{grade?: string, name: string}} member - 選手メンバー
+     * @param {{target?: Array, extraPlayers?: Array}} event - イベント
+     * @returns {boolean}
+     */
+    Utils.isTargetFor = function(member, event) {
+        var evTargets = (event.target && event.target.length > 0) ? event.target : null;
+        var extraPlayers = event.extraPlayers || [];
+        return !evTargets
+            || (member.grade && evTargets.some(function(g) { return String(g) === String(member.grade); }))
+            || extraPlayers.includes(member.name);
+    };
 })();
