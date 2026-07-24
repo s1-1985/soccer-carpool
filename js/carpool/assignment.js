@@ -2012,6 +2012,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
 
         driverSeat.draggable = true;
         driverSeat.addEventListener('dragstart', this.handleDragStart.bind(this));
+        driverSeat.addEventListener('dragend', function() { this.classList.remove('dragging'); });
 
         return driverSeat;
     };
@@ -2082,6 +2083,15 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
      * @param {string} personName - 乗車メンバー名
      */
     Assignment.setSeatOccupant = function(seat, personName) {
+        // ドックからのドロップ・タップ配置は、既に埋まっている座席にも無条件で
+        // 上書きしてしまう（座席同士の交換=handleSeatExchangeとは別経路のため）。
+        // 元の乗員は次のupdateMembersList()でドックに戻るが、無言だと
+        // 配置し忘れ・交代し忘れに気づけないため通知する。
+        var previousOccupant = seat.dataset.person;
+        if (previousOccupant && previousOccupant !== personName && UI && UI.showAlert) {
+            UI.showAlert(previousOccupant + 'さんをこの座席から外し、' + personName + 'さんを配置しました');
+        }
+
         seat.classList.add('filled');
         seat.dataset.person = personName;
 
