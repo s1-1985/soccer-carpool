@@ -35,6 +35,63 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         Admin.initAttendanceRateModal();
         Admin.initLuggageSettingsModal();
         Admin.initDutyGroupsModal();
+        Admin.initAllUsersModal();
+        Admin.initSignupQrModal();
+    };
+
+    /**
+     * 登録済みユーザー一覧モーダルの初期化
+     */
+    Admin.initAllUsersModal = function() {
+        var btn = document.getElementById('btn-all-users');
+        var modal = document.getElementById('all-users-modal');
+        var closeBtn = document.getElementById('all-users-modal-close');
+        if (!btn || !modal) return;
+
+        btn.addEventListener('click', function() {
+            modal.style.display = 'flex';
+        });
+        closeBtn && closeBtn.addEventListener('click', function() { modal.style.display = 'none'; });
+        modal.addEventListener('click', function(e) { if (e.target === modal) modal.style.display = 'none'; });
+    };
+
+    /**
+     * 入会用QRコードモーダルの初期化
+     */
+    Admin.initSignupQrModal = function() {
+        var btn = document.getElementById('btn-signup-qr');
+        var modal = document.getElementById('signup-qr-modal');
+        var closeBtn = document.getElementById('signup-qr-modal-close');
+        var qrContainer = document.getElementById('signup-qr-code');
+        var urlInput = document.getElementById('signup-qr-url');
+        var copyBtn = document.getElementById('signup-qr-copy-btn');
+        if (!btn || !modal) return;
+
+        var signupUrl = window.location.origin + '/hub/register.html';
+        var qrRendered = false;
+
+        btn.addEventListener('click', function() {
+            modal.style.display = 'flex';
+            if (urlInput) urlInput.value = signupUrl;
+            if (!qrRendered && window.QRCode && qrContainer) {
+                new QRCode(qrContainer, {
+                    text: signupUrl,
+                    width: 220,
+                    height: 220,
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+                qrRendered = true;
+            }
+        });
+        closeBtn && closeBtn.addEventListener('click', function() { modal.style.display = 'none'; });
+        modal.addEventListener('click', function(e) { if (e.target === modal) modal.style.display = 'none'; });
+
+        if (copyBtn) {
+            copyBtn.addEventListener('click', function() {
+                var ok = FCOjima.Utils && FCOjima.Utils.copyToClipboard && FCOjima.Utils.copyToClipboard(signupUrl);
+                if (UI) UI.showAlert(ok ? 'リンクをコピーしました' : 'コピーに失敗しました。リンクを選択して手動でコピーしてください', ok ? 'success' : 'error');
+            });
+        }
     };
 
     Admin.initEventDetailModal = function() {
@@ -225,7 +282,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
 
                 var saveBtn = document.createElement('button');
                 saveBtn.textContent = '変更';
-                saveBtn.style.cssText = 'padding:4px 10px;font-size:12px;';
+                saveBtn.style.cssText = 'padding:4px 10px;font-size:12px;white-space:nowrap;flex-shrink:0;';
                 saveBtn.addEventListener('click', function() {
                     Admin.updateRole(u.uid, select.value, u.name);
                 });
