@@ -97,12 +97,32 @@
 .car-top-view {
     background-color: #f9f9f9;
     border: 2px solid #ddd;
-    border-radius: 12px;
-    padding: 20px 10px;
+    border-radius: 26px 26px 14px 14px; /* 前(上)はボンネットのように丸く、後ろ(下)はやや角ばった印象に */
+    padding: 24px 10px 20px;
     position: relative;
     margin: 0 auto;
     width: 90%;
     max-width: 350px;
+}
+
+/* シンプルな車のモノグラムバッジ（上辺に半分かかる丸いエンブレム） */
+.car-top-view::before {
+    content: '';
+    position: absolute;
+    top: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 40px;
+    background-color: #fff;
+    border: 2px solid #ddd;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 24'%3E%3Cpath d='M4 17 L4 13.5 Q4 11 6.5 10.5 L10.5 9.5 L14 4.5 Q15 3 17 3 L29 3 Q31 3 32 4.5 L35.5 9.5 L40 10.5 Q44 11 44 13.5 L44 17' fill='none' stroke='%23E8A200' stroke-width='2.4' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cline x1='14' y1='9.5' x2='35' y2='9.5' stroke='%23E8A200' stroke-width='2'/%3E%3Ccircle cx='13' cy='17.5' r='3.6' fill='%23fff' stroke='%23E8A200' stroke-width='2.2'/%3E%3Ccircle cx='35' cy='17.5' r='3.6' fill='%23fff' stroke='%23E8A200' stroke-width='2.2'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 27px auto;
+    pointer-events: none;
 }
 
 /* 運転手の座席 */
@@ -125,18 +145,18 @@
     background-color: #c3e6cb;
 }
 
-/* 座席の行 */
+/* 座席の行（全行共通：中央寄せ＋一定のgapで、車内の座席らしい自然な間隔に統一） */
 .seat-row {
     display: flex;
-    justify-content: space-around;
+    justify-content: center;
     align-items: center;
+    gap: 14px;
     margin-bottom: 15px;
 }
 
-/* 前列行（助手席＋運転席）: 助手席が左、運転席が右 */
-.driver-row {
-    justify-content: space-between;
-}
+/* 前列行（助手席＋運転席）: 助手席が左、運転席が右。
+   以前はjustify-content:space-betweenで2席が左右端まで離れ、
+   間が不自然に空いて見えていたため、他の行と同じ中央寄せに統一した。 */
 
 /* 助手席ゼロ時のスペーサー */
 .seat-spacer {
@@ -1472,45 +1492,21 @@ body.canvas-select-active .canvas-hint {
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
 }
 
-/* ── 車の上面図：「上から見た車」らしいボディ表現 ──
+/* ── 車の上面図：通常モードと同じシンプルな見た目に統一 ──
+   以前はグラデーション＋フロント/リアガラス＋座席ヘッドレストで書き込みすぎな印象
+   だったため、通常モードと共通のモノグラムバッジ（.car-top-view::before）だけを
+   使うシンプルな表現に揃えた（2026-10-13 ユーザー要望）。
    box-sizing: border-box ではみ出しを防止（width:100% + padding の枠あふれ対策） */
 #canvas-mode .car-top-view {
     box-sizing: border-box;
     width: 100%;
     max-width: 100%;
     position: relative;
-    padding: 34px 14px 26px;
-    background: linear-gradient(180deg, #ffffff 0%, #f1f4f7 55%, #e9edf1 100%);
-    border: 2px solid #a8b2bc;
-    border-radius: 42px 42px 26px 26px; /* 前が丸いボンネット、後ろはやや角ばったリア */
-    box-shadow: inset 0 2px 6px rgba(255, 255, 255, 0.9), 0 2px 6px rgba(0, 0, 0, 0.08);
-    overflow: hidden;
-}
-/* フロントガラス */
-#canvas-mode .car-top-view::before {
-    content: '';
-    position: absolute;
-    top: 9px;
-    left: 16%;
-    right: 16%;
-    height: 15px;
-    background: linear-gradient(180deg, #aecde3 0%, #d9ecfa 100%);
-    border: 1px solid #93b3c9;
-    border-radius: 8px 8px 16px 16px;
-    pointer-events: none;
-}
-/* リアガラス */
-#canvas-mode .car-top-view::after {
-    content: '';
-    position: absolute;
-    bottom: 7px;
-    left: 22%;
-    right: 22%;
-    height: 11px;
-    background: linear-gradient(0deg, #aecde3 0%, #d9ecfa 100%);
-    border: 1px solid #93b3c9;
-    border-radius: 12px 12px 7px 7px;
-    pointer-events: none;
+    padding: 24px 14px 20px;
+    background-color: #f9f9f9;
+    border: 2px solid #ddd;
+    border-radius: 26px 26px 14px 14px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 /* キャンバス上では座席をデスクトップサイズで表示（ズームで調整するため）*/
@@ -1521,46 +1517,10 @@ body.canvas-select-active .canvas-hint {
     height: 60px;
 }
 
-/* 座席をシートらしく：ヘッドレスト＋座面の厚み */
-#canvas-mode .seat,
-#canvas-mode .driver-seat {
-    border-radius: 10px 10px 14px 14px;
-    box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.05);
-}
-#canvas-mode .seat::after,
-#canvas-mode .driver-seat::after {
-    content: '';
-    position: absolute;
-    top: -6px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 26px;
-    height: 7px;
-    background-color: #dde1e5;
-    border: 2px solid #c3c9cf;
-    border-bottom: none;
-    border-radius: 5px 5px 0 0;
-    pointer-events: none;
-}
-#canvas-mode .driver-seat::after {
-    background-color: #c3e6cb;
-    border-color: #9fd3ab;
-}
-#canvas-mode .seat.filled::after {
-    background-color: #f5dfa8;
-    border-color: #E8A200;
-}
 /* 空席は破線で「置ける場所」を示す */
 #canvas-mode .seat:not(.filled):not(.driver-seat) {
     border-style: dashed;
     background-color: #fbfcfd;
-}
-/* ヘッドレストが座席上にはみ出す分の行間 */
-#canvas-mode .seat-row {
-    margin-bottom: 18px;
-}
-#canvas-mode .seat-row:last-child {
-    margin-bottom: 0;
 }
 
 #canvas-mode .seat-name-tag {
