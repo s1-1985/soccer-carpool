@@ -1004,6 +1004,17 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             var t = e.touches[0], dx = t.clientX - _td.x, dy = t.clientY - _td.y;
             if (!_td.on) {
                 if (Math.sqrt(dx * dx + dy * dy) < 8) return;
+                // 横スクロール可能な帯（キャンバスモードの下部メンバードック）の中で
+                // 横方向優位の動きはスクロール操作とみなし、ドラッグを開始しない。
+                // そうしないと、帯を横スクロールしようとした指の動きが
+                // すべて「配置ドラッグ」として吸収され、preventDefault()で
+                // 本来のスクロールができなくなっていた。
+                var scrollParent = el.closest('.members-scroll-area');
+                var isHorizontalScrollable = scrollParent && scrollParent.scrollWidth > scrollParent.clientWidth;
+                if (isHorizontalScrollable && Math.abs(dx) > Math.abs(dy)) {
+                    _td = { el: null, ghost: null, data: null, x: 0, y: 0, on: false };
+                    return;
+                }
                 _td.on = true;
                 var g = el.cloneNode(true);
                 g.style.cssText = 'position:fixed;opacity:0.75;pointer-events:none;z-index:9999;transition:none;';
