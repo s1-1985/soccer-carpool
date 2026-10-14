@@ -996,7 +996,24 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             if (Assignment._canvas && Assignment._canvas.active && !el.classList.contains('member-item')) return;
             var d = typeof dataFn === 'function' ? dataFn() : dataFn;
             if (!d) return;
-            _td = { el: el, ghost: null, data: d, x: e.touches[0].clientX, y: e.touches[0].clientY, on: false };
+            var scrollParent = el.closest('.members-scroll-area');
+            var isHorizontalScrollable = !!(scrollParent && scrollParent.scrollWidth > scrollParent.clientWidth);
+            _td = {
+                el: el, ghost: null, data: d,
+                x: e.touches[0].clientX, y: e.touches[0].clientY,
+                on: false,
+                isHorizontalScrollable: isHorizontalScrollable,
+                // 横スクロール可能な帯の中では、指を少し止めてから動かした場合だけ
+                // ドラッグ操作とみなす（armed）。素早い横フリックはスクロールとして
+                // ブラウザに委ねるため、armedになるまでは一切ドラッグを開始しない。
+                armed: !isHorizontalScrollable,
+                armTimer: null
+            };
+            if (isHorizontalScrollable) {
+                _td.armTimer = setTimeout(function() {
+                    if (_td.el === el) _td.armed = true;
+                }, 150);
+            }
         }, { passive: true });
 
         el.addEventListener('touchmove', function(e) {
@@ -1004,17 +1021,20 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             var t = e.touches[0], dx = t.clientX - _td.x, dy = t.clientY - _td.y;
             if (!_td.on) {
                 if (Math.sqrt(dx * dx + dy * dy) < 8) return;
-                // 横スクロール可能な帯（キャンバスモードの下部メンバードック）の中で
-                // 横方向優位の動きはスクロール操作とみなし、ドラッグを開始しない。
+                // 横スクロール可能な帯（キャンバスモードの下部メンバードック）の中では、
+                // 「armed（指を少し止めてから動かした）」でない限りドラッグを一切開始
+                // しない。指の動き出し数px時点のdx/dy比較は実機ではノイズが大きく、
+                // 縦方向優位に見えても実際は横スクロールの意図であることが多いため、
+                // 方向だけでの即時判定はせず、必ず時間（150ms静止）で判定する。
                 // そうしないと、帯を横スクロールしようとした指の動きが
                 // すべて「配置ドラッグ」として吸収され、preventDefault()で
                 // 本来のスクロールができなくなっていた。
-                var scrollParent = el.closest('.members-scroll-area');
-                var isHorizontalScrollable = scrollParent && scrollParent.scrollWidth > scrollParent.clientWidth;
-                if (isHorizontalScrollable && Math.abs(dx) > Math.abs(dy)) {
+                if (_td.isHorizontalScrollable && !_td.armed) {
+                    if (_td.armTimer) clearTimeout(_td.armTimer);
                     _td = { el: null, ghost: null, data: null, x: 0, y: 0, on: false };
                     return;
                 }
+                if (_td.armTimer) clearTimeout(_td.armTimer);
                 _td.on = true;
                 var g = el.cloneNode(true);
                 g.style.cssText = 'position:fixed;opacity:0.75;pointer-events:none;z-index:9999;transition:none;';
@@ -1037,6 +1057,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
 
         el.addEventListener('touchend', function(e) {
             if (_td.el !== el) return;
+            if (_td.armTimer) clearTimeout(_td.armTimer);
             document.querySelectorAll('.seat.dragover').forEach(function(s) { s.classList.remove('dragover'); });
             if (!_td.on) { _td = { el: null, ghost: null, data: null, x: 0, y: 0, on: false }; return; }
             var t = e.changedTouches[0];
