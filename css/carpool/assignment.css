@@ -1570,8 +1570,24 @@ body.canvas-select-active #canvas-mode .seat:not(.driver-seat):not(.filled) {
     height: auto !important;
     min-height: 0;
     max-height: 96px;
-    padding: 4px 2px;
+    padding: 4px 2px 12px;
     -webkit-overflow-scrolling: touch;
+    /* スクロールバーを太く・常時表示にして指でつかみやすくする
+       （標準のスクロールバーは数px程度で細く、指で操作しづらいとの報告） */
+    scrollbar-width: auto;
+    scrollbar-color: #E8A200 rgba(255, 255, 255, 0.15);
+}
+#canvas-mode #canvas-members-dock .members-scroll-area::-webkit-scrollbar {
+    height: 10px;
+}
+#canvas-mode #canvas-members-dock .members-scroll-area::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+}
+#canvas-mode #canvas-members-dock .members-scroll-area::-webkit-scrollbar-thumb {
+    background: #E8A200;
+    border-radius: 6px;
+    min-width: 40px;
 }
 #canvas-mode #canvas-members-dock .member-group-header {
     display: none;
