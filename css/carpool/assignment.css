@@ -93,37 +93,43 @@
     margin-top: 15px;
 }
 
-/* 車の上面図 */
+/* 車の上面図：箱そのものを「上から見た車」の形にする。
+   丸い鼻先＋フロント/リアガラスの弧線＋左右のタイヤだけの最小構成（装飾は足さない）。 */
 .car-top-view {
-    background-color: #f9f9f9;
-    border: 2px solid #ddd;
-    border-radius: 26px 26px 14px 14px; /* 前(上)はボンネットのように丸く、後ろ(下)はやや角ばった印象に */
-    padding: 24px 10px 20px;
+    background-color: #f9fafb;
+    background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 10' preserveAspectRatio='none'%3E%3Cpath d='M1 9 Q50 -3 99 9' fill='none' stroke='%23c9d0d7' stroke-width='3' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E"),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 10' preserveAspectRatio='none'%3E%3Cpath d='M1 1 Q50 13 99 1' fill='none' stroke='%23c9d0d7' stroke-width='3' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-size: 56% 9px, 44% 8px;
+    background-position: 50% 11px, 50% calc(100% - 9px);
+    border: 2px solid #cfd4d9;
+    border-radius: 34px 34px 16px 16px; /* 前(上)は丸い鼻先、後ろ(下)はやや角ばったリア */
+    padding: 30px 10px 24px;
     position: relative;
     margin: 0 auto;
     width: 90%;
     max-width: 350px;
 }
 
-/* シンプルな車のモノグラムバッジ（上辺に半分かかる丸いエンブレム） */
-.car-top-view::before {
+/* 左右のタイヤ（前後2本ずつ） */
+.car-top-view::before,
+.car-top-view::after {
     content: '';
     position: absolute;
-    top: -16px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 40px;
-    height: 40px;
-    background-color: #fff;
-    border: 2px solid #ddd;
-    border-radius: 50%;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 24'%3E%3Cpath d='M4 17 L4 13.5 Q4 11 6.5 10.5 L10.5 9.5 L14 4.5 Q15 3 17 3 L29 3 Q31 3 32 4.5 L35.5 9.5 L40 10.5 Q44 11 44 13.5 L44 17' fill='none' stroke='%23E8A200' stroke-width='2.4' stroke-linejoin='round' stroke-linecap='round'/%3E%3Cline x1='14' y1='9.5' x2='35' y2='9.5' stroke='%23E8A200' stroke-width='2'/%3E%3Ccircle cx='13' cy='17.5' r='3.6' fill='%23fff' stroke='%23E8A200' stroke-width='2.2'/%3E%3Ccircle cx='35' cy='17.5' r='3.6' fill='%23fff' stroke='%23E8A200' stroke-width='2.2'/%3E%3C/svg%3E");
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='44' viewBox='0 0 8 44'%3E%3Crect width='8' height='44' rx='4' fill='%234a4f57'/%3E%3C/svg%3E"),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='44' viewBox='0 0 8 44'%3E%3Crect width='8' height='44' rx='4' fill='%234a4f57'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: center;
-    background-size: 27px auto;
+    background-size: 8px 44px;
+    background-position: 0 16%, 0 84%;
     pointer-events: none;
 }
+.car-top-view::before { left: -8px; }
+.car-top-view::after  { right: -8px; }
 
 /* 運転手の座席 */
 .driver-seat {
@@ -555,8 +561,17 @@
     .car-top-view {
         width: 100%;
         max-width: 100%;
-        padding: 8px 2px;
+        padding: 22px 2px 18px;
+        border-radius: 26px 26px 12px 12px;
+        background-position: 50% 8px, 50% calc(100% - 6px);
     }
+    .car-top-view::before,
+    .car-top-view::after {
+        width: 6px;
+        background-size: 6px 32px;
+    }
+    .car-top-view::before { left: -6px; }
+    .car-top-view::after  { right: -6px; }
 
     .seat {
         width: 40px;
@@ -1502,11 +1517,7 @@ body.canvas-select-active .canvas-hint {
     width: 100%;
     max-width: 100%;
     position: relative;
-    padding: 24px 14px 20px;
-    background-color: #f9f9f9;
-    border: 2px solid #ddd;
-    border-radius: 26px 26px 14px 14px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    padding: 30px 14px 24px;
 }
 
 /* キャンバス上では座席をデスクトップサイズで表示（ズームで調整するため）*/
