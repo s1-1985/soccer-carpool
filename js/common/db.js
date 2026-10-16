@@ -9,10 +9,102 @@ FCOjima.DB = FCOjima.DB || {};
 (function(DB) {
     const { db, Collections, TEAM_ID } = window.FCOjimaFirebase;
 
+    // ========== 一覧保存の共通処理（差分のみ書き込み） ==========
+    //
+    // 以前の saveMembers/saveVenues/saveEvents/saveNotifications は
+    // 「コレクションを全件削除 → 手元の配列で全件書き直し」方式で、次の問題があった:
+    //  1) 他の人が後から追加したドキュメントを、古い手元の配列で消してしまう
+    //     （例: 2人がほぼ同時に連絡事項を投稿すると先の投稿が消える）
+    //  2) 1件変えるだけでも全件の読み直し＋削除＋書き込みが走る。イベントは削除されず
+    //     毎年増え続けるため、保存が年々重くなり無料枠（書き込み2万/日）も圧迫する
+    // 最後に読み込んだ／保存した内容（baseline）と比べ、変わったドキュメントだけを
+    // 書き込み、手元で削除されたものだけを削除する。baselineに無いドキュメント
+    // （読み込み後に他の人が追加したもの）には触れない。
+    const _baselines = {}; // { members: Map<id, stableJSON>, ... }
+
+    /** キー順に依存しないJSON文字列（変更検出用） */
+    function stableStringify(v) {
+        if (v === undefined) return 'null';
+        if (v === null || typeof v !== 'object') return JSON.stringify(v);
+        if (Array.isArray(v)) return '[' + v.map(stableStringify).join(',') + ']';
+        return '{' + Object.keys(v).filter(function(k) { return v[k] !== undefined; }).sort()
+            .map(function(k) { return JSON.stringify(k) + ':' + stableStringify(v[k]); }).join(',') + '}';
+    }
+
+    /** Firestoreが拒否する undefined を除去（プレーンなオブジェクト・配列のみ辿る） */
+    function cleanForFirestore(v) {
+        if (Array.isArray(v)) return v.map(function(x) { return x === undefined ? null : cleanForFirestore(x); });
+        if (v && typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype) {
+            const out = {};
+            Object.keys(v).forEach(function(k) { if (v[k] !== undefined) out[k] = cleanForFirestore(v[k]); });
+            return out;
+        }
+        return v;
+    }
+
+    /** 読み込んだドキュメント群をbaselineとして記録する */
+    function rememberDocs(name, docs) {
+        const m = new Map();
+        docs.forEach(function(doc) { m.set(String(doc.id), stableStringify(doc.data())); });
+        _baselines[name] = m;
+    }
+
+    /**
+     * Firestoreのスナップショットをbaselineとして記録する
+     * （リアルタイムリスナーで一覧を差し替えたときに呼ぶ）
+     */
+    DB.rememberSnapshot = function(name, snapshot) {
+        rememberDocs(name, snapshot.docs);
+    };
+
+    async function syncCollection(name, colRef, items) {
+        const base = _baselines[name] || new Map();
+        const next = new Map(base);
+        const ops = [];
+        const seen = new Set();
+        (items || []).forEach(function(item) {
+            if (!item || item.id === undefined || item.id === null || item.id === '') return; // IDなしはスキップ
+            const id = String(item.id);
+            seen.add(id);
+            const data = cleanForFirestore(Object.assign({}, item));
+            delete data.id;
+            const json = stableStringify(data);
+            if (base.get(id) === json) return; // 変更なし
+            ops.push({ type: 'set', id: id, data: data });
+            next.set(id, json);
+        });
+        base.forEach(function(_, id) {
+            if (!seen.has(id)) {
+                ops.push({ type: 'delete', id: id });
+                next.delete(id);
+            }
+        });
+        if (ops.length === 0) return;
+
+        // 連続保存で同じ書き込みを繰り返さないよう先にbaselineを進め、失敗したら戻す
+        _baselines[name] = next;
+        try {
+            // 初回の大量移行などで1回のバッチが大きくなりすぎないよう分割する
+            for (let i = 0; i < ops.length; i += 400) {
+                const batch = db.batch();
+                ops.slice(i, i + 400).forEach(function(op) {
+                    const ref = colRef.doc(op.id);
+                    if (op.type === 'set') batch.set(ref, op.data);
+                    else batch.delete(ref);
+                });
+                await batch.commit();
+            }
+        } catch (e) {
+            if (_baselines[name] === next) _baselines[name] = base;
+            throw e;
+        }
+    }
+
     // ========== メンバー ==========
 
     DB.loadMembers = async function() {
         const snapshot = await Collections.members().orderBy('role').get();
+        rememberDocs('members', snapshot.docs);
         const members = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         // 4月1日を過ぎると学年が変わるため、birthから毎回再計算して上書き
         const Utils = window.FCOjima && FCOjima.Utils;
@@ -44,90 +136,64 @@ FCOjima.DB = FCOjima.DB || {};
     };
 
     DB.saveMembers = async function(members) {
-        const batch = db.batch();
-        // 既存ドキュメントをすべて削除してから書き直す
-        const snapshot = await Collections.members().get();
-        snapshot.docs.forEach(doc => batch.delete(doc.ref));
-        members.forEach(member => {
-            if (!member.id) return; // IDなしメンバーはスキップ
-            const data = Object.assign({}, member);
-            const id = String(data.id);
-            delete data.id;
-            batch.set(Collections.members().doc(id), data);
-        });
-        await batch.commit();
+        await syncCollection('members', Collections.members(), members);
     };
 
     // ========== 会場 ==========
 
     DB.loadVenues = async function() {
         const snapshot = await Collections.venues().get();
+        rememberDocs('venues', snapshot.docs);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     };
 
     DB.saveVenues = async function(venues) {
-        const batch = db.batch();
-        const snapshot = await Collections.venues().get();
-        snapshot.docs.forEach(doc => batch.delete(doc.ref));
-        venues.forEach(venue => {
-            if (!venue.id) return; // IDなし会場はスキップ
-            const data = Object.assign({}, venue);
-            const id = String(data.id);
-            delete data.id;
-            batch.set(Collections.venues().doc(id), data);
-        });
-        await batch.commit();
+        await syncCollection('venues', Collections.venues(), venues);
     };
 
     // ========== イベント（予定） ==========
 
     DB.loadEvents = async function() {
         const snapshot = await Collections.events().orderBy('date').get();
+        rememberDocs('events', snapshot.docs);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     };
 
     DB.saveEvents = async function(events) {
-        const batch = db.batch();
-        const snapshot = await Collections.events().get();
-        snapshot.docs.forEach(doc => batch.delete(doc.ref));
-        events.forEach(event => {
-            if (!event.id) return; // IDなしイベントはスキップ
-            const data = Object.assign({}, event);
-            const id = String(data.id);
-            delete data.id;
-            batch.set(Collections.events().doc(id), data);
-        });
-        await batch.commit();
+        await syncCollection('events', Collections.events(), events);
     };
 
     // ========== 連絡事項 ==========
 
     DB.loadNotifications = async function() {
+        // 3ヶ月より古い連絡事項は表示しない（次回保存時に削除される）。
+        // 以前は where('date','>=', 'YYYY-MM-DD') で絞っていたが、保存される日付は
+        // 'YYYY/MM/DD HH:MM' 形式で文字列比較が噛み合わず、絞り込みが効いていなかった。
+        // 件数はたかが知れているので全件読み、日付を解釈して判定する
         const threeMonthsAgo = new Date();
         threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-        const cutoff = threeMonthsAgo.toISOString().split('T')[0];
 
-        const snapshot = await Collections.notifications()
-            .where('date', '>=', cutoff)
-            .orderBy('date', 'desc')
-            .get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const snapshot = await Collections.notifications().get();
+        // 期限切れも含めてbaselineに記録 → 返り値から外れたものは次回保存で削除される
+        rememberDocs('notifications', snapshot.docs);
+        return snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(function(n) {
+                const t = new Date(n.date).getTime();
+                return isNaN(t) || t >= threeMonthsAgo.getTime();
+            })
+            .sort(function(a, b) {
+                return (new Date(b.date).getTime() || 0) - (new Date(a.date).getTime() || 0);
+            });
     };
 
     DB.saveNotifications = async function(notifications) {
-        const batch = db.batch();
-        const snapshot = await Collections.notifications().get();
-        snapshot.docs.forEach(doc => batch.delete(doc.ref));
-        notifications.forEach((n, i) => {
+        (notifications || []).forEach((n, i) => {
             // ID未付与の旧データはここで採番（String(undefined)="undefined" の
             // 同一ドキュメントに全件が上書きされ消失するのを防ぐ）
             if (!n.id) n.id = Date.now().toString() + '_' + i;
-            const data = Object.assign({}, n);
-            const id = String(data.id);
-            delete data.id;
-            batch.set(Collections.notifications().doc(id), data);
         });
-        await batch.commit();
+        await syncCollection('notifications', Collections.notifications(), notifications);
     };
 
     DB.addNotification = async function(notification) {
@@ -141,14 +207,20 @@ FCOjima.DB = FCOjima.DB || {};
         const threeMonthsAgo = new Date();
         threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
+        // 古い順で返す（Storage.addLog が新しいログを末尾に追加し、ログ表示側は
+        // 末尾＝最新として扱うため。降順で返すとログ画面に最古の50件が並び、
+        // イベント詳細の「直近5件」も最古の5件になっていた）
         const snapshot = await Collections.logs()
             .where('datetime', '>=', threeMonthsAgo.toISOString())
-            .orderBy('datetime', 'desc')
+            .orderBy('datetime', 'asc')
             .get();
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     };
 
-    DB.addLog = async function(type, action, details) {
+    /**
+     * @param {Object} [extra] - 追加フィールド（例: { eventId }。イベント詳細のログ絞り込みに使う）
+     */
+    DB.addLog = async function(type, action, details, extra) {
         const user = FCOjima.Auth ? FCOjima.Auth.getDisplayName() : 'システム';
         const now = new Date();
         const canRestore = action.includes('削除');
@@ -164,6 +236,9 @@ FCOjima.DB = FCOjima.DB || {};
                 ? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
                 : null
         };
+        if (extra && extra.eventId !== undefined && extra.eventId !== null) {
+            log.eventId = String(extra.eventId);
+        }
 
         await Collections.logs().add(log);
     };
@@ -179,7 +254,27 @@ FCOjima.DB = FCOjima.DB || {};
     };
 
     DB.saveEventData = async function(eventId, data) {
-        await Collections.eventData(eventId).set(data, { merge: true });
+        await Collections.eventData(eventId).set(cleanForFirestore(data), { merge: true });
+    };
+
+    /**
+     * イベント固有データをトランザクションで読み込み→更新する。
+     * updater(現在のデータ or null) が返したフィールドだけを書き込む（merge）。
+     * 保護者が同時に出欠を回答したときなどに、古い手元の内容で他の人の変更を
+     * 上書きしないために使う。
+     * @param {string|number} eventId
+     * @param {function(Object|null): Object} updater
+     */
+    DB.updateEventData = async function(eventId, updater) {
+        const ref = Collections.eventData(eventId);
+        return db.runTransaction(async function(tx) {
+            const snap = await tx.get(ref);
+            const patch = updater(snap.exists ? snap.data() : null);
+            if (patch && Object.keys(patch).length > 0) {
+                tx.set(ref, cleanForFirestore(patch), { merge: true });
+            }
+            return patch;
+        });
     };
 
     DB.deleteEventData = async function(eventId) {

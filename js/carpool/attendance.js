@@ -36,27 +36,7 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
         // イベントデータをロード（Firestore優先 → localStorageフォールバック）
         const event = FCOjima.Storage.getSelectedEvent();
         if (event) {
-            FCOjima.Carpool.appData.eventId = event.id;
-            let firestoreLoaded = false;
-            if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadEventData) {
-                try {
-                    const data = await FCOjima.DB.loadEventData(event.id);
-                    if (data) {
-                        FCOjima.Carpool.appData.carRegistrations = data.carRegistrations || [];
-                        FCOjima.Carpool.appData.assignments     = data.assignments     || [];
-                        FCOjima.Carpool.appData.attendance      = data.attendance      || [];
-                        FCOjima.Carpool.appData.notifications   = data.notifications   || [];
-                        firestoreLoaded = true;
-                        console.log('イベントデータをFirestoreからロードしました');
-                    }
-                } catch (e) {
-                    console.warn('Firestoreイベントデータロード失敗:', e);
-                }
-            }
-            if (!firestoreLoaded) {
-                FCOjima.Carpool.loadData();
-                console.log('localStorageからイベントデータをロードしました');
-            }
+            await FCOjima.Carpool.loadEventDataForSelected();
         }
 
         // イベント情報を表示
@@ -308,8 +288,8 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
             }
         }
 
-        // 出欠確認ページへの直リンクURL
-        const attendanceUrl = window.location.origin + '/carpool/attendance.html';
+        // 出欠確認ページへの直リンクURL（イベントID付き）
+        const attendanceUrl = FCOjima.Carpool.pageUrl('attendance.html');
 
         const message =
             '【出欠リマインド】\n' +

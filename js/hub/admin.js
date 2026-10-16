@@ -1263,14 +1263,9 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         try {
             var Storage = FCOjima.Storage;
 
-            // 出欠データを取得（未作成なら空で初期化）
-            var fromData = await FCOjima.DB.loadEventData(fromEv.id)
-                || { carRegistrations: [], assignments: [], attendance: [], notifications: [] };
-            var toData = await FCOjima.DB.loadEventData(toEv.id)
-                || { carRegistrations: [], assignments: [], attendance: [], notifications: [] };
-            if (!Array.isArray(fromData.attendance)) fromData.attendance = [];
-            if (!Array.isArray(toData.attendance)) toData.attendance = [];
-
+            // 出欠の更新はトランザクションで最新の内容に対して行う（読み込んでから書き込むまでの
+            // 間に保護者が回答した出欠や、配車担当が保存した座席割り当てを古い内容で上書きしない。
+            // 書き込むのは attendance フィールドだけ）
             function upsert(list, status, notes) {
                 var item = list.find(function(a) {
                     return (a.memberId && String(a.memberId) === String(member.id)) || a.name === member.name;
@@ -1284,26 +1279,33 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                     list.push(it);
                 }
             }
-            upsert(toData.attendance, 'present', '');
-            upsert(fromData.attendance, 'absent', '「' + (toEv.title || '') + '」へ移動');
+            function updateAttendance(eventId, status, notes) {
+                return FCOjima.DB.updateEventData(eventId, function(data) {
+                    var list = (data && Array.isArray(data.attendance))
+                        ? data.attendance.map(function(a) { return Object.assign({}, a); })
+                        : [];
+                    upsert(list, status, notes);
+                    return { attendance: list };
+                });
+            }
 
             // 移動先の対象学年に含まれない場合は学年外追加選手として登録
             var targets = (toEv.target && toEv.target.length > 0) ? toEv.target : null;
             var inTarget = !targets || (member.grade && targets.some(function(g) { return String(g) === String(member.grade); }));
             if (!inTarget && !(toEv.extraPlayers || []).includes(member.name)) {
                 toEv.extraPlayers = (toEv.extraPlayers || []).concat([member.name]);
-                // マトリクス読込時の全イベント配列を保存（localStorage + Firestore）
-                var allEvents = Admin._matrixEvents || FCOjima.Hub.events || [];
-                var evInAll = allEvents.find(function(e) { return String(e.id) === String(toEv.id); });
-                if (evInAll) evInAll.extraPlayers = toEv.extraPlayers.slice();
-                // Hub.events側にも反映（カレンダー表示との整合）
+                // Hub.events（リアルタイム同期で最新）を優先して保存する。マトリクス読込時の
+                // 配列を保存すると、その後に他の人が編集したイベントを古い内容で上書きしてしまう
                 var hubEv = (FCOjima.Hub.events || []).find(function(e) { return String(e.id) === String(toEv.id); });
                 if (hubEv) hubEv.extraPlayers = toEv.extraPlayers.slice();
-                Storage.saveEvents(allEvents);
+                var matrixEvents = Admin._matrixEvents || [];
+                var evInMatrix = matrixEvents.find(function(e) { return String(e.id) === String(toEv.id); });
+                if (evInMatrix) evInMatrix.extraPlayers = toEv.extraPlayers.slice();
+                Storage.saveEvents(hubEv ? FCOjima.Hub.events : matrixEvents);
             }
 
-            await FCOjima.DB.saveEventData(fromEv.id, fromData);
-            await FCOjima.DB.saveEventData(toEv.id, toData);
+            await updateAttendance(toEv.id, 'present', '');
+            await updateAttendance(fromEv.id, 'absent', '「' + (toEv.title || '') + '」へ移動');
 
             // 連絡事項へ変更通知を投稿（構造化フィールド付き＝保護者ダイアログが参照）
             var now = new Date();
@@ -1374,8 +1376,9 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
 
         // 日時グリッド
         html += '<div style="display:flex;flex-wrap:wrap;gap:10px 20px;margin-bottom:12px;padding:10px 14px;background:#fffbef;border:1px solid #E8A200;border-radius:8px;">';
+        // formatDateForDisplay は「2026年10月20日(火)」と曜日込みで返す（曜日を重ねて付けない）
         html += '<div><div style="font-size:11px;color:#888;">日付</div><div style="font-weight:bold;font-size:14px;">'
-            + Utils.formatDateForDisplay(ev.date) + '（' + DOW[d.getDay()] + '）</div></div>';
+            + Utils.formatDateForDisplay(ev.date) + '</div></div>';
         if (ev.startTime) {
             html += '<div><div style="font-size:11px;color:#888;">時間</div><div style="font-weight:bold;font-size:14px;">'
                 + ev.startTime + (ev.endTime ? ' 〜 ' + ev.endTime : '') + '</div></div>';
@@ -1389,7 +1392,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         var venues = (FCOjima.Storage && FCOjima.Storage.loadVenues) ? FCOjima.Storage.loadVenues() : [];
         if (ev.meetingPlace) {
             var mv = venues.find(function(v) { return v.name === ev.meetingPlace; });
-            var mq = encodeURIComponent((mv && mv.address) ? mv.address : ev.meetingPlace);
+            var mq = FCOjima.Utils.encodeForOnclick((mv && mv.address) ? mv.address : ev.meetingPlace);
             html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px;">'
                 + '<span style="color:#888;min-width:52px;">集合場所</span>'
                 + '<span>' + UI.escapeHTML(ev.meetingPlace) + '</span>'
@@ -1398,13 +1401,15 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         }
         if (ev.venue) {
             var vv = venues.find(function(v) { return v.name === ev.venue; });
-            var vq = encodeURIComponent((vv && vv.address) ? vv.address : ev.venue);
+            var vq = FCOjima.Utils.encodeForOnclick((vv && vv.address) ? vv.address : ev.venue);
             html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px;flex-wrap:wrap;">'
                 + '<span style="color:#888;min-width:52px;">会場</span>'
                 + '<span>' + UI.escapeHTML(ev.venue) + '</span>'
                 + '<button onclick="window.open(\'https://www.google.com/maps/search/?api=1&query=' + vq + '\',\'_blank\')" style="margin-left:auto;background:#E8A200;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">地図を開く</button>'
                 + '</div>'
-                + '<div id="event-weather-' + ev.id + '"></div>';
+                // ※ カレンダーのイベント詳細モーダルも id="event-weather-<ID>" を使うため、
+                //   同じIDだと閉じた方のモーダルに天気が差し込まれ、こちらに表示されなかった
+                + '<div data-admin-weather-slot></div>';
         }
 
         // 対象学年
@@ -1455,14 +1460,16 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
 
         // 会場の天気（非同期。取得失敗してもモーダル自体は壊れない）
         if (ev.venue && FCOjima.Weather && FCOjima.Weather.getDailyForecast) {
-            var weatherTarget = document.getElementById('event-weather-' + ev.id);
+            var weatherTarget = body.querySelector('[data-admin-weather-slot]');
             if (weatherTarget) {
                 var venueDataForWeather = venues.find(function(v) { return v.name === ev.venue; });
                 var weatherAddr = venueDataForWeather && venueDataForWeather.address;
                 weatherTarget.innerHTML = '<span class="weather-chip weather-chip-muted">天気を取得中...</span>';
                 FCOjima.Weather.getDailyForecast(ev.venue, weatherAddr, ev.date).then(function(result) {
-                    var el = document.getElementById('event-weather-' + ev.id);
-                    if (el) el.innerHTML = FCOjima.Weather.formatWidget(result, ev.venue, weatherAddr);
+                    // 取得中に別のイベントを開き直していたら差し込まない
+                    if (weatherTarget.isConnected) {
+                        weatherTarget.innerHTML = FCOjima.Weather.formatWidget(result, ev.venue, weatherAddr);
+                    }
                 });
             }
         }

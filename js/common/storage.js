@@ -201,7 +201,7 @@ FCOjima.Storage = FCOjima.Storage || {};
 
         // Firestoreにもログを追加（非同期 fire-and-forget）
         if (window.FCOjima && FCOjima.DB && FCOjima.DB.addLog) {
-            FCOjima.DB.addLog(type, action, details).catch(function(e) {
+            FCOjima.DB.addLog(type, action, details, extra).catch(function(e) {
                 console.warn('Firestore addLog失敗:', e);
             });
         }

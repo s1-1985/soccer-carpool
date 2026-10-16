@@ -27,6 +27,10 @@ FCOjima.Auth = FCOjima.Auth || {};
                     resolve(user);
                 } else {
                     console.log('未ログイン → ログインページへ');
+                    // ログイン後に元のページ（共有リンクの ?event=ID 付きなど）へ戻れるよう記録
+                    try {
+                        sessionStorage.setItem('fcojima_return_to', window.location.pathname + window.location.search);
+                    } catch (e) {}
                     window.location.href = LOGIN_PAGE;
                 }
             });

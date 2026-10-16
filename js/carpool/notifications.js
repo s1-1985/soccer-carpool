@@ -35,25 +35,7 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
         // イベントデータをロード（Firestore優先 → localStorageフォールバック）
         const event = FCOjima.Storage.getSelectedEvent();
         if (event) {
-            FCOjima.Carpool.appData.eventId = event.id;
-            let firestoreLoaded = false;
-            if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadEventData) {
-                try {
-                    const data = await FCOjima.DB.loadEventData(event.id);
-                    if (data) {
-                        FCOjima.Carpool.appData.notifications = data.notifications || [];
-                        FCOjima.Carpool.appData.carRegistrations = data.carRegistrations || [];
-                        FCOjima.Carpool.appData.assignments = data.assignments || [];
-                        FCOjima.Carpool.appData.attendance = data.attendance || [];
-                        firestoreLoaded = true;
-                    }
-                } catch (e) {
-                    console.warn('Firestoreイベントデータロード失敗:', e);
-                }
-            }
-            if (!firestoreLoaded) {
-                FCOjima.Carpool.loadData();
-            }
+            await FCOjima.Carpool.loadEventDataForSelected();
         }
 
         const header = document.getElementById('event-header');
@@ -115,7 +97,8 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
             return;
         }
 
-        const today = new Date().toISOString().slice(0, 10);
+        // ローカル日付（toISOString はUTCのため、日本時間の朝9時前に投稿すると前日の日付になっていた）
+        const today = FCOjima.Utils.formatDate(new Date());
         const user = (window.FCOjima && FCOjima.Auth && FCOjima.Auth.getDisplayName)
             ? FCOjima.Auth.getDisplayName() : '';
         const notifications = FCOjima.Carpool.appData.notifications || [];
