@@ -271,8 +271,19 @@
                     goAfterLogin();
                 })
                 .catch(function(error) {
+                    // 以前は Firebase の英語のエラー文（例: "Firebase: Error (auth/popup-closed-by-user)."）を
+                    // そのまま出しており、保護者には何をすればよいか分からなかった
+                    const messages = {
+                        'auth/popup-closed-by-user': 'ログインの画面が閉じられました。もう一度「Googleでログイン」を押してください。',
+                        'auth/cancelled-popup-request': 'ログインの画面が閉じられました。もう一度「Googleでログイン」を押してください。',
+                        'auth/popup-blocked': 'ログインの画面（ポップアップ）がブロックされました。ブラウザの設定でこのサイトのポップアップを許可してから、もう一度お試しください。',
+                        'auth/network-request-failed': '通信できませんでした。電波の良い所で、もう一度お試しください。',
+                        'auth/too-many-requests': '短時間に何度も試したため、一時的にログインできません。しばらく待ってからお試しください。',
+                        'auth/user-disabled': 'このアカウントは使用できません。管理者にお問い合わせください。'
+                    };
                     const errorEl = document.getElementById('login-error');
-                    errorEl.textContent = 'ログインに失敗しました: ' + error.message;
+                    errorEl.textContent = messages[error && error.code] ||
+                        ('ログインに失敗しました。もう一度お試しください。（' + ((error && error.code) || (error && error.message) || '不明なエラー') + '）');
                     errorEl.style.display = 'block';
                 });
         });

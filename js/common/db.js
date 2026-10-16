@@ -123,13 +123,59 @@ FCOjima.DB = FCOjima.DB || {};
         }
     }
 
+    // ========== 読み込んだデータの形を整える ==========
+    //
+    // Firebase Console での手入力や古いバージョンのデータで、配列のはずの項目が文字列だったり
+    // 配列の中に null が混ざっていたりすると、その1件のせいで画面の初期化全体が例外で止まり
+    // （例: メンバーの childrenIds が文字列 → HUBが開けない）、全員がアプリを使えなくなっていた。
+    // 存在する項目の型だけを直す（無い項目は足さない。足すと保存時に全件が「変更あり」になり、
+    // 他の人が変えたドキュメントまで書き戻してしまうため）
+    function toArray(v) {
+        if (Array.isArray(v)) return v;
+        if (v === undefined || v === null || v === '') return [];
+        return (typeof v === 'object') ? [] : [v];
+    }
+    function fixArrayField(obj, key, mapFn) {
+        if (obj && obj[key] !== undefined && (!Array.isArray(obj[key]) || mapFn)) {
+            var arr = toArray(obj[key]);
+            obj[key] = mapFn ? arr.filter(function(x) { return x !== null && x !== undefined; }).map(mapFn) : arr;
+        }
+    }
+    DB.normalizeMember = function(m) {
+        fixArrayField(m, 'childrenIds', String);
+        fixArrayField(m, 'formerNames', String);
+        return m;
+    };
+    DB.normalizeEvent = function(ev) {
+        fixArrayField(ev, 'target', String);
+        fixArrayField(ev, 'extraPlayers', String);
+        if (ev && ev.luggage !== undefined && !Array.isArray(ev.luggage)) ev.luggage = [];
+        return ev;
+    };
+    /** イベントデータ（出欠・配車）。配列でない項目は空に、配列内の壊れた要素は除く */
+    DB.normalizeEventData = function(data) {
+        if (!data || typeof data !== 'object') return data;
+        var isObj = function(x) { return x && typeof x === 'object' && !Array.isArray(x); };
+        ['attendance', 'carRegistrations', 'assignments', 'notifications', 'comments'].forEach(function(k) {
+            if (data[k] === undefined) return;
+            data[k] = toArray(data[k]).filter(isObj);
+        });
+        if (Array.isArray(data.attendance)) {
+            data.attendance = data.attendance.filter(function(a) { return typeof a.name === 'string' && a.name !== ''; });
+        }
+        ['attendanceRemoved', 'manualDriverNames'].forEach(function(k) {
+            if (data[k] !== undefined) data[k] = toArray(data[k]).filter(function(x) { return typeof x === 'string'; });
+        });
+        return data;
+    };
+
     // ========== メンバー ==========
 
     DB.loadMembers = async function() {
         const snapshot = await Collections.members().orderBy('role').get();
         ensureFromServer(snapshot);
         rememberDocs('members', snapshot.docs);
-        const members = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const members = snapshot.docs.map(doc => DB.normalizeMember({ id: doc.id, ...doc.data() }));
         // 4月1日を過ぎると学年が変わるため、birthから毎回再計算して上書き
         const Utils = window.FCOjima && FCOjima.Utils;
         if (Utils && Utils.calculateGrade) {
@@ -179,10 +225,12 @@ FCOjima.DB = FCOjima.DB || {};
     // ========== イベント（予定） ==========
 
     DB.loadEvents = async function() {
-        const snapshot = await Collections.events().orderBy('date').get();
+        // ※ orderBy('date') だと date の無いイベントは結果に含まれない（Firestoreの仕様）。
+        //   並べ替えは表示側（Utils.compareEvents）で行うため、ここでは全件取得する
+        const snapshot = await Collections.events().get();
         ensureFromServer(snapshot);
         rememberDocs('events', snapshot.docs);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return snapshot.docs.map(doc => DB.normalizeEvent({ id: doc.id, ...doc.data() }));
     };
 
     DB.saveEvents = async function(events) {
@@ -275,7 +323,7 @@ FCOjima.DB = FCOjima.DB || {};
     DB.loadEventData = async function(eventId) {
         const doc = await Collections.eventData(eventId).get();
         if (doc.exists) {
-            return doc.data();
+            return DB.normalizeEventData(doc.data());
         }
         return null; // ドキュメントが存在しない場合は null を返す（呼び出し側で localStorage にフォールバック）
     };

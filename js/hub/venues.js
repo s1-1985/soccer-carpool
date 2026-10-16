@@ -216,6 +216,16 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
         var venueFormId = form ? form.getAttribute('data-venue-id') : null;
         var currentUser = (app.Auth && app.Auth.getDisplayName) ? app.Auth.getDisplayName() : 'システム';
 
+        // 予定は会場を名前で参照する（地図・天気の住所もそこから引く）ため、同じ名前の会場が
+        // 2つあるとどちらの住所が使われるか分からない
+        var sameName = venues.find(function(v) {
+            return String(v.id) !== String(venueFormId) && (v.name || '').trim() === name;
+        });
+        if (sameName) {
+            UI.showAlert('「' + name + '」という会場はすでに登録されています。別の名前にしてください', 'warning', 5000);
+            return;
+        }
+
         if (venueFormId) {
             var index = venues.findIndex(function(v) { return String(v.id) === String(venueFormId); });
             if (index !== -1) {

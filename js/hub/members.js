@@ -573,6 +573,18 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
             return;
         }
 
+        // 同じ名前のメンバーがいると、出欠・配車・学年外追加などは名前で管理しているため
+        // 2人を区別できず、片方の回答がもう片方に表示されるなどの食い違いが起きる
+        var editingId = document.getElementById('member-form') ? document.getElementById('member-form').getAttribute('data-member-id') : null;
+        var sameName = members.find(function(m) {
+            return String(m.id) !== String(editingId) && Utils.normalizeName(m.name) === Utils.normalizeName(name);
+        });
+        if (sameName && !UI.showConfirm('「' + sameName.name + '」と同じ名前のメンバーがすでに登録されています。\n' +
+                '出欠や配車は名前で管理しているため、同じ名前だと2人を区別できません。\n' +
+                '（区別できるよう、名前に読みや学年を添えるなどをおすすめします）\n\nこのまま保存しますか？')) {
+            return;
+        }
+
         if (!abbr) abbr = name.length > 4 ? name.substring(0, 4) : name;
 
         var grade = null;
@@ -582,6 +594,7 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
 
         var form = document.getElementById('member-form');
         var memberFormId = form ? form.getAttribute('data-member-id') : null;
+        var renamedFrom = null;
 
         if (memberFormId) {
             var index = members.findIndex(function(m) { return String(m.id) === String(memberFormId); });
@@ -592,8 +605,14 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
                 if (!Members._roleHasChildren(role) && role !== 'player' && Array.isArray(members[index].childrenIds)) {
                     childrenIds = members[index].childrenIds;
                 }
-                members[index] = { id: origId, name: name, kana: kana, abbr: abbr, birth: birth, gender: gender, role: role, number: number ? parseInt(number, 10) : null, grade: grade, notes: notes, childrenIds: childrenIds };
+                var oldName = members[index].name;
+                // 以前の名前（出欠・配車のデータが古い名前のまま残っていても本人として数えるため）
+                var formerNames = (members[index].formerNames || []).slice();
+                if (oldName && oldName !== name && formerNames.indexOf(oldName) === -1) formerNames.push(oldName);
+                formerNames = formerNames.filter(function(n) { return n !== name; });
+                members[index] = { id: origId, name: name, kana: kana, abbr: abbr, birth: birth, gender: gender, role: role, number: number ? parseInt(number, 10) : null, grade: grade, notes: notes, childrenIds: childrenIds, formerNames: formerNames };
                 app.Hub.logs = Storage.addLog('members', 'メンバー更新', '「' + name + '」', logs);
+                if (oldName && oldName !== name) renamedFrom = oldName;
             }
         } else {
             // タイムスタンプIDで採番（parseInt(最大値)+1 方式はFirestoreの英数字IDが
@@ -605,11 +624,116 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
 
         app.Hub.members = members; // app.Hub.membersを最新状態に保つ
         Storage.saveMembers(members);
+        // 出欠・配車・学年外追加は名前で管理しているため、名前を変えたら予定のデータにも反映する
+        if (renamedFrom) Members.propagateRename(renamedFrom, name);
         this.renderMembersList();
 
         UI.closeModal('member-modal');
         if (form) { form.reset(); form.removeAttribute('data-member-id'); }
         UI.showAlert('メンバーを保存しました', 'success');
+    };
+
+    /**
+     * メンバーの名前変更を予定のデータに反映する。
+     * 出欠・車の登録・座席・学年外追加は名前で管理しているため、以前は漢字の誤りを直しただけで、
+     * 回答済みの出欠が「未回答」に戻る（古い名前の行が残る）、学年外追加から外れる、
+     * 座席・運転手が別人扱いになる、といった食い違いが起きていた
+     * @param {string} oldName
+     * @param {string} newName
+     */
+    Members.propagateRename = async function(oldName, newName) {
+        var events = app.Hub.events || [];
+        // 予定の学年外追加（予定の一覧は手元にあるので全件まとめて保存）
+        var changedEvents = false;
+        events.forEach(function(ev) {
+            if (Array.isArray(ev.extraPlayers) && ev.extraPlayers.indexOf(oldName) !== -1) {
+                ev.extraPlayers = ev.extraPlayers.map(function(n) { return n === oldName ? newName : n; })
+                    .filter(function(n, i, arr) { return arr.indexOf(n) === i; });
+                changedEvents = true;
+            }
+        });
+        if (changedEvents) Storage.saveEvents(events);
+
+        if (!(window.FCOjima && FCOjima.DB && FCOjima.DB.updateEventData)) return;
+        // 各予定の出欠・配車（今後の予定を先に。1件ずつトランザクションで最新の内容に対して書き換える）
+        var today = Utils.formatDate(new Date());
+        var ordered = events.slice().sort(function(a, b) {
+            var fa = (a.date || '') >= today ? 0 : 1, fb = (b.date || '') >= today ? 0 : 1;
+            return fa - fb || String(a.date || '').localeCompare(String(b.date || ''));
+        });
+        var failed = 0;
+        var queue = ordered.slice();
+        async function worker() {
+            while (queue.length > 0) {
+                var ev = queue.shift();
+                try {
+                    await FCOjima.DB.updateEventData(ev.id, function(data) {
+                        return data ? Members._renameInEventData(data, oldName, newName) : {};
+                    });
+                } catch (e) {
+                    failed++;
+                    console.warn('名前変更の反映に失敗: event=' + ev.id, e);
+                }
+            }
+        }
+        await Promise.all([worker(), worker(), worker(), worker()]);
+        if (failed > 0) {
+            UI.showAlert('名前の変更を一部の予定（' + failed + '件）の出欠・配車に反映できませんでした。通信環境を確認してください', 'error', 8000);
+        }
+    };
+
+    /**
+     * イベントデータ内の名前を置き換えた差分（変更したフィールドだけ）を返す
+     */
+    Members._renameInEventData = function(data, oldName, newName) {
+        var patch = {};
+        function rn(n) { return n === oldName ? newName : n; }
+
+        if (Array.isArray(data.attendance) && data.attendance.some(function(a) { return a && a.name === oldName; })) {
+            var list = [];
+            data.attendance.forEach(function(a) {
+                if (!a) return;
+                var item = Object.assign({}, a, { name: rn(a.name) });
+                var dup = list.findIndex(function(x) { return x.name === item.name; });
+                if (dup === -1) { list.push(item); return; }
+                // 新しい名前の行がすでにある（自動追加された「未回答」など）→ 回答済みの方を残す
+                if (list[dup].status === 'unknown' && item.status !== 'unknown') list[dup] = item;
+            });
+            patch.attendance = list;
+        }
+        ['attendanceRemoved', 'manualDriverNames'].forEach(function(f) {
+            if (Array.isArray(data[f]) && data[f].indexOf(oldName) !== -1) {
+                patch[f] = data[f].map(rn).filter(function(n, i, arr) { return arr.indexOf(n) === i; });
+            }
+        });
+        if (Array.isArray(data.carRegistrations) && data.carRegistrations.some(function(c) { return c && c.parent === oldName; })) {
+            patch.carRegistrations = data.carRegistrations.map(function(c) {
+                return (c && c.parent === oldName) ? Object.assign({}, c, { parent: newName }) : c;
+            });
+        }
+        if (Array.isArray(data.assignments)) {
+            var touched = false;
+            var assignments = data.assignments.map(function(a) {
+                if (!a) return a;
+                var copy = Object.assign({}, a);
+                if (copy.driver === oldName) { copy.driver = newName; touched = true; }
+                if (copy.seats) {
+                    var seats = {};
+                    Object.keys(copy.seats).forEach(function(type) {
+                        seats[type] = {};
+                        Object.keys(copy.seats[type] || {}).forEach(function(idx) {
+                            var p = copy.seats[type][idx];
+                            if (p === oldName) touched = true;
+                            seats[type][idx] = rn(p);
+                        });
+                    });
+                    copy.seats = seats;
+                }
+                return copy;
+            });
+            if (touched) patch.assignments = assignments;
+        }
+        return patch;
     };
 
     /**
