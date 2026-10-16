@@ -442,6 +442,20 @@ FCOjima.DB = FCOjima.DB || {};
         await Collections.luggageSettings().set({ items: items }, { merge: true });
     };
 
+    // 荷物の追加・削除は arrayUnion/arrayRemove で行う（読み込み→全件書き戻しだと、
+    // 2人の管理者がほぼ同時に追加すると後から保存した方に上書きされて片方が消える）
+    DB.addLuggageItem = async function(name) {
+        await Collections.luggageSettings().set({
+            items: firebase.firestore.FieldValue.arrayUnion(String(name))
+        }, { merge: true });
+    };
+
+    DB.removeLuggageItem = async function(name) {
+        await Collections.luggageSettings().set({
+            items: firebase.firestore.FieldValue.arrayRemove(String(name))
+        }, { merge: true });
+    };
+
     // ========== 当番割り当て（イベント×グループ）==========
 
     DB.loadDutyAssignments = async function() {

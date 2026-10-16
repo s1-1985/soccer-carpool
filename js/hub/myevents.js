@@ -70,8 +70,10 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
         // イベントのリアルタイム同期は全ユーザーで refresh を呼ぶため、ここでのnull安全が必要
         if (!_profile) return [];
         var ids = (_profile.childrenIds || []).map(String);
+        // 子供は選手。過去のID採番バグで選手以外と同じIDが重複している場合に、
+        // 保護者などが「子供」として参加予定に出ないよう選手に限定する
         return (app.Hub.members || []).filter(function(m) {
-            return ids.includes(String(m.id));
+            return m.role === 'player' && ids.includes(String(m.id));
         });
     };
 

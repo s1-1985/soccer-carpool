@@ -50,8 +50,11 @@ service cloud.firestore {
       // ----- ユーザープロファイル（保護者・スタッフ登録・承認管理）-----
       match /users/{uid} {
         // 自分のプロフィールは読める。マネージャーは全員分読める
-        // 認証済みユーザーは承認済みユーザーの存在確認クエリが可能（初回管理者ブートストラップ用）
-        allow read: if isAuth() && (request.auth.uid == uid || isManager(teamId) || resource.data.status == 'approved');
+        // ※ 以前は「承認済みユーザーのドキュメントは認証済みなら誰でも読める」条項があった
+        //   （初回管理者ブートストラップ用）。ブートストラップ撤廃後も残っていたため、
+        //   任意のGoogleアカウントでログインするだけで全保護者のメール・生年月日・子供情報を
+        //   一覧取得できてしまっていた。アプリ側で他人のusersを読むのはマネージャーのみ
+        allow read: if isAuth() && (request.auth.uid == uid || isManager(teamId));
 
         // 新規登録申請: 自分の UID で、status='pending', role='parent' のみ作成可
         // ※ 初代管理者は Firebase Console から手動作成する（自己昇格の穴を塞ぐため
@@ -76,8 +79,9 @@ service cloud.firestore {
 
       // ----- メンバー（選手・スタッフ一覧）-----
       match /members/{memberId} {
-        // 認証済みなら誰でも読める（新規登録時に子供選択のために必要）
-        allow read: if isAuth();
+        // 承認済みなら全員分読める。未承認（新規登録中）のユーザーは子供選択のために
+        // 選手のドキュメントだけ読める（以前は保護者・指導者の情報も誰でも読めた）
+        allow read: if isAuth() && (isApproved(teamId) || resource.data.role == 'player');
 
         // 作成・更新: マネージャーのみ
         // TODO: 将来的にその選手の保護者も編集可にする

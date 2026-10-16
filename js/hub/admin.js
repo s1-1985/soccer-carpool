@@ -228,11 +228,11 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         try {
             var users = await FCOjima.DB.loadAllUsers();
             var approved = users.filter(function(u) { return u.status === 'approved'; });
+            var rejected = users.filter(function(u) { return u.status === 'rejected'; });
+            el.innerHTML = '';
             if (approved.length === 0) {
                 el.innerHTML = '<p style="color:#999;padding:8px;">登録済みユーザーはいません。</p>';
-                return;
             }
-            el.innerHTML = '';
             var members = app.Hub.members || [];
 
             approved.forEach(function(u) {
@@ -293,6 +293,32 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 row.appendChild(ctrl);
                 el.appendChild(row);
             });
+
+            // 却下済みユーザー。以前はどこにも表示されず、誤って却下すると本人も再申請できない
+            // （usersドキュメントが残るため）まま、Firebase Consoleでしか戻せなかった
+            if (rejected.length > 0) {
+                var rh = document.createElement('h4');
+                rh.style.cssText = 'margin:16px 0 6px;font-size:13px;color:#888;';
+                rh.textContent = '却下済み（誤って却下した場合はここから承認できます）';
+                el.appendChild(rh);
+                var escR = UI ? UI.escapeHTML : function(s) { return s; };
+                rejected.forEach(function(u) {
+                    var row = document.createElement('div');
+                    row.style.cssText = 'border:1px dashed #ddd;border-radius:8px;padding:10px;margin-bottom:8px;background:#fafafa;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;';
+                    var info = document.createElement('div');
+                    info.innerHTML = '<div style="font-weight:bold;color:#777;">' + escR(u.name || '') + '</div>' +
+                        '<div style="font-size:12px;color:#999;">' + escR(u.email || '') + '</div>';
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'secondary-button';
+                    btn.textContent = '承認する';
+                    btn.style.cssText = 'padding:4px 12px;font-size:12px;';
+                    btn.addEventListener('click', function() { Admin.approveUser(u.uid, u.name); });
+                    row.appendChild(info);
+                    row.appendChild(btn);
+                    el.appendChild(row);
+                });
+            }
         } catch(e) {
             el.innerHTML = '<p style="color:#c00;">読み込みエラー: ' + e.message + '</p>';
         }
@@ -305,6 +331,8 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         try {
             await FCOjima.DB.updateUserRole(uid, newRole);
             if (UI) UI.showAlert((name || uid) + ' の役割を「' + (ROLE_LABELS[newRole] || newRole) + '」に変更しました', 'success');
+            // 一覧を読み直す（変更前の役割のまま表示・操作可否が判定され続けないように）
+            Admin.loadAllUsers();
         } catch(e) {
             if (UI) UI.showAlert('変更に失敗しました: ' + e.message, 'error');
         }
@@ -744,8 +772,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                     alert('「' + name + '」はすでに登録されています');
                     return;
                 }
-                items.push(name);
-                await FCOjima.DB.saveLuggageItems(items);
+                await FCOjima.DB.addLuggageItem(name);
                 input.value = '';
                 Admin.loadLuggageSettings();
             } catch (e) {
@@ -778,8 +805,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 rm.addEventListener('click', async function() {
                     if (!confirm('「' + name + '」を削除しますか？')) return;
                     try {
-                        var cur = await FCOjima.DB.loadLuggageItems();
-                        await FCOjima.DB.saveLuggageItems(cur.filter(function(n) { return n !== name; }));
+                        await FCOjima.DB.removeLuggageItem(name);
                         Admin.loadLuggageSettings();
                     } catch (e) {
                         alert('削除に失敗しました: ' + e.message);
