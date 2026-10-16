@@ -497,8 +497,13 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 targetEvents.map(function(ev) { return FCOjima.DB.loadEventData(ev.id); })
             );
 
-            // 対象選手かどうか判定（共通ヘルパーに委譲。Utils.isTargetFor参照）
-            var isTargetFor = Utils.isTargetFor;
+            // 対象選手かどうか判定（共通ヘルパーに委譲。Utils.isTargetFor参照）。
+            // 出欠ページで参加者から外した人は対象外（－）
+            var isTargetFor = function(m, ev) {
+                if (!Utils.isTargetFor(m, ev)) return false;
+                var i = targetEvents.indexOf(ev);
+                return !(i >= 0 && Utils.isRemovedFromEvent(m, dataArr[i]));
+            };
 
             // 4. マップ構築 + 内訳集計（参加/未回答/欠席）
             var statusMap = {};
@@ -949,8 +954,12 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 doneEvents.map(function(ev) { return FCOjima.DB.loadEventData(ev.id); })
             );
 
-            // 対象判定（共通ヘルパーに委譲。出欠マトリクスと完全に同じ定義）
-            var isTargetFor = FCOjima.Utils.isTargetFor;
+            // 対象判定（共通ヘルパーに委譲。出欠マトリクスと完全に同じ定義。参加者から外した人は除く）
+            var isTargetFor = function(m, ev) {
+                if (!FCOjima.Utils.isTargetFor(m, ev)) return false;
+                var i = doneEvents.indexOf(ev);
+                return !(i >= 0 && FCOjima.Utils.isRemovedFromEvent(m, dataArr[i]));
+            };
 
             var gradeNumMap = { '年少': -3, '年中': -2, '年長': -1 };
             function gradeVal(g) {

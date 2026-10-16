@@ -172,10 +172,17 @@ FCOjima.DB = FCOjima.DB || {};
     // ========== メンバー ==========
 
     DB.loadMembers = async function() {
-        const snapshot = await Collections.members().orderBy('role').get();
+        // ※ orderBy('role') だと role の無いメンバー（Firebase Console での手入力など）が結果に含まれず、
+        //   名簿にも出欠にも出てこない（予定の orderBy('date') と同じ）。全件取得して役割順に並べる
+        //   （以前と同じ並び: 役割の文字列順、同じ役割の中はドキュメントID順）
+        const snapshot = await Collections.members().get();
         ensureFromServer(snapshot);
         rememberDocs('members', snapshot.docs);
         const members = snapshot.docs.map(doc => DB.normalizeMember({ id: doc.id, ...doc.data() }));
+        members.sort(function(a, b) {
+            const ra = String(a.role || ''), rb = String(b.role || '');
+            return ra < rb ? -1 : ra > rb ? 1 : 0;
+        });
         // 4月1日を過ぎると学年が変わるため、birthから毎回再計算して上書き
         const Utils = window.FCOjima && FCOjima.Utils;
         if (Utils && Utils.calculateGrade) {

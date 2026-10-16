@@ -56,6 +56,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         var event = Storage.getSelectedEvent();
         if (event) {
             this.displayEventData(event);
+            this.refreshVenues(event);
             this.initFileAttachment(event.id);
 
             // イベントデータをロード（Firestore優先 → localStorageフォールバック）
@@ -171,8 +172,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
             
             if (event.meetingPlace) {
                 // 会場登録データから住所を検索（なければ会場名でマップ検索）
-                var allVenues = ((app.Hub && app.Hub.venues) ? app.Hub.venues : Storage.loadVenues()) || [];
-                var meetingVenue = allVenues.find(function(v) { return v.name === event.meetingPlace; });
+                var meetingVenue = Overview._findVenue(event.meetingPlace);
                 var meetingQuery = (meetingVenue && meetingVenue.address) ? meetingVenue.address : event.meetingPlace;
                 var meetingMapBtn = '<button type="button" class="map-button" onclick="window.open(\'https://www.google.com/maps/search/?api=1&query=' +
                     Utils.encodeForOnclick(meetingQuery) + '\', \'_blank\')">地図を開く</button>';
@@ -189,8 +189,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
 
             if (event.venue) {
                 // 会場登録データから住所を検索（なければ会場名でマップ検索）
-                var allVenues2 = ((app.Hub && app.Hub.venues) ? app.Hub.venues : Storage.loadVenues()) || [];
-                var venueData = allVenues2.find(function(v) { return v.name === event.venue; });
+                var venueData = Overview._findVenue(event.venue);
                 var venueQuery = (venueData && venueData.address) ? venueData.address : event.venue;
                 var venueMapBtn = '<button type="button" class="map-button" onclick="window.open(\'https://www.google.com/maps/search/?api=1&query=' +
                     Utils.encodeForOnclick(venueQuery) + '\', \'_blank\')">地図を開く</button>';
@@ -274,14 +273,47 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
     };
 
     /**
+     * 会場名から会場（住所）を探す。サーバーから読んだ最新の会場一覧を優先し、
+     * まだ読めていなければ端末に残っている一覧を使う
+     */
+    Overview._findVenue = function(name) {
+        if (!name) return null;
+        var list = Overview._venues || ((app.Hub && app.Hub.venues) ? app.Hub.venues : Storage.loadVenues()) || [];
+        return list.find(function(v) { return v.name === name; }) || null;
+    };
+
+    /**
+     * 会場一覧をサーバーから読み直し、集合場所・会場の住所が変わっていれば地図・天気を表示し直す。
+     * 以前は端末に残っている会場一覧（HUBを開いたときの保存分）しか見ておらず、共有リンクから直接開いた
+     * 端末や、その後に登録・住所変更された会場では、地図が会場名だけの検索になり天気も市区町村単位になっていた
+     */
+    Overview.refreshVenues = function(event) {
+        if (!(window.FCOjima && FCOjima.DB && FCOjima.DB.loadVenues) || !event) return;
+        var before = [event.meetingPlace, event.venue].map(function(n) {
+            var v = Overview._findVenue(n);
+            return v ? (v.address || '') : null;
+        });
+        FCOjima.DB.loadVenues().then(function(venues) {
+            Overview._venues = venues;
+            if (Storage.safeSetItem) Storage.safeSetItem(Storage.PREFIX + 'venues', JSON.stringify(venues));
+            var after = [event.meetingPlace, event.venue].map(function(n) {
+                var v = Overview._findVenue(n);
+                return v ? (v.address || '') : null;
+            });
+            if (JSON.stringify(before) !== JSON.stringify(after)) Overview.displayEventData(event);
+        }).catch(function(e) {
+            console.warn('会場一覧の読み込みに失敗（端末に残っている一覧を使います）:', e);
+        });
+    };
+
+    /**
      * 会場の天気予報（当日までの数日分ウィジェット）を #overview-weather に差し込む
      */
     Overview._renderWeather = function(event) {
         if (!event || !event.venue || !app.Weather || !app.Weather.getDailyForecast) return;
         var target = document.getElementById('overview-weather');
         if (!target) return;
-        var allVenues = ((app.Hub && app.Hub.venues) ? app.Hub.venues : Storage.loadVenues()) || [];
-        var venueData = allVenues.find(function(v) { return v.name === event.venue; });
+        var venueData = Overview._findVenue(event.venue);
         var address = venueData && venueData.address;
         app.Weather.getDailyForecast(event.venue, address, event.date).then(function(result) {
             var el = document.getElementById('overview-weather');
@@ -322,26 +354,34 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                    (parseInt(car.backSeat, 10) || 0);
         }, 0);
         
-        // 割り当て状況の集計（ユニークな人数）
-        var assignments = eventData.assignments || [];
-        var assignedNames = new Set();
-
-        assignments.forEach(function(assignment) {
-            if (!assignment.seats) return;
-
+        // 割り当て状況の集計: 「参加」の人（運転手を除く）のうち、今ある車の座席に割り当て済みの人数。
+        // 以前は座席にいる名前をすべて数えていたため、荷物・メンバー外乗員・割り当て後に「不参加」に
+        // なった人・削除した車の乗員まで数えられ、まだ割り当てていない選手がいても「割り当て済み」
+        // （緑）と表示されることがあった。また「イベント」で参加の保護者が運転手のときは、座席に
+        // 座らない運転手まで分母に入り、全員割り当てても完了にならなかった
+        var cars = carRegistrations.filter(function(c) { return c.canDrive !== 'no'; });
+        var driverNames = new Set(cars.map(function(c) { return c.parent; }));
+        var seatedNames = new Set();
+        app.Carpool.matchAssignmentsToCars(cars, eventData.assignments || []).forEach(function(assignment) {
+            if (!assignment || !assignment.seats) return;
             Object.keys(assignment.seats).forEach(function(seatType) {
-                Object.keys(assignment.seats[seatType]).forEach(function(seatIndex) {
-                    var name = assignment.seats[seatType][seatIndex];
-                    if (name) assignedNames.add(name);
+                var row = assignment.seats[seatType] || {};
+                Object.keys(row).forEach(function(seatIndex) {
+                    if (row[seatIndex]) seatedNames.add(row[seatIndex]);
                 });
             });
         });
-
-        var assignedMembers = assignedNames.size;
+        var needSeat = [];
+        attendance.forEach(function(a) {
+            if (a.status === 'present' && !driverNames.has(a.name) && needSeat.indexOf(a.name) === -1) needSeat.push(a.name);
+        });
+        var needSeatCount = needSeat.length;
+        var assignedMembers = needSeat.filter(function(n) { return seatedNames.has(n); }).length;
         
         var attendanceOk = respondedMembers >= totalMembers && totalMembers > 0;
-        var carsOk = availableCars > 0 && totalSeats >= presentMembers;
-        var assignOk = presentMembers > 0 && assignedMembers >= presentMembers;
+        // 座席数は運転席を含まないため、運転手を除いた参加者の数と比べる
+        var carsOk = availableCars > 0 && totalSeats >= needSeatCount;
+        var assignOk = needSeatCount > 0 && assignedMembers >= needSeatCount;
 
         statusSummary.innerHTML = `
             <div class="ov-grid">
@@ -367,7 +407,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                     <div class="ov-icon">🗂</div>
                     <div class="ov-body">
                         <div class="ov-title">割り当て</div>
-                        <div class="ov-main">${assignedMembers}<span class="ov-of">/${presentMembers}</span></div>
+                        <div class="ov-main">${assignedMembers}<span class="ov-of">/${needSeatCount}</span></div>
                         <div class="ov-sub">人割り当て済み</div>
                     </div>
                     <div class="ov-arrow">›</div>
@@ -602,6 +642,43 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         return mergeList(base, local, remote, def.mode === 'prepend');
     }
 
+    /**
+     * 保存済みの座席割り当てを、現在の車両一覧に対応づける。
+     * 割り当ては「何台目の車か（carIndex）」で保存されているため、割り当て後に
+     * 前の方の車が登録削除・提供不可に変更されると、以降の車の乗員が1台ずつ
+     * ずれて別の車に表示されていた。運転手名が一致する割り当てを優先して対応づけ、
+     * 見つからない車（運転手を変更した等）だけ carIndex で対応づける。
+     * どの車にも対応しない割り当て（削除した車の分）は使わない。
+     * @param {Array} cars - 提供可能な車両（表示順）
+     * @param {Array} assignments - 保存済みの割り当て
+     * @returns {Array} cars と同じ並びの割り当て（なければ null）
+     */
+    app.Carpool.matchAssignmentsToCars = function(cars, assignments) {
+        var used = new Set();
+        var result = cars.map(function() { return null; });
+        function claim(ci, pred) {
+            if (result[ci]) return;
+            for (var i = 0; i < assignments.length; i++) {
+                if (used.has(i) || !assignments[i]) continue;
+                if (pred(assignments[i])) { used.add(i); result[ci] = assignments[i]; return; }
+            }
+        }
+        // 1) 運転手名と位置の両方が一致
+        cars.forEach(function(car, ci) {
+            claim(ci, function(a) { return a.driver && a.driver === car.parent && String(a.carIndex) === String(ci); });
+        });
+        // 2) 運転手名が一致（前の車が消えて位置がずれた場合）
+        cars.forEach(function(car, ci) {
+            claim(ci, function(a) { return a.driver && a.driver === car.parent; });
+        });
+        // 3) 位置が一致し、その運転手がもう車両一覧にいない（運転手を変更した場合）
+        var parents = new Set(cars.map(function(c) { return c.parent; }));
+        cars.forEach(function(car, ci) {
+            claim(ci, function(a) { return String(a.carIndex) === String(ci) && !(a.driver && parents.has(a.driver)); });
+        });
+        return result;
+    };
+
     var _saveChain = Promise.resolve();
     var _savePending = 0;
 
@@ -632,6 +709,9 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         var event = Storage.getSelectedEvent();
         if (!event) return false;
         this.appData.eventId = event.id;
+        // サーバーから読めなかった（通信エラー）か。「まだ配車データが無い」と区別する。
+        // 読めなかったときに表示しているのは端末に残っている前回の内容（古いかもしれない）
+        this._eventDataLoadFailed = false;
         if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadEventData) {
             try {
                 var data = await FCOjima.DB.loadEventData(event.id);
@@ -641,6 +721,10 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                 }
             } catch (e) {
                 console.warn('Firestoreイベントデータロード失敗:', e);
+                this._eventDataLoadFailed = true;
+                if (UI && UI.showAlert) {
+                    UI.showAlert('サーバーから最新の出欠・配車を読み込めませんでした。この端末に残っている前回の内容を表示しています（変更されている可能性があります）。電波の良い所で再読み込みしてください', 'warning', 10000);
+                }
             }
         }
         this.loadData();

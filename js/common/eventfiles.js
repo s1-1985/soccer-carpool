@@ -66,19 +66,32 @@ FCOjima.EventFiles = FCOjima.EventFiles || {};
      */
     EventFiles.render = async function(eventId, listEl) {
         if (!listEl) return;
+        // 同じ一覧の要素（管理タブのイベント概要など）で別の予定を開き直したとき、前の予定の読み込みが
+        // 後から終わって一覧に混ざらないよう、最後に始めた描画だけを反映する。以前は前の予定の添付
+        // （とその削除ボタン）が今の予定の一覧に並ぶことがあった
+        var token = {};
+        listEl._filesRenderToken = token;
+        listEl._filesEventId = String(eventId);
+        function stale() { return listEl._filesRenderToken !== token; }
         listEl.innerHTML = '<p style="color:#999;font-size:12px;">読み込み中...</p>';
         try {
             var ref = firebase.storage().ref(basePath(eventId));
             var result = await ref.listAll();
+            if (stale()) return;
             var countLabel = '<p class="event-file-count" style="color:#999;font-size:11px;margin:2px 0 6px;">添付 ' + result.items.length + '/' + MAX_FILES + '</p>';
             if (result.items.length === 0) {
                 listEl.innerHTML = countLabel + '<p style="color:#999;font-size:12px;">ファイルなし</p>';
                 return;
             }
+            // ダウンロード用URLはまとめて取得する（1件ずつ待つと件数分だけ表示が遅れる）
+            var urls = await Promise.all(result.items.map(function(it) {
+                return it.getDownloadURL().catch(function(e) { console.warn('添付ファイルのURL取得に失敗:', it.name, e); return null; });
+            }));
+            if (stale()) return;
             listEl.innerHTML = countLabel;
             for (var i = 0; i < result.items.length; i++) {
                 var item = result.items[i];
-                var url = await item.getDownloadURL();
+                var url = urls[i];
                 // 1行 = リンク＋削除ボタン。以前はHUBの予定詳細に削除手段がなく、上限（10個）に
                 // 達すると「先に不要なファイルを削除してください」と出るのに消せなかった
                 // （配車管理の概要ページにだけ削除ボタンがあった）
@@ -86,7 +99,7 @@ FCOjima.EventFiles = FCOjima.EventFiles || {};
                 row.className = 'event-file-row';
                 row.style.cssText = 'display:flex;align-items:center;gap:8px;';
                 var a = document.createElement('a');
-                a.href = url;
+                if (url) a.href = url;
                 a.target = '_blank';
                 a.rel = 'noopener';
                 a.className = 'event-file-link';
@@ -105,7 +118,7 @@ FCOjima.EventFiles = FCOjima.EventFiles || {};
                         } catch (e) {
                             alert('削除に失敗しました: ' + e.message);
                         }
-                        await EventFiles.render(eventId, listEl);
+                        if (EventFiles._isShowing(listEl, eventId)) await EventFiles.render(eventId, listEl);
                     };
                 })(item));
                 row.appendChild(a);
@@ -113,9 +126,15 @@ FCOjima.EventFiles = FCOjima.EventFiles || {};
                 listEl.appendChild(row);
             }
         } catch (e) {
+            if (stale()) return;
             listEl.innerHTML = '<p style="color:#c00;font-size:12px;">読み込みエラー</p>';
             console.error('添付ファイル読み込みエラー:', e);
         }
+    };
+
+    /** その一覧の要素が、今もこの予定の添付を表示しているか（別の予定を開き直していないか） */
+    EventFiles._isShowing = function(listEl, eventId) {
+        return !!listEl && (listEl._filesEventId === undefined || listEl._filesEventId === String(eventId));
     };
 
     /**
@@ -160,7 +179,7 @@ FCOjima.EventFiles = FCOjima.EventFiles || {};
             alert('添付できないファイルがあります:\n' + v.errors.join('\n'));
         }
         if (v.ok.length === 0) {
-            if (listEl) await EventFiles.render(eventId, listEl);
+            if (EventFiles._isShowing(listEl, eventId)) await EventFiles.render(eventId, listEl);
             return;
         }
 
@@ -178,7 +197,7 @@ FCOjima.EventFiles = FCOjima.EventFiles || {};
         var room = MAX_FILES - existingCount;
         if (room <= 0) {
             alert('添付ファイルは1イベントにつき最大' + MAX_FILES + '個までです（現在' + existingCount + '個）。新しいファイルを追加するには、先に不要なファイルを削除してください。');
-            if (listEl) await EventFiles.render(eventId, listEl);
+            if (EventFiles._isShowing(listEl, eventId)) await EventFiles.render(eventId, listEl);
             return;
         }
         var toUpload = v.ok;
@@ -190,14 +209,15 @@ FCOjima.EventFiles = FCOjima.EventFiles || {};
         try {
             for (var i = 0; i < toUpload.length; i++) {
                 var file = toUpload[i];
-                if (listEl) listEl.innerHTML = '<p style="color:#999;font-size:12px;">アップロード中... (' + (i + 1) + '/' + toUpload.length + ')</p>';
+                // アップロード中に別の予定を開き直していたら、その予定の一覧には進み具合を書かない
+                if (EventFiles._isShowing(listEl, eventId)) listEl.innerHTML = '<p style="color:#999;font-size:12px;">アップロード中... (' + (i + 1) + '/' + toUpload.length + ')</p>';
                 await firebase.storage().ref(basePath(eventId) + '/' + EventFiles.uniqueName(file.name, taken)).put(file);
             }
         } catch (e) {
             alert('アップロードに失敗しました: ' + e.message);
             console.error('アップロードエラー:', e);
         }
-        if (listEl) await EventFiles.render(eventId, listEl);
+        if (EventFiles._isShowing(listEl, eventId)) await EventFiles.render(eventId, listEl);
     };
 
     /**

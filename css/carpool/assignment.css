@@ -204,6 +204,40 @@
     border: 2px dashed #ffc107;
 }
 
+/* 割り当てた後に「不参加」になった人が残っている座席 */
+.seat.seat-absent {
+    border: 2px dashed #dc3545;
+}
+.seat-absent-label {
+    font-size: 9px;
+    font-weight: bold;
+    color: #dc3545;
+    line-height: 1.2;
+}
+.seat-absent-warning {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin: 0 0 10px;
+    padding: 8px 12px;
+    background: #fdecea;
+    border: 1px solid #f5c2c7;
+    border-radius: 8px;
+    color: #842029;
+    font-size: 13px;
+}
+.seat-absent-warning .seat-absent-clear-btn {
+    padding: 4px 12px;
+    min-height: 32px;
+    font-size: 12px;
+    background: #dc3545;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
 /* 座席内の名前タグ（丸アイコンなし） */
 .seat-name-tag {
     font-size: 11px;
