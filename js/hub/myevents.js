@@ -50,7 +50,7 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
         var okBtn = document.getElementById('move-notice-ok');
         if (okBtn) {
             okBtn.addEventListener('click', function() {
-                localStorage.setItem(moveAckKey(), String(Date.now()));
+                try { localStorage.setItem(moveAckKey(), String(Date.now())); } catch (e) {}
                 UI.closeModal('move-notice-modal');
                 MyEvents.updateBadge();
             });
@@ -118,9 +118,7 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
             });
 
             if (kids.length > 0) {
-                var dutyAssignment = app.Hub.dutyEnabled
-                    ? (app.Hub.dutyAssignments || []).find(function(a) { return String(a.eventId) === String(ev.id); })
-                    : null;
+                var dutyAssignment = app.Hub.getDutyAssignment ? app.Hub.getDutyAssignment(ev.id) : null;
                 items.push({
                     eventId: String(ev.id),
                     date: ev.date,
@@ -367,8 +365,11 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
 
         // 既読化：スナップショット更新＋バッジ消灯（バナーは今回表示分を維持）
         if (markSeen && _items) {
-            localStorage.setItem(snapKey(), JSON.stringify(toSnapshot(_items)));
-            localStorage.setItem(moveAckKey(), String(Date.now()));
+            // 端末の保存領域がいっぱいでも画面の処理は止めない
+            try {
+                localStorage.setItem(snapKey(), JSON.stringify(toSnapshot(_items)));
+                localStorage.setItem(moveAckKey(), String(Date.now()));
+            } catch (e) { console.warn('参加予定の既読状態を保存できませんでした:', e); }
             var badge = document.getElementById('my-events-badge');
             if (badge) badge.classList.remove('on');
         }

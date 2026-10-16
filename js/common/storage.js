@@ -30,6 +30,49 @@ FCOjima.Storage = FCOjima.Storage || {};
     }
 
     /**
+     * 端末内キャッシュ（localStorage）への書き込み。失敗しても例外を出さない。
+     *
+     * localStorage はオフライン時のフォールバック用キャッシュにすぎないが、以前は書き込みを
+     * Firestoreへの保存より前に素のまま行っていたため、容量（約5MB）を使い切ると
+     * QuotaExceededError で処理がそこで止まり、サーバーへの保存自体が行われなかった。
+     * 開いたイベントごとの配車データ（fcojima_event_ID）を消さずに溜め続けるので、
+     * 何シーズンも使う配車担当の端末ほど起こりうる。容量不足のときは古いキャッシュを
+     * 消してから1回だけ再試行する。
+     * @returns {boolean} 書き込めたか
+     */
+    function safeSetItem(key, value) {
+        try {
+            localStorage.setItem(key, value);
+            return true;
+        } catch (e) {
+            try {
+                pruneCaches(key);
+                localStorage.setItem(key, value);
+                return true;
+            } catch (e2) {
+                console.warn('端末内キャッシュに保存できませんでした（容量不足など）: ' + key, e2);
+                return false;
+            }
+        }
+    }
+    Storage.safeSetItem = safeSetItem;
+
+    /** 消しても困らない端末内キャッシュ（イベントごとの配車データ・ログ・天気の座標）を削除する */
+    function pruneCaches(keepKey) {
+        var removable = [];
+        for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i);
+            if (!k || k === keepKey) continue;
+            if (k.indexOf(Storage.PREFIX + 'event_') === 0 || k === Storage.PREFIX + 'logs' ||
+                k.indexOf('fcojima_geocode_') === 0) {
+                removable.push(k);
+            }
+        }
+        removable.forEach(function(k) { localStorage.removeItem(k); });
+        if (removable.length > 0) console.log('端末内キャッシュを整理しました: ' + removable.length + '件');
+    }
+
+    /**
      * メンバーデータをローカルストレージから読み込む
      * ※Firestoreデータはページ初期化時に app.Hub.members へ格納済み
      */
@@ -58,7 +101,7 @@ FCOjima.Storage = FCOjima.Storage || {};
      * イベントデータを保存（Firestore + localStorage）
      */
     Storage.saveEvents = function(events) {
-        localStorage.setItem(this.PREFIX + 'events', JSON.stringify(events));
+        safeSetItem(this.PREFIX + 'events', JSON.stringify(events));
         if (window.FCOjima && FCOjima.DB) {
             FCOjima.DB.saveEvents(events).catch(e => reportSaveError('saveEvents', e));
         }
@@ -69,7 +112,7 @@ FCOjima.Storage = FCOjima.Storage || {};
      * @param {Array} members - メンバーデータの配列
      */
     Storage.saveMembers = function(members) {
-        localStorage.setItem(this.PREFIX + 'members', JSON.stringify(members));
+        safeSetItem(this.PREFIX + 'members', JSON.stringify(members));
         if (window.FCOjima && FCOjima.DB) {
             FCOjima.DB.saveMembers(members).catch(e => reportSaveError('saveMembers', e));
         }
@@ -92,7 +135,7 @@ FCOjima.Storage = FCOjima.Storage || {};
      * @param {Array} venues - 会場データの配列
      */
     Storage.saveVenues = function(venues) {
-        localStorage.setItem(this.PREFIX + 'venues', JSON.stringify(venues));
+        safeSetItem(this.PREFIX + 'venues', JSON.stringify(venues));
         if (window.FCOjima && FCOjima.DB) {
             FCOjima.DB.saveVenues(venues).catch(e => reportSaveError('saveVenues', e));
         }
@@ -128,7 +171,7 @@ FCOjima.Storage = FCOjima.Storage || {};
      * @param {Array} logs - ログデータの配列
      */
     Storage.saveLogs = function(logs) {
-        localStorage.setItem(this.PREFIX + 'logs', JSON.stringify(logs));
+        safeSetItem(this.PREFIX + 'logs', JSON.stringify(logs));
     };
     
     /**
@@ -254,7 +297,7 @@ FCOjima.Storage = FCOjima.Storage || {};
      * @param {Array} notifications - 連絡事項データの配列
      */
     Storage.saveNotifications = function(notifications) {
-        localStorage.setItem(this.PREFIX + 'notifications', JSON.stringify(notifications));
+        safeSetItem(this.PREFIX + 'notifications', JSON.stringify(notifications));
         if (window.FCOjima && FCOjima.DB) {
             FCOjima.DB.saveNotifications(notifications).catch(e => reportSaveError('saveNotifications', e));
         }
@@ -286,7 +329,7 @@ FCOjima.Storage = FCOjima.Storage || {};
      * @param {Object} data - イベント固有のデータ
      */
     Storage.saveEventData = function(eventId, data) {
-        localStorage.setItem(this.PREFIX + 'event_' + eventId, JSON.stringify(data));
+        safeSetItem(this.PREFIX + 'event_' + eventId, JSON.stringify(data));
     };
 
     /**
@@ -302,7 +345,7 @@ FCOjima.Storage = FCOjima.Storage || {};
      * @param {Object} event - イベントオブジェクト
      */
     Storage.setSelectedEvent = function(event) {
-        sessionStorage.setItem(this.PREFIX + 'selectedEvent', JSON.stringify(event));
+        try { sessionStorage.setItem(this.PREFIX + 'selectedEvent', JSON.stringify(event)); } catch (e) { console.warn('選択中イベントを保存できませんでした:', e); }
     };
     
     /**
@@ -347,9 +390,9 @@ FCOjima.Storage = FCOjima.Storage || {};
      */
     Storage.set = function(key, value) {
         if (typeof value === 'object') {
-            localStorage.setItem(this.PREFIX + key, JSON.stringify(value));
+            safeSetItem(this.PREFIX + key, JSON.stringify(value));
         } else {
-            localStorage.setItem(this.PREFIX + key, value);
+            safeSetItem(this.PREFIX + key, value);
         }
     };
     

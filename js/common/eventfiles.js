@@ -79,13 +79,38 @@ FCOjima.EventFiles = FCOjima.EventFiles || {};
             for (var i = 0; i < result.items.length; i++) {
                 var item = result.items[i];
                 var url = await item.getDownloadURL();
+                // 1行 = リンク＋削除ボタン。以前はHUBの予定詳細に削除手段がなく、上限（10個）に
+                // 達すると「先に不要なファイルを削除してください」と出るのに消せなかった
+                // （配車管理の概要ページにだけ削除ボタンがあった）
+                var row = document.createElement('div');
+                row.className = 'event-file-row';
+                row.style.cssText = 'display:flex;align-items:center;gap:8px;';
                 var a = document.createElement('a');
                 a.href = url;
                 a.target = '_blank';
                 a.rel = 'noopener';
                 a.className = 'event-file-link';
+                a.style.cssText = 'flex:1;min-width:0;padding:6px 10px;background:#f0f4ff;border-radius:6px;font-size:13px;color:#2563eb;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
                 a.textContent = item.name;
-                listEl.appendChild(a);
+                var del = document.createElement('button');
+                del.type = 'button';
+                del.className = 'event-file-delete';
+                del.textContent = '削除';
+                del.style.cssText = 'flex-shrink:0;padding:4px 10px;background:#dc3545;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;';
+                del.addEventListener('click', (function(fileRef) {
+                    return async function() {
+                        if (!confirm('「' + fileRef.name + '」を削除しますか？')) return;
+                        try {
+                            await fileRef.delete();
+                        } catch (e) {
+                            alert('削除に失敗しました: ' + e.message);
+                        }
+                        await EventFiles.render(eventId, listEl);
+                    };
+                })(item));
+                row.appendChild(a);
+                row.appendChild(del);
+                listEl.appendChild(row);
             }
         } catch (e) {
             listEl.innerHTML = '<p style="color:#c00;font-size:12px;">読み込みエラー</p>';

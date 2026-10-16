@@ -498,4 +498,22 @@ FCOjima.DB = FCOjima.DB || {};
         await Collections.dutyAssignments().doc(String(eventId)).delete();
     };
 
+    /** グループ名の変更を、そのグループを割り当てた予定の割り当てにも反映する */
+    DB.renameDutyAssignmentsGroup = async function(groupId, groupName) {
+        const snap = await Collections.dutyAssignments().where('groupId', '==', String(groupId)).get();
+        if (snap.empty) return;
+        const batch = db.batch();
+        snap.docs.forEach(function(doc) { batch.update(doc.ref, { groupName: groupName }); });
+        await batch.commit();
+    };
+
+    /** 削除したグループを割り当てていた予定の割り当てを削除する */
+    DB.deleteDutyAssignmentsForGroup = async function(groupId) {
+        const snap = await Collections.dutyAssignments().where('groupId', '==', String(groupId)).get();
+        if (snap.empty) return;
+        const batch = db.batch();
+        snap.docs.forEach(function(doc) { batch.delete(doc.ref); });
+        await batch.commit();
+    };
+
 })(FCOjima.DB);

@@ -291,8 +291,17 @@ FCOjima.UI = FCOjima.UI || {};
         const toast = document.createElement('div');
         toast.className = 'toast-notification toast-' + type;
         toast.textContent = message;
+        // 画面下に固定ボタン（配車管理の「次へ」「保存」など）があるページでは、その上に出す。
+        // 以前はボタンに重なって表示され、消えるまで（最長10秒）タップを横取りして押せなかった
+        const bottomBar = document.querySelector('.global-navigation');
+        let barHeight = 0;
+        if (bottomBar) {
+            const r = bottomBar.getBoundingClientRect();
+            if (r.height > 0 && r.top < window.innerHeight) barHeight = Math.round(window.innerHeight - r.top);
+        }
         toast.style.cssText = [
-            'position:fixed', 'bottom:20px', 'left:50%',
+            'position:fixed', 'bottom:' + (barHeight > 0 ? barHeight + 12 : 20) + 'px', 'left:50%',
+            'pointer-events:none',
             'transform:translateX(-50%)',
             'background:' + (type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : type === 'warning' ? '#ffc107' : '#3498db'),
             'color:' + (type === 'warning' ? '#333' : '#fff'),

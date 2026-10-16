@@ -883,3 +883,13 @@ tr:hover { background: #fbf6e8; }
     .action-buttons button:only-child { grid-column: 1 / -1; }
     .main-nav ul { gap: 6px; }
 }
+
+/* 備考欄（textareaで入力）の改行をそのまま表示する。
+   以前は「集合は8時⏎水筒を持参」が1行に詰まって表示されていた */
+.detail-notes,
+.notes-content,
+.venue-notes,
+.member-notes {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}

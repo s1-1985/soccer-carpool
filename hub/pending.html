@@ -8,7 +8,7 @@
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#1C1600">
     <link rel="apple-touch-icon" href="/img/icon-192.png">
-    <link rel="stylesheet" href="../css/common.css?v=20261016">
+    <link rel="stylesheet" href="../css/common.css?v=20261016d">
     <style>
         .pending-container {
             max-width: 420px;
@@ -89,9 +89,11 @@
                     window.location.href = '/hub/login.html';
                 });
             });
+            // 開いた時点の状態を反映する（却下済みならその旨を表示。承認済みならHUBへ）
+            checkStatus(true);
         });
 
-        async function checkStatus() {
+        async function checkStatus(silent) {
             const user = pendingAuth.currentUser;
             if (!user) return;
             try {
@@ -105,9 +107,12 @@
                 if (status === 'approved') {
                     window.location.href = '/hub/index.html';
                 } else if (status === 'rejected') {
+                    document.querySelector('.pending-icon').textContent = '⚠️';
+                    document.querySelector('.pending-title').textContent = '申請が承認されませんでした';
                     document.querySelector('.pending-msg').innerHTML =
-                        '<strong style="color:#c00;">申請が却下されました。</strong><br>管理者にお問い合わせください。';
-                } else {
+                        '<strong style="color:#c00;">申請が却下されました。</strong><br>管理者にお問い合わせください。<br><br>' +
+                        '別のGoogleアカウントで申請し直す場合は、下の「サインアウト」から入り直してください。';
+                } else if (!silent) {
                     // ボタンを押すたびに同じ文言が増えていかないよう、表示欄は1つだけ使い回す
                     var note = document.getElementById('pending-check-note');
                     if (!note) {
@@ -119,7 +124,7 @@
                     note.textContent = '（まだ承認されていません ' + new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) + ' 時点）';
                 }
             } catch(e) {
-                alert('確認に失敗しました: ' + e.message);
+                if (!silent) alert('確認に失敗しました: ' + e.message);
             }
         }
     </script>

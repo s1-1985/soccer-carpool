@@ -440,7 +440,7 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
             const notificationContent = document.createElement('div');
             notificationContent.innerHTML = '\
                 <div class="notification-header">\
-                    <div class="notification-date">' + notification.date.replace(
+                    <div class="notification-date">' + UI.escapeHTML(notification.date || '').replace(
                         new RegExp(escapedKeyword, 'gi'),
                         match => `<span class="highlight">${match}</span>`
                     ) + '</div>\

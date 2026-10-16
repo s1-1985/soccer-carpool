@@ -767,6 +767,11 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                     Storage.setSelectedEvent(ev);
                     return ev;
                 }
+                // サーバーにない＝削除されたイベント。以前は同じタブで選んでいた古い内容のまま
+                // 表示を続け、出欠や車両を入力すると削除済みイベントのデータが作られていた
+                try { sessionStorage.removeItem(Storage.PREFIX + 'selectedEvent'); } catch (e) {}
+                if (UI && UI.showAlert) UI.showAlert('このイベントは削除されています。HUBで予定を確認してください', 'warning', 8000);
+                return null;
             }
         } catch (e) {
             console.warn('イベント情報の取得に失敗:', e);
