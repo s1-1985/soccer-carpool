@@ -534,7 +534,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                 headerName.title = newDriver;
             }
         }
-        app.Carpool.saveData();
+        // 割り当て側の運転手名も更新して保存（割り当ては運転手名で車と対応づけるため）
+        Assignment.saveAssignments();
         Assignment.updateMembersList();
         console.log('ドライバーを更新しました: ' + newDriver);
     };
@@ -944,10 +945,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             message += '\n【コメント】\n' + comment + '\n';
         }
 
-        // 出欠確認・割り当てページのURLを追加
-        var baseUrl = window.location.origin;
-        message += '\n\n▼ 出欠確認:\n' + baseUrl + '/carpool/attendance.html';
-        message += '\n▼ 座席割り当て:\n' + baseUrl + '/carpool/assignments.html';
+        // 出欠確認・割り当てページのURLを追加（イベントID付き。IDがないと別の端末で開いたときにイベントが特定できない）
+        message += '\n\n▼ 出欠確認:\n' + app.Carpool.pageUrl('attendance.html');
+        message += '\n▼ 座席割り当て:\n' + app.Carpool.pageUrl('assignments.html');
         message += '\n\n※リンクはSafari/Chromeで開いてください（LINEブラウザ非対応）';
 
         // テキストをクリップボードにコピー
@@ -1089,6 +1089,17 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                 if (seat) { Assignment.clearSeat(seat); Assignment.saveAssignments(); Assignment.updateMembersList(); }
             }
         });
+
+        // 着信・システムジェスチャー等でタッチが中断された場合、ドラッグ中の
+        // 半透明の複製（ゴースト）が画面に残り続けないよう後片付けする
+        el.addEventListener('touchcancel', function() {
+            if (_td.el !== el) return;
+            if (_td.armTimer) clearTimeout(_td.armTimer);
+            if (_td.ghost) _td.ghost.remove();
+            el.classList.remove('dragging');
+            document.querySelectorAll('.seat.dragover').forEach(function(s) { s.classList.remove('dragover'); });
+            _td = { el: null, ghost: null, data: null, x: 0, y: 0, on: false };
+        });
     };
 
     /**
@@ -1113,29 +1124,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         // イベントデータをロード（Firestore優先 → localStorage フォールバック → Firestore移行）
         var event = Storage.getSelectedEvent();
         if (event) {
-            app.Carpool.appData.eventId = event.id;
-            var firestoreLoaded = false;
-            if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadEventData) {
-                try {
-                    var data = await FCOjima.DB.loadEventData(event.id);
-                    // Firestoreにデータがある場合（ドキュメントが存在する）はそれを使う
-                    if (data) {
-                        app.Carpool.appData.carRegistrations = data.carRegistrations || [];
-                        app.Carpool.appData.assignments     = data.assignments     || [];
-                        app.Carpool.appData.attendance      = data.attendance      || [];
-                        app.Carpool.appData.notifications   = data.notifications   || [];
-                        app.Carpool.appData.comment         = data.comment         || '';
-                        app.Carpool.appData.comments        = data.comments        || [];
-                        firestoreLoaded = true;
-                        console.log('イベントデータをFirestoreからロードしました: 車両=' + app.Carpool.appData.carRegistrations.length + '台');
-                    }
-                } catch (e) {
-                    console.warn('Firestoreイベントデータロード失敗:', e);
-                }
-            }
+            // Firestore優先 → localStorageフォールバック（読み込んだ内容は保存時の差分判定の基準になる）
+            var firestoreLoaded = await app.Carpool.loadEventDataForSelected();
             if (!firestoreLoaded) {
-                // localStorageからロード（既存データを引き継ぐ）
-                app.Carpool.loadData();
                 console.log('localStorageからイベントデータをロードしました: 車両=' + app.Carpool.appData.carRegistrations.length + '台');
                 // localStorageのデータがある場合はFirestoreに移行
                 if (app.Carpool.appData.carRegistrations.length > 0 &&
@@ -1144,7 +1135,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                         carRegistrations: app.Carpool.appData.carRegistrations,
                         assignments:      app.Carpool.appData.assignments,
                         attendance:       app.Carpool.appData.attendance,
-                        notifications:    app.Carpool.appData.notifications
+                        notifications:    app.Carpool.appData.notifications,
+                        comment:          app.Carpool.appData.comment,
+                        comments:         app.Carpool.appData.comments
                     };
                     FCOjima.DB.saveEventData(event.id, migrateData)
                         .then(function() { console.log('localStorageデータをFirestoreに移行完了'); })
@@ -1827,10 +1820,11 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         
         // 既存の配置データを取得
         const existingAssignments = app.Carpool.appData.assignments || [];
+        const matched = Assignment._matchAssignmentsToCars(availableCars, existingAssignments);
         
         // 車両ごとに配置レイアウトを作成
         availableCars.forEach((car, carIndex) => {
-            const carLayout = this.createCarLayout(car, carIndex, existingAssignments);
+            const carLayout = this.createCarLayout(car, carIndex, existingAssignments, matched[carIndex]);
             carsContainer.appendChild(carLayout);
         });
         
@@ -1855,7 +1849,43 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
      * @param {Array} existingAssignments - 既存の配置データ
      * @returns {HTMLElement} 車両レイアウト要素
      */
-    Assignment.createCarLayout = function(car, carIndex, existingAssignments) {
+    /**
+     * 保存済みの座席割り当てを、現在の車両一覧に対応づける。
+     * 割り当ては「何台目の車か（carIndex）」で保存されているため、割り当て後に
+     * 前の方の車が登録削除・提供不可に変更されると、以降の車の乗員が1台ずつ
+     * ずれて別の車に表示されていた。運転手名が一致する割り当てを優先して対応づけ、
+     * 見つからない車（運転手を変更した等）だけ carIndex で対応づける。
+     * @param {Array} cars - 提供可能な車両（表示順）
+     * @param {Array} assignments - 保存済みの割り当て
+     * @returns {Array} cars と同じ並びの割り当て（なければ null）
+     */
+    Assignment._matchAssignmentsToCars = function(cars, assignments) {
+        var used = new Set();
+        var result = cars.map(function() { return null; });
+        function claim(ci, pred) {
+            if (result[ci]) return;
+            for (var i = 0; i < assignments.length; i++) {
+                if (used.has(i) || !assignments[i]) continue;
+                if (pred(assignments[i])) { used.add(i); result[ci] = assignments[i]; return; }
+            }
+        }
+        // 1) 運転手名と位置の両方が一致
+        cars.forEach(function(car, ci) {
+            claim(ci, function(a) { return a.driver && a.driver === car.parent && String(a.carIndex) === String(ci); });
+        });
+        // 2) 運転手名が一致（前の車が消えて位置がずれた場合）
+        cars.forEach(function(car, ci) {
+            claim(ci, function(a) { return a.driver && a.driver === car.parent; });
+        });
+        // 3) 位置が一致し、その運転手がもう車両一覧にいない（運転手を変更した場合）
+        var parents = new Set(cars.map(function(c) { return c.parent; }));
+        cars.forEach(function(car, ci) {
+            claim(ci, function(a) { return String(a.carIndex) === String(ci) && !(a.driver && parents.has(a.driver)); });
+        });
+        return result;
+    };
+
+    Assignment.createCarLayout = function(car, carIndex, existingAssignments, matchedAssignment) {
         // 車両レイアウトのコンテナ
         const carLayout = document.createElement('div');
         carLayout.className = 'car-layout';
@@ -1958,7 +1988,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         
         // 既存の配置データを反映
         var epNames = new Set((car.extraPassengers || []).map(function(ep) { return ep.name; }));
-        const carAssignment = existingAssignments.find(a => a.carIndex === carIndex);
+        const carAssignment = (matchedAssignment !== undefined)
+            ? matchedAssignment
+            : existingAssignments.find(a => String(a.carIndex) === String(carIndex));
         if (carAssignment && carAssignment.seats) {
             Object.keys(carAssignment.seats).forEach(seatType => {
                 const seatIndices = Object.keys(carAssignment.seats[seatType]);

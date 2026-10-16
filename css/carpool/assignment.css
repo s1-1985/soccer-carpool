@@ -237,6 +237,11 @@
     font-weight: bold;
     z-index: 2;
     transition: background 0.15s;
+    /* 全ボタン共通の min-height:40px（common.css）が効いて16×40の縦長になり、
+       座席番号の上に重なっていたため打ち消す */
+    min-height: 0;
+    box-shadow: none;
+    letter-spacing: 0;
 }
 .seat-clear-btn:hover {
     background: rgba(220, 53, 69, 0.4);
@@ -487,6 +492,9 @@
     padding: 0;
     flex-shrink: 0;
     -webkit-tap-highlight-color: transparent;
+    /* 共通の button{min-height:40px} で28×40の楕円になっていたのを正円に戻す */
+    min-height: 0;
+    box-shadow: none;
 }
 .seat-count-btn:active {
     background: #e9ecef;
@@ -558,6 +566,17 @@
         padding-right: 2px;
     }
 
+    /* 狭い2列表示でも3席の列（中列・後列）が車体に収まるよう、カードの余白と座席間隔を詰める。
+       PC用の padding:15px / gap:14px のままだと車体の内幅が足りず、座席が35px程度まで縮んで
+       名前が2文字ずつ縦に折り返していた（2026-10 車両デザイン変更 #100 で発生） */
+    .car-layout {
+        padding: 10px 8px;
+    }
+    .seat-row {
+        gap: 4px;
+        margin-bottom: 10px;
+    }
+
     .car-top-view {
         width: 100%;
         max-width: 100%;
@@ -599,6 +618,8 @@
         white-space: normal;
         word-break: break-all;
         line-height: 1.2;
+        /* 40pxの座席で4文字の略称が1行に収まるよう左右の余白を詰める */
+        padding: 0 1px;
     }
 
     .seat-label {
@@ -1506,6 +1527,15 @@ body.canvas-select-active .canvas-hint {
     border-radius: 12px;
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
 }
+/* キャンバスは紙面サイズ固定（ズームで調整）なので、スマホ2列表示用に詰めた
+   カード余白・座席間隔（@media max-width:768px）は使わずPCと同じ見た目にする */
+#canvas-mode .car-layout {
+    padding: 15px;
+}
+#canvas-mode .seat-row {
+    gap: 14px;
+    margin-bottom: 15px;
+}
 
 /* ── 車の上面図：通常モードと同じシンプルな見た目に統一 ──
    以前はグラデーション＋フロント/リアガラス＋座席ヘッドレストで書き込みすぎな印象
@@ -1536,6 +1566,7 @@ body.canvas-select-active .canvas-hint {
 
 #canvas-mode .seat-name-tag {
     font-size: 11px;
+    padding: 0 4px;
 }
 #canvas-mode .seat-label {
     font-size: 10px;

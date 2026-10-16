@@ -13,6 +13,22 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
     var Storage = app.Storage;
 
     /**
+     * メンバーを追加・編集・削除できるか（Firestoreルール上マネージャーのみ）。
+     * 以前は保護者にも追加・編集・削除ボタンが表示され、押すと画面上は「保存しました」と
+     * 出るのにサーバーへの書き込みは拒否され、再読み込みで元に戻っていた
+     */
+    function canManage() {
+        return !!(app.Auth && app.Auth.isManager && app.Auth.isManager());
+    }
+    Members.canManage = canManage;
+
+    function denyIfCannotManage() {
+        if (canManage()) return false;
+        UI.showAlert('メンバーの追加・編集・削除は管理者・指導者・役員のみ行えます', 'warning');
+        return true;
+    }
+
+    /**
      * メンバー管理機能の初期化
      */
     Members.init = function() {
@@ -31,18 +47,23 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
      * 卒団チェック（中学1年＝grade:null になった選手を自動削除）
      */
     Members.checkGraduation = function() {
+        // メンバーの書き込みはマネージャーのみ（Firestoreルール）。保護者の端末で実行すると
+        // サーバーには反映されないのに画面からだけ消え、ログも端末ごとに重複して記録されていた
+        if (!canManage()) return;
         var members = app.Hub.members || [];
         var graduated = members.filter(function(m) {
             if (m.role !== 'player' || !m.birth) return false;
-            return Utils.calculateGrade(m.birth) === null;
+            // calculateGrade()===null は「未就学で年少未満」「生年月日の入力ミス」でも真になり、
+            // 卒団していない選手まで削除されていたため、中学生以上かどうかで判定する
+            return Utils.isGraduated(m.birth);
         });
         if (graduated.length === 0) return;
 
         graduated.forEach(function(m) {
             var name = m.name;
-            // 保護者の childrenIds から削除
+            // 保護者の childrenIds から削除（父・母以外の役割で登録された保護者も含む）
             members.forEach(function(parent) {
-                if ((parent.role === 'father' || parent.role === 'mother') && parent.childrenIds) {
+                if (parent.role !== 'player' && parent.childrenIds) {
                     parent.childrenIds = parent.childrenIds.filter(function(cid) {
                         return String(cid) !== String(m.id);
                     });
@@ -73,6 +94,15 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
 
         var deleteBtn = document.getElementById('delete-member');
         if (deleteBtn) deleteBtn.addEventListener('click', function() { Members.openMemberSelectForDelete(); });
+
+        // 編集権限がない人には追加・編集・削除ボタンを出さない
+        if (!canManage()) {
+            [addBtn, editBtn, deleteBtn,
+             document.getElementById('edit-member-detail'),
+             document.getElementById('delete-member-detail')].forEach(function(b) {
+                if (b) b.style.display = 'none';
+            });
+        }
 
         var logsBtn = document.getElementById('member-logs');
         if (logsBtn) logsBtn.addEventListener('click', function() { app.Hub.openLogsModal('members'); });
@@ -446,6 +476,7 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
      * メンバー追加・編集モーダルを開く
      */
     Members.openAddMemberModal = function(memberId) {
+        if (denyIfCannotManage()) return;
         var members = app.Hub.members || [];
         var titleEl = document.querySelector('#member-modal h2');
         if (titleEl) titleEl.textContent = memberId ? 'メンバーを編集' : 'メンバーを追加';
@@ -495,6 +526,7 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
      * メンバー保存
      */
     Members.saveMember = function() {
+        if (denyIfCannotManage()) return;
         var members = app.Hub.members || [];
         var logs = app.Hub.logs || [];
 
@@ -571,15 +603,16 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
         var members = app.Hub.members || [];
         var member = members.find(function(m) { return String(m.id) === String(memberId); });
         if (!member) return;
+        if (denyIfCannotManage()) return;
 
         if (!UI.showConfirm('メンバー「' + member.name + '」を削除してもよろしいですか？')) return;
 
         app.Hub.logs = Storage.addLog('members', 'メンバー削除', '「' + member.name + '」', app.Hub.logs || []);
 
-        // 保護者の childrenIds から当該選手を削除
+        // 保護者の childrenIds から当該選手を削除（父・母以外の役割で登録された保護者も含む）
         if (member.role === 'player') {
             members.forEach(function(m) {
-                if ((m.role === 'father' || m.role === 'mother') && m.childrenIds) {
+                if (m.role !== 'player' && m.childrenIds) {
                     m.childrenIds = m.childrenIds.filter(function(cid) { return String(cid) !== String(memberId); });
                 }
             });
@@ -597,6 +630,7 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
      * メンバー選択（編集用）
      */
     Members.openMemberSelectForEdit = function() {
+        if (denyIfCannotManage()) return;
         var members = app.Hub.members || [];
         var logsContent = document.getElementById('logs-content');
         if (!logsContent) return;
@@ -631,6 +665,7 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
      * メンバー選択（削除用）
      */
     Members.openMemberSelectForDelete = function() {
+        if (denyIfCannotManage()) return;
         var members = app.Hub.members || [];
         var logsContent = document.getElementById('logs-content');
         if (!logsContent) return;

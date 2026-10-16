@@ -58,32 +58,9 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
             this.displayEventData(event);
             this.initFileAttachment(event.id);
 
-            // イベントIDを保存
-            app.Carpool.appData.eventId = event.id;
-
             // イベントデータをロード（Firestore優先 → localStorageフォールバック）
-            var firestoreLoaded = false;
-            if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadEventData) {
-                try {
-                    var data = await FCOjima.DB.loadEventData(event.id);
-                    if (data) {
-                        app.Carpool.appData.carRegistrations = data.carRegistrations || [];
-                        app.Carpool.appData.assignments      = data.assignments      || [];
-                        app.Carpool.appData.attendance       = data.attendance       || [];
-                        app.Carpool.appData.notifications    = data.notifications    || [];
-                        app.Carpool.appData.comment          = data.comment          || '';
-                        app.Carpool.appData.comments         = data.comments         || [];
-                        firestoreLoaded = true;
-                        console.log('イベントデータをFirestoreからロードしました');
-                    }
-                } catch (e) {
-                    console.warn('Firestoreイベントデータロード失敗:', e);
-                }
-            }
-            if (!firestoreLoaded) {
-                app.Carpool.loadData();
-            }
-            
+            await app.Carpool.loadEventDataForSelected();
+
             console.log('イベントデータを読み込みました: ID=' + event.id + ', タイトル=' + event.title);
             
             // 車提供タブとアサインメントタブでも簡易情報を表示
@@ -198,7 +175,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                 var meetingVenue = allVenues.find(function(v) { return v.name === event.meetingPlace; });
                 var meetingQuery = (meetingVenue && meetingVenue.address) ? meetingVenue.address : event.meetingPlace;
                 var meetingMapBtn = '<button type="button" class="map-button" onclick="window.open(\'https://www.google.com/maps/search/?api=1&query=' +
-                    encodeURIComponent(meetingQuery) + '\', \'_blank\')">地図を開く</button>';
+                    Utils.encodeForOnclick(meetingQuery) + '\', \'_blank\')">地図を開く</button>';
 
                 locationInfo += `
                 <div class="location-item">
@@ -216,7 +193,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                 var venueData = allVenues2.find(function(v) { return v.name === event.venue; });
                 var venueQuery = (venueData && venueData.address) ? venueData.address : event.venue;
                 var venueMapBtn = '<button type="button" class="map-button" onclick="window.open(\'https://www.google.com/maps/search/?api=1&query=' +
-                    encodeURIComponent(venueQuery) + '\', \'_blank\')">地図を開く</button>';
+                    Utils.encodeForOnclick(venueQuery) + '\', \'_blank\')">地図を開く</button>';
 
                 locationInfo += `
                 <div class="location-item">
@@ -469,9 +446,8 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
             message += '\n備考:\n' + event.notes + '\n';
         }
 
-        // 出欠確認URLを追加
-        var baseUrl = window.location.origin;
-        message += '\n▼ 出欠確認:\n' + baseUrl + '/carpool/attendance.html';
+        // 出欠確認URLを追加（イベントID付き。IDがないと別の端末で開いたときにイベントが特定できない）
+        message += '\n▼ 出欠確認:\n' + app.Carpool.pageUrl('attendance.html');
         message += '\n\n※このリンクはSafari/Chromeで開いてください（LINEブラウザ非対応）';
 
         // テキストをクリップボードにコピー
@@ -492,7 +468,10 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
      */
     Overview.goToMainPage = function() {
         console.log('HUBページに戻ります...');
-        window.location.href = '../hub/index.html';
+        // 保存中のデータがあれば書き込み完了を待ってから移動（移動で通信が切られないように）
+        app.Carpool.whenSaved().then(function() {
+            window.location.href = '../hub/index.html';
+        });
     };
 
     /**
@@ -512,50 +491,299 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
             ' (' + Utils.formatDateForDisplay(event.date) + ' ' + (event.startTime || '') + ')';
     };
 
+    // =============================================
+    //  イベント固有データ（eventData/{eventId}）の読み込み・保存
+    // =============================================
+    //
+    // 以前の saveData は、出欠・車両・座席割り当て・連絡・コメントの全フィールドを
+    // 「ページを開いた時点の手元の内容」で丸ごと上書きしていた。そのため
+    //  - 出欠/車両/連絡ページはコメントを読み込んでいないのに空で上書きし、
+    //    保護者が出欠を保存するたびに配車担当のコメント履歴が消えていた
+    //  - 配車担当が座席を保存すると、ページを開いた後に保護者が回答した出欠が巻き戻った
+    //  - 複数の保護者が同時に出欠を回答すると、後から保存した人の古い内容で
+    //    先に回答した人の出欠が消えた
+    // そこで、読み込んだ時点の内容（基準）と比べて手元で変更したフィールドだけを、
+    // トランザクションで最新の内容とマージして書き込む。
+
+    // フィールドごとの同時編集時のマージ方式
+    //  keyed  : 要素をkeyで突き合わせ、手元で追加・変更・削除した要素だけを反映（出欠: 氏名）
+    //  list   : 手元で追加・変更・削除した要素だけを反映、追加分は末尾（車両登録など）
+    //  prepend: list と同じだが追加分は先頭（新しい順に並ぶ連絡・コメント履歴）
+    //  replace: 手元で変更した場合のみ丸ごと上書き（座席割り当て・最新コメント）
+    var EVENT_DATA_FIELDS = {
+        attendance:        { mode: 'keyed', key: function(a) { return a ? String(a.name) : ''; } },
+        carRegistrations:  { mode: 'list' },
+        assignments:       { mode: 'replace' },
+        notifications:     { mode: 'prepend' },
+        comment:           { mode: 'replace', empty: '' },
+        comments:          { mode: 'prepend' },
+        manualDriverNames: { mode: 'list' }
+    };
+
+    function emptyOf(field) {
+        var def = EVENT_DATA_FIELDS[field];
+        return (def && def.empty !== undefined) ? def.empty : [];
+    }
+    function cloneJSON(v) { return v === undefined ? undefined : JSON.parse(JSON.stringify(v)); }
+    function sameJSON(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+
+    /** 要素をkeyで突き合わせる3方向マージ */
+    function mergeKeyed(base, local, remote, keyFn) {
+        var baseByKey = Object.create(null);
+        base.forEach(function(it) { baseByKey[keyFn(it)] = it; });
+        var localKeys = Object.create(null);
+        local.forEach(function(it) { localKeys[keyFn(it)] = true; });
+        var remoteKeys = Object.create(null);
+        remote.forEach(function(it) { remoteKeys[keyFn(it)] = true; });
+
+        // 手元で削除した要素を除く
+        var result = remote.filter(function(r) {
+            var k = keyFn(r);
+            return !((k in baseByKey) && !(k in localKeys));
+        });
+        local.forEach(function(it) {
+            var k = keyFn(it);
+            if (k in baseByKey) {
+                if (sameJSON(baseByKey[k], it)) return; // 手元では変更していない → 最新の内容を尊重
+            } else if (k in remoteKeys) {
+                return; // 手元で新規追加したが、他の人も同時に追加済み → 先に保存された方を尊重
+            }
+            var idx = result.findIndex(function(r) { return keyFn(r) === k; });
+            if (idx >= 0) result[idx] = it; else result.push(it);
+        });
+        return result;
+    }
+
+    /** 順序つきリストの3方向マージ（要素の同一性は内容で判定） */
+    function mergeList(base, local, remote, prepend) {
+        var J = function(x) { return JSON.stringify(x); };
+        function unmatched(from, against) {
+            var pool = Object.create(null);
+            against.forEach(function(it) { var k = J(it); pool[k] = (pool[k] || 0) + 1; });
+            var idx = [];
+            from.forEach(function(it, i) {
+                var k = J(it);
+                if (pool[k] > 0) pool[k]--; else idx.push(i);
+            });
+            return idx;
+        }
+        var removedIdx = unmatched(base, local); // 基準にあって手元から消えた
+        var addedIdx = unmatched(local, base);   // 手元で増えた
+        var addedSet = new Set(addedIdx);
+        var replaced = new Set();
+        var result = remote.slice();
+
+        removedIdx.forEach(function(bi) {
+            var k = J(base[bi]);
+            var ri = result.findIndex(function(r) { return J(r) === k; });
+            // 件数が同じで同じ位置が入れ替わっている＝その場での編集（座席数変更など）。
+            // 並び順（座席割り当てが車の順番を参照している）を崩さないよう置き換える
+            if (base.length === local.length && addedSet.has(bi)) {
+                replaced.add(bi);
+                if (ri >= 0) result[ri] = local[bi];
+                return;
+            }
+            if (ri >= 0) result.splice(ri, 1);
+        });
+        var toAdd = addedIdx.filter(function(i) { return !replaced.has(i); })
+            .map(function(i) { return local[i]; });
+        return prepend ? toAdd.concat(result) : result.concat(toAdd);
+    }
+
+    function mergeField(field, base, local, remote) {
+        var def = EVENT_DATA_FIELDS[field];
+        if (!def || def.mode === 'replace') return local;
+        if (!Array.isArray(local) || !Array.isArray(base) || !Array.isArray(remote)) return local;
+        // 読み込んだ後に誰も変更していなければ、手元の内容をそのまま書く（通常はこれ）
+        if (sameJSON(remote, base)) return local;
+        if (def.mode === 'keyed') return mergeKeyed(base, local, remote, def.key);
+        return mergeList(base, local, remote, def.mode === 'prepend');
+    }
+
+    var _saveChain = Promise.resolve();
+    var _savePending = 0;
+
     /**
-     * イベントデータをロード（carRegistrations/assignments/attendance/notifications）
+     * 読み込んだイベントデータを appData に展開し、保存時の差分判定の基準として記録する。
+     * 各ページはイベントデータを読み込んだら必ずこれを通すこと。
+     * @param {Object|null} data
+     */
+    app.Carpool.applyEventData = function(data) {
+        data = data || {};
+        var appData = this.appData;
+        var base = {};
+        Object.keys(EVENT_DATA_FIELDS).forEach(function(f) {
+            var v = (data[f] !== undefined && data[f] !== null) ? data[f] : emptyOf(f);
+            appData[f] = cloneJSON(v);
+            base[f] = cloneJSON(v);
+        });
+        this._base = base;
+    };
+
+    /**
+     * 選択中イベントのイベントデータを読み込む（Firestore優先 → localStorageフォールバック）
+     * @returns {Promise<boolean>} Firestoreから読めたか
+     */
+    app.Carpool.loadEventDataForSelected = async function() {
+        var event = Storage.getSelectedEvent();
+        if (!event) return false;
+        this.appData.eventId = event.id;
+        if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadEventData) {
+            try {
+                var data = await FCOjima.DB.loadEventData(event.id);
+                if (data) {
+                    this.applyEventData(data);
+                    return true;
+                }
+            } catch (e) {
+                console.warn('Firestoreイベントデータロード失敗:', e);
+            }
+        }
+        this.loadData();
+        return false;
+    };
+
+    /**
+     * イベントデータをlocalStorageからロード（Firestoreが使えないときのフォールバック）
      */
     app.Carpool.loadData = function() {
         var event = Storage.getSelectedEvent();
         if (!event) return;
         this.appData.eventId = event.id;
-        var data = Storage.loadEventData(event.id);
-        this.appData.carRegistrations = data.carRegistrations || [];
-        this.appData.assignments     = data.assignments     || [];
-        this.appData.attendance      = data.attendance      || [];
-        this.appData.notifications   = data.notifications   || [];
-        this.appData.comment         = data.comment         || '';
-        this.appData.comments        = data.comments        || [];
+        this.applyEventData(Storage.loadEventData(event.id));
         console.log('イベントデータをロードしました: eventId=' + event.id);
     };
 
     /**
-     * イベントデータを保存（localStorage + Firestore）
+     * イベントデータを保存（localStorage + Firestore）。
+     * Firestoreへは、読み込み後に手元で変更したフィールドだけを最新の内容とマージして書き込む。
+     * 保存は順番に1件ずつ処理する。
+     * @returns {Promise} Firestoreへの保存完了（失敗時もrejectはせず通知のみ）
      */
     app.Carpool.saveData = function() {
+        var self = this;
         var eventId = this.appData.eventId;
         if (!eventId) {
             var event = Storage.getSelectedEvent();
             if (event) eventId = event.id;
         }
-        if (!eventId) return;
-        var data = {
-            carRegistrations: this.appData.carRegistrations,
-            assignments:      this.appData.assignments,
-            attendance:       this.appData.attendance,
-            notifications:    this.appData.notifications,
-            comment:          this.appData.comment  || '',
-            comments:         this.appData.comments || []
-        };
-        // localStorageに保存
-        Storage.saveEventData(eventId, data);
-        // Firestoreにも保存
-        if (window.FCOjima && FCOjima.DB && FCOjima.DB.saveEventData) {
-            FCOjima.DB.saveEventData(eventId, data).catch(function(e) {
-                console.warn('Firestore saveEventData失敗:', e);
+        if (!eventId) return Promise.resolve();
+
+        // 端末内キャッシュ（オフライン時のフォールバック用）
+        var all = {};
+        Object.keys(EVENT_DATA_FIELDS).forEach(function(f) {
+            all[f] = (self.appData[f] !== undefined && self.appData[f] !== null) ? self.appData[f] : emptyOf(f);
+        });
+        Storage.saveEventData(eventId, all);
+
+        if (!(window.FCOjima && FCOjima.DB && FCOjima.DB.updateEventData)) return Promise.resolve();
+        _savePending++;
+        _saveChain = _saveChain.then(function() {
+            return self._syncEventData(eventId);
+        }).catch(function(e) {
+            console.warn('Firestore saveEventData失敗:', e);
+            if (UI && UI.showAlert) {
+                UI.showAlert('サーバーへの保存に失敗しました。通信環境を確認して、もう一度保存してください', 'error', 6000);
+            }
+        }).then(function() {
+            _savePending--;
+        });
+        return _saveChain;
+    };
+
+    /** 保存待ちがすべて終わったら解決するPromise（ページ移動前に待つ） */
+    app.Carpool.whenSaved = function() {
+        return _saveChain;
+    };
+
+    app.Carpool._syncEventData = function(eventId) {
+        var self = this;
+        var base = this._base || {};
+        var local = {};
+        var changed = [];
+        Object.keys(EVENT_DATA_FIELDS).forEach(function(f) {
+            var v = (self.appData[f] !== undefined && self.appData[f] !== null) ? self.appData[f] : emptyOf(f);
+            local[f] = cloneJSON(v);
+            var b = (base[f] !== undefined) ? base[f] : emptyOf(f);
+            if (!sameJSON(local[f], b)) changed.push(f);
+        });
+        if (changed.length === 0) return Promise.resolve();
+
+        var wroteAll = false;
+        return FCOjima.DB.updateEventData(eventId, function(remote) {
+            var patch = {};
+            wroteAll = !remote;
+            if (!remote) {
+                // まだドキュメントがない（初回保存・localStorageからの移行）: 手元の内容をすべて書く
+                Object.keys(EVENT_DATA_FIELDS).forEach(function(f) { patch[f] = local[f]; });
+                return patch;
+            }
+            changed.forEach(function(f) {
+                var b = (base[f] !== undefined) ? base[f] : emptyOf(f);
+                var r = (remote[f] !== undefined && remote[f] !== null) ? remote[f] : emptyOf(f);
+                patch[f] = mergeField(f, b, local[f], r);
             });
+            return patch;
+        }).then(function() {
+            // 保存できた手元の内容を新しい基準にする（次回はここから先の変更だけを反映）
+            self._base = self._base || {};
+            (wroteAll ? Object.keys(EVENT_DATA_FIELDS) : changed).forEach(function(f) {
+                self._base[f] = local[f];
+            });
+            console.log('イベントデータを保存しました: eventId=' + eventId + ' (' + changed.join(', ') + ')');
+        });
+    };
+
+    // 保存中にページを離れようとしたら確認（PCブラウザのみ有効）
+    window.addEventListener('beforeunload', function(e) {
+        if (_savePending > 0) {
+            e.preventDefault();
+            e.returnValue = '';
         }
-        console.log('イベントデータを保存しました: eventId=' + eventId);
+    });
+
+    /**
+     * 選択中イベントを確定する。
+     * - URLに ?event=ID があればそのイベントを選択（LINEで共有したリンクを別の端末・
+     *   ブラウザで開いたときは sessionStorage が空のため、IDなしリンクでは
+     *   「イベントが選択されていません」になっていた）
+     * - Firestoreから最新のイベント内容を取り直す（HUBで選んだ後に編集された内容を反映）
+     * @returns {Promise<Object|null>}
+     */
+    app.Carpool.ensureSelectedEvent = async function() {
+        var urlId = null;
+        try { urlId = new URLSearchParams(window.location.search).get('event'); } catch (e) {}
+        var current = Storage.getSelectedEvent();
+        if (urlId && current && String(current.id) !== String(urlId)) current = null;
+        var id = urlId || (current && current.id);
+        if (!id) return current;
+        try {
+            if (window.FCOjimaFirebase && FCOjimaFirebase.Collections) {
+                var doc = await FCOjimaFirebase.Collections.events().doc(String(id)).get();
+                if (doc.exists) {
+                    var ev = Object.assign({}, doc.data(), { id: doc.id });
+                    Storage.setSelectedEvent(ev);
+                    return ev;
+                }
+            }
+        } catch (e) {
+            console.warn('イベント情報の取得に失敗:', e);
+        }
+        if (!current) {
+            try { sessionStorage.removeItem(Storage.PREFIX + 'selectedEvent'); } catch (e) {}
+        }
+        return current;
+    };
+
+    /**
+     * 配車管理ページの共有用URL（イベントID付き）
+     * @param {string} page - 'attendance.html' など
+     */
+    app.Carpool.pageUrl = function(page) {
+        var event = Storage.getSelectedEvent();
+        var url = window.location.origin + '/carpool/' + page;
+        if (event && event.id !== undefined && event.id !== null) url += '?event=' + encodeURIComponent(String(event.id));
+        return url;
     };
 
     /**

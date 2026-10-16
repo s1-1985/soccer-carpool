@@ -36,27 +36,7 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         // イベントデータをロード（Firestore優先 → localStorageフォールバック）
         const event = FCOjima.Storage.getSelectedEvent();
         if (event) {
-            FCOjima.Carpool.appData.eventId = event.id;
-            let firestoreLoaded = false;
-            if (window.FCOjima && FCOjima.DB && FCOjima.DB.loadEventData) {
-                try {
-                    const data = await FCOjima.DB.loadEventData(event.id);
-                    if (data) {
-                        FCOjima.Carpool.appData.carRegistrations = data.carRegistrations || [];
-                        FCOjima.Carpool.appData.assignments     = data.assignments     || [];
-                        FCOjima.Carpool.appData.attendance      = data.attendance      || [];
-                        FCOjima.Carpool.appData.notifications   = data.notifications   || [];
-                        firestoreLoaded = true;
-                        console.log('イベントデータをFirestoreからロードしました: 車両=' + FCOjima.Carpool.appData.carRegistrations.length + '台');
-                    }
-                } catch (e) {
-                    console.warn('Firestoreイベントデータロード失敗:', e);
-                }
-            }
-            if (!firestoreLoaded) {
-                FCOjima.Carpool.loadData();
-                console.log('localStorageからイベントデータをロードしました');
-            }
+            await FCOjima.Carpool.loadEventDataForSelected();
         }
 
         this.updateEventInfo();

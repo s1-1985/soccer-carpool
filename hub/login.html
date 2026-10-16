@@ -8,7 +8,7 @@
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#1C1600">
     <link rel="apple-touch-icon" href="/img/icon-192.png">
-    <link rel="stylesheet" href="../css/common.css?v=20260724">
+    <link rel="stylesheet" href="../css/common.css?v=20261016">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800;900&display=swap" rel="stylesheet">
     <style>
         html, body { height: 100%; }
@@ -197,6 +197,21 @@
     <script src="../js/common/firebase-config.js?v=20260721a"></script>
 
     <script>
+        // ログイン後の戻り先（未ログインで開いたページ。同一サイト内のパスのみ許可）
+        var returnPath = (function() {
+            var p = null;
+            try { p = sessionStorage.getItem('fcojima_return_to'); } catch (e) {}
+            if (p && p.charAt(0) === '/' && p.charAt(1) !== '/' && p.indexOf('\\') === -1
+                && p.indexOf('/hub/login.html') !== 0) {
+                return p;
+            }
+            return null;
+        })();
+        function goAfterLogin() {
+            try { sessionStorage.removeItem('fcojima_return_to'); } catch (e) {}
+            window.location.href = returnPath || '/hub/index.html';
+        }
+
         // LINEなどのアプリ内ブラウザを検出（Google OAuthが使えない）
         var ua = navigator.userAgent;
         var isInAppBrowser = /Line\/|FBAN|FBAV|Instagram|Twitter|Snapchat|MicroMessenger/i.test(ua)
@@ -206,7 +221,9 @@
             var warning = document.getElementById('browser-warning');
             var urlBox = document.getElementById('current-url');
             var signinBtn = document.getElementById('google-signin-btn');
-            var loginUrl = window.location.href;
+            // コピーさせるのは元のページのURL（ログインページのURLだと、Safari等で開き直したときに
+            // 共有されたイベントのページへ戻れない）
+            var loginUrl = returnPath ? (window.location.origin + returnPath) : window.location.href;
 
             warning.style.display = 'block';
             urlBox.textContent = loginUrl;
@@ -239,10 +256,10 @@
 
         const loginAuth = window.FCOjimaFirebase.auth;
 
-        // 既にログイン済みなら HUB へ
+        // 既にログイン済みなら元のページ（なければ HUB）へ
         loginAuth.onAuthStateChanged(function(user) {
             if (user) {
-                window.location.href = '/hub/index.html';
+                goAfterLogin();
             }
         });
 
@@ -251,7 +268,7 @@
             const provider = new firebase.auth.GoogleAuthProvider();
             loginAuth.signInWithPopup(provider)
                 .then(function(result) {
-                    window.location.href = '/hub/index.html';
+                    goAfterLogin();
                 })
                 .catch(function(error) {
                     const errorEl = document.getElementById('login-error');

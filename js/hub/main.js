@@ -86,6 +86,8 @@ FCOjima.Hub.startEventsRealtimeSync = function() {
             var events = snapshot.docs.map(function(doc) {
                 var d = doc.data(); d.id = doc.id; return d;
             });
+            // 保存時の差分判定の基準も最新に揃える（他の人の変更を古い内容で上書きしないため）
+            if (FCOjima.DB && FCOjima.DB.rememberSnapshot) FCOjima.DB.rememberSnapshot('events', snapshot);
             FCOjima.Hub.events = events;
             try { localStorage.setItem('fcojima_events', JSON.stringify(events)); } catch (e) {}
 

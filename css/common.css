@@ -572,6 +572,9 @@ tr:hover { background: #fbf6e8; }
     cursor: pointer;
     line-height: 1;
     border-radius: 50%;
+    /* チップ内の小さな✕。共通の button{min-height:40px} でチップが縦に間延びしていた */
+    min-height: 0;
+    box-shadow: none;
 }
 .duty-member-remove:active { background: rgba(0,0,0,.15); }
 /* メンバー追加select */

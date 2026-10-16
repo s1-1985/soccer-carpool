@@ -12,6 +12,22 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
     var Storage = app.Storage;
 
     /**
+     * 会場を追加・編集・削除できるか（Firestoreルール上マネージャーのみ）。
+     * 以前は保護者にも追加・編集ボタンが表示され、保存すると画面上は成功表示なのに
+     * サーバーへの書き込みは拒否され、再読み込みで消えていた
+     */
+    function canManage() {
+        return !!(app.Auth && app.Auth.isManager && app.Auth.isManager());
+    }
+    Venues.canManage = canManage;
+
+    function denyIfCannotManage() {
+        if (canManage()) return false;
+        UI.showAlert('会場の追加・編集・削除は管理者・指導者・役員のみ行えます', 'warning');
+        return true;
+    }
+
+    /**
      * 会場管理機能の初期化
      */
     Venues.init = function() {
@@ -51,6 +67,7 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
             addBtn.addEventListener('click', function() {
                 Venues.openAddVenueModal();
             });
+            if (!canManage()) addBtn.style.display = 'none';
         }
 
         var venueForm = document.getElementById('venue-form');
@@ -98,8 +115,7 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
 
         listEl.innerHTML = '';
 
-        var currentUser = (app.Auth && app.Auth.getDisplayName) ? app.Auth.getDisplayName() : '';
-        var isManager = app.Auth && app.Auth.isManager && app.Auth.isManager();
+        var isManager = canManage();
 
         venues.forEach(function(venue) {
             var card = document.createElement('div');
@@ -108,14 +124,13 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
             card.dataset.venueName = venue.name || '';
 
             // 地図リンクを生成（住所ベース）
-            var mapsQuery = venue.address ? encodeURIComponent(venue.address) : encodeURIComponent(venue.name || '');
+            var mapsQuery = app.Utils.encodeForOnclick(venue.address || venue.name || '');
             var mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + mapsQuery;
             var locationHtml = venue.address
                 ? '<div class="venue-address">📍 ' + UI.escapeHTML(venue.address) + '</div>'
                 : '';
 
-            // 削除ボタンは登録者本人 or 権限者のみ
-            var canDelete = isManager || (venue.createdBy && currentUser && venue.createdBy === currentUser);
+            // 編集・削除ボタンは権限者のみ（会場の書き込みはFirestoreルール上マネージャー限定）
 
             card.innerHTML =
                 '<div class="venue-card-header">' +
@@ -127,8 +142,8 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
                 '</div>' +
                 '<div class="venue-card-actions">' +
                     '<button type="button" class="secondary-button" onclick="window.open(\'' + mapsUrl + '\',\'_blank\')">地図を開く</button>' +
-                    '<button type="button" class="secondary-button" onclick="FCOjima.Hub.Venues.editVenue(\'' + venue.id + '\')">編集</button>' +
-                    (canDelete ? '<button type="button" class="delete-button" onclick="FCOjima.Hub.Venues.deleteVenue(\'' + venue.id + '\')">削除</button>' : '') +
+                    (isManager ? '<button type="button" class="secondary-button" onclick="FCOjima.Hub.Venues.editVenue(\'' + venue.id + '\')">編集</button>' : '') +
+                    (isManager ? '<button type="button" class="delete-button" onclick="FCOjima.Hub.Venues.deleteVenue(\'' + venue.id + '\')">削除</button>' : '') +
                 '</div>';
 
             listEl.appendChild(card);
@@ -154,6 +169,7 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
      * 会場追加モーダルを開く
      */
     Venues.openAddVenueModal = function(venueId) {
+        if (denyIfCannotManage()) return;
         var venues = app.Hub.venues || [];
 
         var titleEl = document.querySelector('#venue-modal h2');
@@ -183,6 +199,7 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
      * 会場を保存
      */
     Venues.saveVenue = function() {
+        if (denyIfCannotManage()) return;
         var venues = app.Hub.venues || [];
         var logs = app.Hub.logs || [];
 
@@ -242,14 +259,7 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
         var venue = venues.find(function(v) { return String(v.id) === String(venueId); });
         if (!venue) return;
 
-        var currentUser = (app.Auth && app.Auth.getDisplayName) ? app.Auth.getDisplayName() : '';
-        var isManager = app.Auth && app.Auth.isManager && app.Auth.isManager();
-        var canDelete = isManager || (venue.createdBy && currentUser && venue.createdBy === currentUser);
-
-        if (!canDelete) {
-            UI.showAlert('この会場を削除する権限がありません', 'warning');
-            return;
-        }
+        if (denyIfCannotManage()) return;
 
         if (!UI.showConfirm('会場「' + venue.name + '」を削除してもよろしいですか？')) return;
 

@@ -125,6 +125,26 @@ FCOjima.Utils = FCOjima.Utils || {};
     };
     
     /**
+     * 小学校を卒業した年齢（中学1年以上）かどうか。
+     * calculateGrade は「未就学で年少未満」「生年月日が不正」でも null を返すため、
+     * null だけで卒団判定すると、生年月日の入力ミスや未就学の兄弟を登録した選手まで
+     * 自動卒団（削除）されてしまう。卒団判定には必ずこちらを使う。
+     * @param {string} birthDate - YYYY-MM-DD形式の生年月日
+     * @returns {boolean}
+     */
+    Utils.isGraduated = function(birthDate) {
+        if (!birthDate) return false;
+        const birth = new Date(birthDate);
+        if (isNaN(birth.getTime())) return false;
+        const today = new Date();
+        let schoolYear = today.getFullYear();
+        if (today < new Date(today.getFullYear(), 3, 1)) schoolYear -= 1;
+        const afterApr1 = birth.getMonth() > 3 || (birth.getMonth() === 3 && birth.getDate() > 1);
+        const entryYear = birth.getFullYear() + (afterApr1 ? 7 : 6);
+        return schoolYear - entryYear > 5;
+    };
+
+    /**
      * 配列をシャッフル（ランダム化）
      * @param {Array} array - シャッフルする配列
      * @returns {Array} シャッフルされた新しい配列
@@ -289,6 +309,18 @@ FCOjima.Utils = FCOjima.Utils || {};
     };
     
     /**
+     * URLのクエリ値としてエンコードし、onclick="window.open('…')" の中に
+     * そのまま埋め込めるようにする。encodeURIComponent は ' をエンコードしないため、
+     * 「Let'sフットサル」のような会場名・住所だと onclick の文字列が途中で閉じて
+     * 「地図を開く」ボタンが動かなかった
+     * @param {string} value
+     * @returns {string}
+     */
+    Utils.encodeForOnclick = function(value) {
+        return encodeURIComponent(value == null ? '' : String(value)).replace(/'/g, '%27');
+    };
+
+    /**
      * Google Mapリンクを生成
      * @param {string} address - 住所
      * @param {string} label - ラベル
@@ -297,7 +329,7 @@ FCOjima.Utils = FCOjima.Utils || {};
     Utils.createMapUrl = function(address, label = '') {
         if (!address) return '';
         
-        const encodedAddress = encodeURIComponent(address);
+        const encodedAddress = Utils.encodeForOnclick(address);
         let mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
         
         if (label) {

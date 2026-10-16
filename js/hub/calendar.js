@@ -185,14 +185,18 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         });
         
         // 月の移動ボタン
+        // ※ setMonth(±1) だと、29〜31日に操作したとき存在しない日付（例: 10/31→11/31）が
+        //   翌月にずれ込み、月が1つ飛んでいた。必ず1日に揃えてから月を動かす
         document.getElementById('prev-month').addEventListener('click', function() {
-            app.Hub.currentDate.setMonth(app.Hub.currentDate.getMonth() - 1);
+            var d = app.Hub.currentDate;
+            app.Hub.currentDate = new Date(d.getFullYear(), d.getMonth() - 1, 1);
             Calendar.renderCalendar();
             Calendar.renderEventsList();
         });
         
         document.getElementById('next-month').addEventListener('click', function() {
-            app.Hub.currentDate.setMonth(app.Hub.currentDate.getMonth() + 1);
+            var d = app.Hub.currentDate;
+            app.Hub.currentDate = new Date(d.getFullYear(), d.getMonth() + 1, 1);
             Calendar.renderCalendar();
             Calendar.renderEventsList();
         });
@@ -307,7 +311,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         var members = app.Hub.members || [];
         var myChildIds = profile.childrenIds;
         var myChildren = myChildIds
-            .map(function(cid) { return members.find(function(m) { return String(m.id) === String(cid); }); })
+            .map(function(cid) { return Utils.findChildMemberById(members, cid); })
             .filter(Boolean);
 
         if (myChildren.length === 0) return events;
@@ -631,7 +635,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             var allVenues = app.Hub.venues || [];
             var meetingVenueData = allVenues.find(function(v) { return v.name === event.meetingPlace; });
             var meetingMapQuery = (meetingVenueData && meetingVenueData.address) ? meetingVenueData.address : event.meetingPlace;
-            var meetingMapUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(meetingMapQuery);
+            var meetingMapUrl = 'https://www.google.com/maps/search/?api=1&query=' + Utils.encodeForOnclick(meetingMapQuery);
             meetingPlaceDisplay = `
             <div class="detail-item">
                 <span class="detail-label">集合場所:</span> ${UI.escapeHTML(event.meetingPlace)}
@@ -657,7 +661,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             var allVenuesForMap = app.Hub.venues || [];
             var venueDataForMap = allVenuesForMap.find(function(v) { return v.name === event.venue; });
             var venueQueryStr = (venueDataForMap && venueDataForMap.address) ? venueDataForMap.address : event.venue;
-            venueMapBtn = '<button type="button" class="map-button" onclick="window.open(\'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(venueQueryStr) + '\',\'_blank\')" style="margin-left:8px;font-size:11px;padding:2px 8px;background:#4285f4;color:#fff;border:none;border-radius:4px;cursor:pointer;">地図を開く</button>';
+            venueMapBtn = '<button type="button" class="map-button" onclick="window.open(\'https://www.google.com/maps/search/?api=1&query=' + Utils.encodeForOnclick(venueQueryStr) + '\',\'_blank\')" style="margin-left:8px;font-size:11px;padding:2px 8px;background:#4285f4;color:#fff;border:none;border-radius:4px;cursor:pointer;">地図を開く</button>';
         }
 
         // 出欠一覧（イベントの対象学年メンバー）
@@ -744,8 +748,15 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         });
         let eventLogDisplay = '';
         if (eventLogs.length > 0) {
+            // datetime はUTCのISO文字列。文字列を切り出すと9時間ずれた時刻が出るため日本時間に変換して表示
+            const fmtLogTime = function(iso) {
+                if (!iso) return '';
+                const d = new Date(iso);
+                if (isNaN(d.getTime())) return '';
+                return Utils.formatDate(d) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+            };
             const logRows = eventLogs.slice(-5).map(l =>
-                `<div style="font-size:0.85em;border-bottom:1px solid #eee;padding:2px 0;">${l.datetime ? l.datetime.substring(0,16).replace('T',' ') : ''} [${UI.escapeHTML(l.user||'')}] ${UI.escapeHTML(l.action||'')} ${UI.escapeHTML(l.details||'')}</div>`
+                `<div style="font-size:0.85em;border-bottom:1px solid #eee;padding:2px 0;">${fmtLogTime(l.datetime)} [${UI.escapeHTML(l.user||'')}] ${UI.escapeHTML(l.action||'')} ${UI.escapeHTML(l.details||'')}</div>`
             ).join('');
             eventLogDisplay = `<div class="detail-item" style="margin-top:8px;"><span class="detail-label">ログ（直近5件）:</span><div>${logRows}</div></div>`;
         }
@@ -848,7 +859,16 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         document.querySelector('#event-modal h2').textContent = 'イベントを追加';
         
         // フォームをリセット
-        document.getElementById('event-form').reset();
+        // ※ 編集モーダルをキャンセルで閉じると data-event-id が残り、次の「追加」が
+        //   前に開いたイベントの「更新」として保存され、そのイベントが上書きされていた。
+        //   hidden入力（学年外追加選手）も reset() では消えないため明示的にクリアする
+        const eventForm = document.getElementById('event-form');
+        eventForm.reset();
+        eventForm.removeAttribute('data-event-id');
+        const extraInputReset = document.getElementById('event-extra-players');
+        if (extraInputReset) extraInputReset.value = '';
+        const extraListReset = document.getElementById('extra-players-list');
+        if (extraListReset) { extraListReset.innerHTML = ''; extraListReset.style.display = 'none'; }
         
         // 日付を設定（指定があれば）
         if (date) {
@@ -1206,6 +1226,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         }
         
         document.getElementById('event-departure-time').value = event.departureTime || '';
+        // ナイターは出発時間なし（直前に開いたフォームの状態を引き継がないよう毎回設定）
+        document.getElementById('event-departure-time').disabled = (event.type === 'nighter');
         document.getElementById('event-meeting-place').value = event.meetingPlace || '';
         document.getElementById('event-venue').value = event.venue || '';
         document.getElementById('event-start-time').value = event.startTime || '';
@@ -1304,8 +1326,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         const event = events.find(e => String(e.id) === String(eventId));
         if (event) {
             Storage.setSelectedEvent(event);
-            // 配車管理ページに移動
-            window.location.href = '../carpool/index.html';
+            // 配車管理ページに移動（再読み込みやURL共有でもイベントが特定できるようIDを付ける）
+            window.location.href = '../carpool/index.html?event=' + encodeURIComponent(String(event.id));
         }
     };
 
