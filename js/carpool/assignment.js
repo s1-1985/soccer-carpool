@@ -26,10 +26,11 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         seat.style.background = '';
 
         // 追加した要素をすべて削除
-        ['member-icon', 'seat-name-tag', 'seat-clear-btn'].forEach(function(cls) {
+        ['member-icon', 'seat-name-tag', 'seat-clear-btn', 'seat-absent-label'].forEach(function(cls) {
             var el = seat.querySelector('.' + cls);
             if (el) el.remove();
         });
+        seat.classList.remove('seat-absent');
 
         // ラベルが消えていたら復元
         var label = seat.querySelector('.seat-label');
@@ -929,27 +930,28 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             message += `${Utils.formatDateForDisplay(event.date)} ${event.title}\n\n`;
         }
         
-        const assignments = app.Carpool.appData.assignments;
-        const carRegistrations = app.Carpool.appData.carRegistrations;
-        
-        if (assignments && assignments.length > 0) {
-            assignments.forEach((assignment, index) => {
-                message += `■ ${assignment.driver}の車\n`;
-                
-                // 各座席タイプごとに乗車メンバーを表示
-                Object.keys(assignment.seats).forEach(seatType => {
-                    const seatIndices = Object.keys(assignment.seats[seatType]);
-                    if (seatIndices.length === 0) return;
-                    
-                    message += `  ${seatType}: `;
-                    
-                    const passengers = seatIndices.map(seatIndex => {
-                        return assignment.seats[seatType][seatIndex];
-                    }).filter(Boolean);
-                    
-                    message += passengers.join(', ') + '\n';
+        // 画面に表示している車と座席から作る（保存データをそのまま使うと、削除した車・提供不可にした車の
+        // 古い割り当てまで載っていた）。
+        // 割り当てた後に「不参加」になった人は（不参加）と添える
+        const absent = Assignment._absentNameSet();
+        const cars = [];
+        document.querySelectorAll('.car-layout').forEach(function(carLayout) {
+            const driverSeat = carLayout.querySelector('.seat.driver-seat');
+            const rows = [];
+            ['助手席', '中列', '後列'].forEach(function(seatType) {
+                const people = [];
+                carLayout.querySelectorAll('.seat[data-seat-type="' + seatType + '"]').forEach(function(seat) {
+                    const p = seat.dataset.person;
+                    if (p) people.push(absent.has(p) ? p + '（不参加）' : p);
                 });
-                
+                if (people.length > 0) rows.push('  ' + seatType + ': ' + people.join(', '));
+            });
+            cars.push({ driver: driverSeat ? (driverSeat.dataset.person || '') : '', rows: rows });
+        });
+        if (cars.some(function(c) { return c.rows.length > 0; })) {
+            cars.forEach(function(c) {
+                message += `■ ${c.driver}の車\n`;
+                if (c.rows.length > 0) message += c.rows.join('\n') + '\n';
                 message += '\n';
             });
         } else {
@@ -1149,9 +1151,13 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             var firestoreLoaded = await app.Carpool.loadEventDataForSelected();
             if (!firestoreLoaded) {
                 console.log('localStorageからイベントデータをロードしました: 車両=' + app.Carpool.appData.carRegistrations.length + '台');
-                // localStorageのデータがある場合はFirestoreに移行
-                if (app.Carpool.appData.carRegistrations.length > 0 &&
-                    window.FCOjima && FCOjima.DB && FCOjima.DB.saveEventData) {
+                // localStorageのデータがある場合はFirestoreに移行（サーバーにまだ配車データが無いときだけ）。
+                // ※ 以前はサーバーから読めなかった（電波が悪い等）ときにも移行していたため、端末に残っていた
+                //   前回の古い内容（車の登録・座席・出欠）で、その後に他の人が変更したサーバーの内容を上書きしていた。
+                //   読み込みに失敗したときは移行しない。移行もトランザクションで「まだ無い」ことを確かめてから書く
+                if (!app.Carpool._eventDataLoadFailed &&
+                    app.Carpool.appData.carRegistrations.length > 0 &&
+                    window.FCOjima && FCOjima.DB && FCOjima.DB.updateEventData) {
                     var migrateData = {
                         carRegistrations: app.Carpool.appData.carRegistrations,
                         assignments:      app.Carpool.appData.assignments,
@@ -1160,8 +1166,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                         comment:          app.Carpool.appData.comment,
                         comments:         app.Carpool.appData.comments
                     };
-                    FCOjima.DB.saveEventData(event.id, migrateData)
-                        .then(function() { console.log('localStorageデータをFirestoreに移行完了'); })
+                    FCOjima.DB.updateEventData(event.id, function(remote) { return remote ? null : migrateData; })
+                        .then(function(patch) { if (patch) console.log('localStorageデータをFirestoreに移行完了'); })
                         .catch(function(e) { console.warn('Firestore移行失敗:', e); });
                 }
             }
@@ -1878,39 +1884,13 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
      * @returns {HTMLElement} 車両レイアウト要素
      */
     /**
-     * 保存済みの座席割り当てを、現在の車両一覧に対応づける。
-     * 割り当ては「何台目の車か（carIndex）」で保存されているため、割り当て後に
-     * 前の方の車が登録削除・提供不可に変更されると、以降の車の乗員が1台ずつ
-     * ずれて別の車に表示されていた。運転手名が一致する割り当てを優先して対応づけ、
-     * 見つからない車（運転手を変更した等）だけ carIndex で対応づける。
+     * 保存済みの座席割り当てを、現在の車両一覧に対応づける（概要タブの集計と共通。overview.js）
      * @param {Array} cars - 提供可能な車両（表示順）
      * @param {Array} assignments - 保存済みの割り当て
      * @returns {Array} cars と同じ並びの割り当て（なければ null）
      */
     Assignment._matchAssignmentsToCars = function(cars, assignments) {
-        var used = new Set();
-        var result = cars.map(function() { return null; });
-        function claim(ci, pred) {
-            if (result[ci]) return;
-            for (var i = 0; i < assignments.length; i++) {
-                if (used.has(i) || !assignments[i]) continue;
-                if (pred(assignments[i])) { used.add(i); result[ci] = assignments[i]; return; }
-            }
-        }
-        // 1) 運転手名と位置の両方が一致
-        cars.forEach(function(car, ci) {
-            claim(ci, function(a) { return a.driver && a.driver === car.parent && String(a.carIndex) === String(ci); });
-        });
-        // 2) 運転手名が一致（前の車が消えて位置がずれた場合）
-        cars.forEach(function(car, ci) {
-            claim(ci, function(a) { return a.driver && a.driver === car.parent; });
-        });
-        // 3) 位置が一致し、その運転手がもう車両一覧にいない（運転手を変更した場合）
-        var parents = new Set(cars.map(function(c) { return c.parent; }));
-        cars.forEach(function(car, ci) {
-            claim(ci, function(a) { return String(a.carIndex) === String(ci) && !(a.driver && parents.has(a.driver)); });
-        });
-        return result;
+        return app.Carpool.matchAssignmentsToCars(cars, assignments);
     };
 
     Assignment.createCarLayout = function(car, carIndex, existingAssignments, matchedAssignment) {
@@ -2192,7 +2172,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         else delete seat.dataset.isExtraPassenger;
 
         // 既存の表示要素をクリア
-        ['member-icon', 'seat-name-tag', 'seat-clear-btn'].forEach(function(cls) {
+        ['member-icon', 'seat-name-tag', 'seat-clear-btn', 'seat-absent-label'].forEach(function(cls) {
             var el = seat.querySelector('.' + cls);
             if (el) el.remove();
         });
@@ -2226,6 +2206,66 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         nameTag.title = personName;
         if (gc) nameTag.style.color = gc;
         seat.insertBefore(nameTag, clearBtn.nextSibling);
+
+        // 割り当てた後に出欠が「不参加」になった人（座席には残る）に印を付ける
+        var absent = Assignment._absentNameSet().has(personName);
+        seat.classList.toggle('seat-absent', absent);
+        if (absent) {
+            var absentLabel = document.createElement('div');
+            absentLabel.className = 'seat-absent-label';
+            absentLabel.textContent = '不参加';
+            seat.insertBefore(absentLabel, nameTag.nextSibling);
+        }
+    };
+
+    /** 出欠が「不参加」の人の名前 */
+    Assignment._absentNameSet = function() {
+        return new Set((app.Carpool.appData.attendance || []).filter(function(a) {
+            return a && a.status === 'absent';
+        }).map(function(a) { return a.name; }));
+    };
+
+    /**
+     * 割り当てた後に「不参加」になった人が座席に残っていれば、上部に知らせて外せるようにする。
+     * 以前は座席に残ったまま何も表示されず、共有した割り当てにも載るため、運転手が来ない子を待つことがあった
+     */
+    Assignment.updateAbsentWarning = function() {
+        var names = [];
+        document.querySelectorAll('.car-layout .seat.seat-absent[data-person]').forEach(function(seat) {
+            if (names.indexOf(seat.dataset.person) === -1) names.push(seat.dataset.person);
+        });
+        var box = document.getElementById('seat-absent-warning');
+        if (names.length === 0) {
+            if (box) box.style.display = 'none';
+            return;
+        }
+        if (!box) {
+            box = document.createElement('div');
+            box.id = 'seat-absent-warning';
+            box.className = 'seat-absent-warning';
+            var area = document.getElementById('assignment-work-area');
+            if (area && area.parentNode) area.parentNode.insertBefore(box, area);
+            else return;
+        }
+        box.innerHTML = '';
+        var msg = document.createElement('span');
+        msg.textContent = '⚠ 割り当てた後に「不参加」になった人が座席に残っています: ' + names.join('、');
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'seat-absent-clear-btn';
+        btn.textContent = '座席から外す';
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.car-layout .seat.seat-absent[data-person]').forEach(function(seat) {
+                Assignment.clearSeat(seat);
+            });
+            Assignment.saveAssignments();
+            Assignment.updateMembersList();
+            Assignment.updateAbsentWarning();
+            UI.showAlert(names.join('、') + 'さんを座席から外しました', 'success');
+        });
+        box.appendChild(msg);
+        box.appendChild(btn);
+        box.style.display = '';
     };
 
     /**
@@ -2420,6 +2460,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             else Assignment._clearCanvasSelection();
         }
 
+        this.updateAbsentWarning();
         this.updateStatsBar();
     };
 

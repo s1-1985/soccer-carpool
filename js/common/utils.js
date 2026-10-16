@@ -503,4 +503,18 @@ FCOjima.Utils = FCOjima.Utils || {};
             || (member.grade && evTargets.some(function(g) { return String(g) === String(member.grade); }))
             || extraPlayers.includes(member.name);
     };
+
+    /**
+     * 配車管理の出欠ページで「出欠リストから削除」して、その予定の参加者から外した人か（attendanceRemoved）。
+     * 出欠リストに戻した人（出欠表に行がある人）は外れていない扱い。
+     * 以前はHUB側（予定の詳細・参加予定タブ・出欠状況の表・参加率）が外したことを見ておらず、
+     * 外した選手が「未回答」の対象として残り、保護者の参加予定にも出続けていた
+     * @param {Object} member
+     * @param {Object|null} eventData - その予定の出欠・配車データ
+     */
+    Utils.isRemovedFromEvent = function(member, eventData) {
+        if (!member || !eventData || !Array.isArray(eventData.attendanceRemoved)) return false;
+        if (eventData.attendanceRemoved.indexOf(member.name) === -1) return false;
+        return !(eventData.attendance || []).some(function(a) { return a && a.name === member.name; });
+    };
 })();

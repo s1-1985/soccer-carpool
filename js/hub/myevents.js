@@ -107,11 +107,14 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
                     || (child.grade && targets.some(function(g) { return String(g) === String(child.grade); }))
                     || extras.includes(child.name);
                 if (!isTarget) return;
+                // 出欠ページで参加者から外された（その予定には出ない）
+                if (Utils.isRemovedFromEvent(child, dataArr[i])) return;
 
                 var item = att.find(function(a) {
                     return (a.memberId && String(a.memberId) === String(child.id)) || a.name === child.name;
                 });
-                var status = item ? item.status : 'unknown';
+                // 回答の無い行（status 未設定）は未回答として扱う（カレンダーの表示と揃える）
+                var status = (item && item.status) ? item.status : 'unknown';
                 if (status === 'absent') return; // 不参加（移動済み含む）は表示しない
 
                 kids.push({ name: child.name, status: status });
@@ -140,10 +143,21 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
      * 参加予定を再計算し、前回スナップショットとの差分とバッジを更新する
      * （スナップショット自体はタブを開くまで更新しない）
      */
-    MyEvents.refresh = async function() {
-        _items = await MyEvents.computeItems();
-        _changes = MyEvents.diffSnapshot(_items);
-        MyEvents.updateBadge();
+    var _refreshSeq = 0;
+    var _refreshPromise = null;
+    MyEvents.refresh = function() {
+        // 予定の変更が続けて届くと再計算が並行して走る。先に始めた（古い予定一覧で計算した）方が
+        // 後から終わって新しい結果を上書きしないよう、最後に始めた計算の結果だけを使う
+        // （古い方の呼び出し元には、最後の計算が終わるまで待ってから返す）
+        var seq = ++_refreshSeq;
+        var p = MyEvents.computeItems().then(function(items) {
+            if (seq !== _refreshSeq) return _refreshPromise;
+            _items = items;
+            _changes = MyEvents.diffSnapshot(_items);
+            MyEvents.updateBadge();
+        });
+        _refreshPromise = p;
+        return p;
     };
 
     /** 現在の参加予定をスナップショット形式に変換 */

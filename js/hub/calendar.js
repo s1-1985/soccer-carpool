@@ -725,6 +725,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             const attendance = eventData.attendance || [];
             const statusMap = {};
             attendance.forEach(a => { statusMap[a.name] = a.status; });
+            // 出欠ページで参加者から外した人は対象に含めない
+            targetMembers = targetMembers.filter(m => !Utils.isRemovedFromEvent(m, eventData));
 
             const rows = targetMembers.map(m => {
                 const st = statusMap[m.name] || 'pending';
