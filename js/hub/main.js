@@ -95,7 +95,8 @@ FCOjima.Hub.startEventsRealtimeSync = function() {
             // 差分判定の基準にも使わない（再接続後にサーバーからのスナップショットが届く）
             if (snapshot.metadata && snapshot.metadata.fromCache) return;
             var events = snapshot.docs.map(function(doc) {
-                var d = doc.data(); d.id = doc.id; return d;
+                var d = doc.data(); d.id = doc.id;
+                return (FCOjima.DB && FCOjima.DB.normalizeEvent) ? FCOjima.DB.normalizeEvent(d) : d;
             });
             // 保存時の差分判定の基準も最新に揃える（他の人の変更を古い内容で上書きしないため）
             if (FCOjima.DB && FCOjima.DB.rememberSnapshot) FCOjima.DB.rememberSnapshot('events', snapshot);

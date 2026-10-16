@@ -1130,6 +1130,13 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         if (eventFormId) {
             // 既存イベントの更新
             const index = events.findIndex(e => String(e.id) === String(eventFormId));
+            if (index === -1) {
+                // 編集中に他の人がこの予定を削除した（リアルタイム同期で一覧から消えた）。
+                // 以前は何も保存せずに「イベントを保存しました」と表示していた
+                UI.showAlert('この予定は編集中に他の人によって削除されたため、保存できませんでした', 'error', 8000);
+                UI.closeModal('event-modal');
+                return;
+            }
             if (index !== -1) {
                 const origId = events[index].id;
                 events[index] = {

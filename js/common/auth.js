@@ -109,6 +109,11 @@ FCOjima.Auth = FCOjima.Auth || {};
             }
 
             const profile = { uid: user.uid, ...doc.data() };
+            // Firebase Console で手入力したプロフィールでも画面が止まらないよう、配列の項目の形を整える
+            ['childrenIds', 'childrenNames'].forEach(function(k) {
+                const v = profile[k];
+                if (v !== undefined && !Array.isArray(v)) profile[k] = (v === null || v === '' || typeof v === 'object') ? [] : [String(v)];
+            });
 
             if (profile.status === 'pending') {
                 window.location.href = '/hub/pending.html';

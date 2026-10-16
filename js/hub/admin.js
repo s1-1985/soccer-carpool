@@ -408,6 +408,18 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
     //  出欠マトリクス
     // =============================================
 
+    /**
+     * 出欠の名前→状態の表から、その選手の状態を返す（以前の名前 formerNames でも探す。
+     * 名前を変える前に回答した出欠も本人の回答として数えるため）
+     */
+    Admin._statusFor = function(evMap, m) {
+        var st = evMap[m.name] || evMap[String(m.id)];
+        if (!st) {
+            (m.formerNames || []).some(function(n) { st = evMap[n]; return !!st; });
+        }
+        return st || 'unknown';
+    };
+
     var DOW_LABELS = ['日','月','火','水','木','金','土'];
     var GRADE_ORDER = { '年少': -3, '年中': -2, '年長': -1 };
 
@@ -504,7 +516,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 members.forEach(function(m) {
                     if (!isTargetFor(m, ev)) return;
                     targetN++;
-                    var st = evMap[m.name] || evMap[String(m.id)] || 'unknown';
+                    var st = Admin._statusFor(evMap, m);
                     if (st === 'present') present++;
                     else if (st === 'absent') absent++;
                 });
@@ -629,7 +641,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                         status = 'na';
                     } else {
                         var evMap = statusMap[ev.id] || {};
-                        status = evMap[member.name] || evMap[String(member.id)] || 'unknown';
+                        status = Admin._statusFor(evMap, member);
                     }
                     var disp = STATUS_DISP[status] || STATUS_DISP['unknown'];
                     td.textContent = disp.text;
@@ -963,7 +975,8 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                     targetN++;
                     var att = (dataArr[i] && dataArr[i].attendance) || [];
                     var rec = att.find(function(a) {
-                        return (a.memberId != null && String(a.memberId) === String(m.id)) || a.name === m.name;
+                        return (a.memberId != null && String(a.memberId) === String(m.id)) || a.name === m.name ||
+                            (m.formerNames || []).indexOf(a.name) !== -1;
                     });
                     if (rec && rec.status === 'present') presentN++;
                 });

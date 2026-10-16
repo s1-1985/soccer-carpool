@@ -612,6 +612,8 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
      */
     app.Carpool.applyEventData = function(data) {
         data = data || {};
+        // 配列のはずの項目が壊れていても（端末キャッシュ・手入力データ）画面が止まらないよう形を整える
+        if (FCOjima.DB && FCOjima.DB.normalizeEventData) data = FCOjima.DB.normalizeEventData(Object.assign({}, data));
         var appData = this.appData;
         var base = {};
         Object.keys(EVENT_DATA_FIELDS).forEach(function(f) {
@@ -778,6 +780,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                 var doc = await FCOjimaFirebase.Collections.events().doc(String(id)).get();
                 if (doc.exists) {
                     var ev = Object.assign({}, doc.data(), { id: doc.id });
+                    if (FCOjima.DB && FCOjima.DB.normalizeEvent) FCOjima.DB.normalizeEvent(ev);
                     Storage.setSelectedEvent(ev);
                     return ev;
                 }
