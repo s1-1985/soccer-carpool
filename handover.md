@@ -6,6 +6,61 @@ mainの最新コミット: `a23124c` (2026-07-19)「fix: 保護者の子供情�
 
 ---
 
+## 2026-10-16（続き） 6巡目: 添付ファイル・選手情報の権限を承認済みユーザーに限定＋デバッグ
+
+**ユーザー依頼**: 持ち越していた2つのセキュリティ項目を「直して、そのうえで継続してデバッグ」
+
+### 添付ファイル（Storage）: 承認済みユーザーだけ
+- 以前の `storage.rules` は「ログインしていれば誰でも」閲覧・アップロード・削除できた
+  （任意のGoogleアカウントでログインするだけで、承認前でも可能）
+- → Firestore の `teams/{teamId}/users/{uid}` を参照して `status == 'approved'` のときだけ許可
+  （クロスサービスルール `firestore.exists()` / `firestore.get()`）
+- **【必須・初回のみ】このルールを動かすには、Cloud Storage のサービスエージェントに IAM ロールが必要**。
+  CI（GitHub Actions）のデプロイは非対話モードのためロールを付与しない（ルールのアップロードだけ行う）。
+  **ロールがないと承認済みの人も含めて添付ファイルが誰も使えなくなる**ので、マージ前に付与すること:
+  1. Google Cloud コンソールの IAM を開く: https://console.cloud.google.com/iam-admin/iam?project=fc-ojimajr-hub
+  2. 「アクセスを許可」（Grant access）
+  3. 新しいプリンシパル: `service-583979255748@gcp-sa-firebasestorage.iam.gserviceaccount.com`
+     （583979255748 はプロジェクト番号＝firebase-config.js の messagingSenderId）
+  4. ロール: 「Firebase Rules Firestore Service Agent」（`roles/firebaserules.firestoreServiceAgent`）→ 保存
+  - 別の方法: 手元のPCで `firebase deploy --only storage --project fc-ojimajr-hub` を対話モードで実行すると
+    「Cloud Storage for Firebase needs an IAM Role to use cross-service rules. Grant the new role?」と聞かれるので Yes
+  - 付与後の確認: 承認済みのアカウントで予定詳細の「📎 添付ファイル」が表示・追加できること
+
+### 選手情報（members）: 承認済みユーザーだけ
+- 以前は新規登録画面で子供を選ばせるため、未承認の人（任意のGoogleアカウントでログインしただけ）でも
+  選手全員の氏名・生年月日を読めた（`firestore.rules` の `resource.data.role == 'player'` 条項）
+- → members の読み取りは承認済みのみ。登録画面は**子供の氏名を入力**する方式に変更（`childrenNames` に保存、
+  兄弟は「＋ 兄弟を追加」で最大5人）
+- → 管理タブの承認カードで、入力された氏名ごとに選手名簿から本人を選ぶ（氏名・フリガナが一致する選手を
+  初期選択。空白・全角半角・ひらがな/カタカナの違いは無視 `Utils.matchPlayerByName`）。承認すると
+  `childrenIds` を設定し `childrenLinked: true` を付ける
+- 照合せずに承認した場合（却下済みからの承認など）も、`Utils.resolveChildrenIds` が `childrenNames` で照合する
+  （`childrenLinked` のときは管理者の選択を優先して自動照合しない）
+- 旧方式で申請済みの承認待ちユーザー（`childrenIds` あり）は従来どおり表示・承認できる
+
+### ローカル検証の注意（エミュレータ）
+- firebase-tools は HTTPS_PROXY が設定されていると NO_PROXY を見ずに 127.0.0.1 宛ての通信も proxy に送る。
+  そのため **Storage エミュレータのクロスサービスルール（Firestore 参照）が常に失敗し、承認済みでも拒否になる**
+  （ルールのホットリロードが `Unable to parse JSON ... upstream` で落ちるのも同じ原因）。本番の問題ではない
+- 回避: undici の ProxyAgent をローカル宛てだけ直接接続にするプリロードを NODE_OPTIONS で読ませて起動した
+  （HTTPS_PROXY はそのまま。外向きの通信は従来どおり proxy 経由）
+
+### デバッグ
+- 配車管理の下部固定バー（HUBに戻る・保存・共有・次へ）が「幅100%＋左右の余白」で画面より広く、
+  右端のボタンがスマホで12px・PCで20px切れていた → `box-sizing: border-box`
+- 保護者のHUBに「ログを表示」ボタンが出ていたが、操作ログはマネージャーしか読めないため常に
+  「ログがありません」と表示されていた → マネージャー以外にはボタンを出さない
+
+### 検証
+`t-round6sec` 19項目（修正前は承認待ち/未登録ユーザーの添付・選手情報アクセス10件がFAIL）、
+`t-round6` 12項目（修正前は全件FAIL）＋1〜5巡目のテスト一式 → すべてPASS
+
+### キャッシュバスト
+今回変更した JS/CSS → `?v=20261016f`
+
+---
+
 ## 2026-10-16（続き） 全体デバッグ5巡目（出欠の保存漏れ・役員の保護者・ランダム割り当てなど）
 
 **ユーザー依頼**: 「他にもまだバグがないか継続して徹底的にデバッグして」（4巡目 #108 のマージ後に継続）

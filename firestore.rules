@@ -79,9 +79,11 @@ service cloud.firestore {
 
       // ----- メンバー（選手・スタッフ一覧）-----
       match /members/{memberId} {
-        // 承認済みなら全員分読める。未承認（新規登録中）のユーザーは子供選択のために
-        // 選手のドキュメントだけ読める（以前は保護者・指導者の情報も誰でも読めた）
-        allow read: if isAuth() && (isApproved(teamId) || resource.data.role == 'player');
+        // 承認済みのユーザーだけ読める。
+        // 以前は新規登録画面で子供を選ばせるため、未承認（任意のGoogleアカウントでログインしただけ）の
+        // ユーザーにも選手のドキュメント（氏名・生年月日）を読ませていた。登録画面は子供の氏名を
+        // 入力する方式に変え、名簿との照合は承認時に管理者が行う（hub/register.html・管理タブ）
+        allow read: if isAuth() && isApproved(teamId);
 
         // 作成・更新: マネージャーのみ
         // TODO: 将来的にその選手の保護者も編集可にする

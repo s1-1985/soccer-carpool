@@ -29,6 +29,11 @@ Vanilla JS + Firebase（Hosting/Firestore/Auth/Storage）。ビルド工程な�
   // OK: exists(/.../)      ← 専用関数
   ```
 - `get().data.field` でフィールドを参照するのは問題ない。存在確認だけ `exists()` に任せる
+- `storage.rules` は Firestore の users を参照して承認済みか判定している（`firestore.exists()` / `firestore.get()`）。
+  Cloud Storage のサービスエージェントに `Firebase Rules Firestore Service Agent` ロールが必要（付与手順は handover.md）。
+  CI のデプロイではこのロールは付与されない。ロールがないと添付ファイルは誰も使えなくなる
+- ローカルのエミュレータで Storage のルールを試すと、firebase-tools が 127.0.0.1 宛ての通信も HTTPS_PROXY 経由にするため
+  Firestore を参照できず常に拒否になることがある（本番の不具合ではない。handover.md 参照）
 
 ## DB設計の注意点
 

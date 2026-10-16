@@ -8,7 +8,7 @@
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#1C1600">
     <link rel="apple-touch-icon" href="/img/icon-192.png">
-    <link rel="stylesheet" href="../css/common.css?v=20261016d">
+    <link rel="stylesheet" href="../css/common.css?v=20261016f">
     <style>
         .register-container {
             max-width: 500px;
@@ -106,12 +106,13 @@
             </div>
 
             <div class="form-group">
-                <label>自分の子供（選手）を選択</label>
-                <p class="form-note">※1人目を選ぶと2人目の選択欄が自動的に追加されます（兄弟対応）。監督・コーチも同様に登録できます。</p>
-                <div id="child-selectors">
-                    <!-- 子供選択欄がJSで動的に追加される -->
+                <label>お子さん（選手）の氏名</label>
+                <p class="form-note">※フルネームで入力してください。兄弟がいる場合は「＋ 兄弟を追加」で欄を増やせます。管理者が承認するときに選手名簿と照らし合わせます。</p>
+                <div id="child-inputs">
+                    <!-- 子供の氏名の入力欄がJSで追加される -->
                 </div>
-                <p class="form-note">※リストに子供がいない場合は空欄でも申請できます。承認後に管理者または本人が追加可能です。</p>
+                <button type="button" id="add-child-input" class="secondary-button" style="margin-top:6px;">＋ 兄弟を追加</button>
+                <p class="form-note">※監督・コーチなど、お子さんがいない場合は空欄のまま申請できます。</p>
             </div>
 
             <div id="register-error" style="display:none;background:#fdecea;border-radius:6px;padding:12px;color:#c62828;font-size:14px;margin-top:12px;"></div>
@@ -157,93 +158,40 @@
                 }
             } catch(e) { console.warn(e); }
 
-            // 選手リストを読み込む
-            loadPlayers();
+            // 子供の氏名の入力欄（最初の1つ）
+            if (!document.querySelector('#child-inputs input')) addChildInput();
         });
 
-        let allPlayers = [];
-
-        async function loadPlayers() {
-            try {
-                const snap = await regDb.collection('teams').doc(TEAM_ID)
-                    .collection('members').where('role', '==', 'player').get();
-                allPlayers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                allPlayers.sort(function(a, b) {
-                    return (a.name || '').localeCompare(b.name || '', 'ja');
-                });
-                // 最初の選択欄を追加
-                addChildSelector(1);
-            } catch(e) {
-                document.getElementById('child-selectors').innerHTML =
-                    '<p style="color:#c00;padding:8px;">選手リストの読み込みに失敗しました。</p>';
-            }
+        // 子供は選手名簿から選ばせず、氏名を入力してもらう。
+        // 以前は名簿から選ばせるため、承認前の（任意のGoogleアカウントでログインしただけの）人にも
+        // 選手全員の氏名・生年月日を読める状態にしていた。照合は承認時に管理者が行う
+        const MAX_CHILDREN = 5;
+        function addChildInput() {
+            const container = document.getElementById('child-inputs');
+            const count = container.querySelectorAll('input').length;
+            if (count >= MAX_CHILDREN) return;
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control child-name-input';
+            input.placeholder = (count + 1) + '人目のお子さんの氏名（例: 田中 太郎）';
+            input.style.marginTop = count > 0 ? '6px' : '0';
+            input.maxLength = 40;
+            container.appendChild(input);
+            document.getElementById('add-child-input').style.display = (count + 1 >= MAX_CHILDREN) ? 'none' : '';
+            return input;
         }
+        document.getElementById('add-child-input').addEventListener('click', function() {
+            const input = addChildInput();
+            if (input) input.focus();
+        });
 
-        function addChildSelector(index) {
-            const container = document.getElementById('child-selectors');
-
-            // 既に同じindexの選択欄があれば追加しない
-            if (document.getElementById('child-select-' + index)) return;
-
-            const wrap = document.createElement('div');
-            wrap.style.marginBottom = '8px';
-
-            const label = document.createElement('label');
-            label.style.fontSize = '13px';
-            label.style.color = '#555';
-            label.textContent = index + '人目の子供';
-            wrap.appendChild(label);
-
-            const select = document.createElement('select');
-            select.id = 'child-select-' + index;
-            select.name = 'child-' + index;
-            select.className = 'form-control';
-            select.style.marginTop = '4px';
-
-            // 空オプション
-            const emptyOpt = document.createElement('option');
-            emptyOpt.value = '';
-            emptyOpt.textContent = '-- 選択してください --';
-            select.appendChild(emptyOpt);
-
-            // 既に選択済みのIDを除外
-            const selectedIds = getSelectedChildIds();
-            allPlayers.forEach(function(p) {
-                if (selectedIds.includes(p.id)) return;
-                const opt = document.createElement('option');
-                opt.value = p.id;
-                opt.textContent = (p.name || '') + (p.grade ? '（' + (['年少','年中','年長'].includes(p.grade) ? p.grade : p.grade + '年') + '）' : '');
-                select.appendChild(opt);
+        function getChildNames() {
+            const names = [];
+            document.querySelectorAll('#child-inputs input').forEach(function(input) {
+                const v = (input.value || '').trim();
+                if (v && names.indexOf(v) === -1) names.push(v);
             });
-
-            // 選択時に次の欄を追加
-            select.addEventListener('change', function() {
-                // 後続の選択欄を一旦削除して再構築
-                let next = index + 1;
-                while (document.getElementById('child-select-' + next)) {
-                    const toRemove = document.getElementById('child-select-' + next).parentElement;
-                    if (toRemove) toRemove.remove();
-                    next++;
-                }
-                if (this.value) {
-                    addChildSelector(index + 1);
-                }
-            });
-
-            wrap.appendChild(select);
-            container.appendChild(wrap);
-        }
-
-        function getSelectedChildIds() {
-            const ids = [];
-            let i = 1;
-            while (true) {
-                const sel = document.getElementById('child-select-' + i);
-                if (!sel) break;
-                if (sel.value) ids.push(sel.value);
-                i++;
-            }
-            return ids;
+            return names;
         }
 
         document.getElementById('register-form').addEventListener('submit', async function(e) {
@@ -267,7 +215,7 @@
                 return;
             }
 
-            const childrenIds = getSelectedChildIds();
+            const childrenNames = getChildNames();
 
             const btn = this.querySelector('button[type="submit"]');
             btn.disabled = true;
@@ -284,7 +232,9 @@
                         birth: birth || null,
                         email: currentUser.email || null,
                         role: 'parent',
-                        childrenIds,
+                        // 子供は承認時に管理者が選手名簿と照合して childrenIds を設定する
+                        childrenIds: [],
+                        childrenNames,
                         status: 'pending',
                         registeredAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
