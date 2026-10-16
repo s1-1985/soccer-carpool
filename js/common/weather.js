@@ -53,6 +53,11 @@ FCOjima.Weather = FCOjima.Weather || {};
         return Math.round((target - today) / 86400000);
     }
 
+    // 通信エラー（オフライン・一時的な障害）が起きたかどうか。
+    // 「見つからなかった」と区別し、通信エラーの結果は当日キャッシュしない
+    // （以前は電波の悪い所で一度開くと、その日は電波が戻っても天気が出なかった）
+    var _networkFailed = false;
+
     /** 国土地理院APIで住所→ピンポイント座標 */
     function geocodeGSI(address) {
         if (!address) return Promise.resolve(null);
@@ -66,6 +71,7 @@ FCOjima.Weather = FCOjima.Weather || {};
             // GeoJSONは [経度, 緯度] 順
             return (c && typeof c[1] === 'number') ? { lat: c[1], lon: c[0], precise: true } : null;
         }).catch(function() {
+            _networkFailed = true;
             return null;
         });
     }
@@ -80,6 +86,7 @@ FCOjima.Weather = FCOjima.Weather || {};
             var r = data && data.results && data.results[0];
             return r ? { lat: r.latitude, lon: r.longitude, precise: false } : null;
         }).catch(function() {
+            _networkFailed = true;
             return null;
         });
     }
@@ -102,6 +109,7 @@ FCOjima.Weather = FCOjima.Weather || {};
             }
         } catch (e) { /* キャッシュ読み込み失敗は無視して再取得 */ }
 
+        _networkFailed = false;
         return geocodeGSI(address).then(function(loc) {
             if (loc) return loc;
             // フォールバック: Open-Meteo地名検索の連鎖
@@ -131,9 +139,12 @@ FCOjima.Weather = FCOjima.Weather || {};
             });
             return chain;
         }).then(function(loc) {
-            try {
-                localStorage.setItem(cacheKey, JSON.stringify(loc || { miss: todayISO() }));
-            } catch (e) {}
+            // 見つからなかった場合のみ当日キャッシュ（通信エラーで見つからなかったときは次回再試行）
+            if (loc || !_networkFailed) {
+                try {
+                    localStorage.setItem(cacheKey, JSON.stringify(loc || { miss: todayISO() }));
+                } catch (e) {}
+            }
             return loc;
         });
     }
@@ -192,7 +203,10 @@ FCOjima.Weather = FCOjima.Weather || {};
         }).catch(function() {
             return { ok: false, reason: 'network-error' };
         }).then(function(result) {
-            try { sessionStorage.setItem(sessionKey, JSON.stringify(result)); } catch (e) {}
+            // 通信エラーはキャッシュしない（電波が戻れば次に開いたとき表示される）
+            if (result && result.reason !== 'network-error' && !(result.reason === 'geocode-failed' && _networkFailed)) {
+                try { sessionStorage.setItem(sessionKey, JSON.stringify(result)); } catch (e) {}
+            }
             return result;
         });
     };

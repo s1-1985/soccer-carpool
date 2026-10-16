@@ -7,7 +7,12 @@
       "**/.*",
       "**/node_modules/**",
       "firestore.rules",
-      "firestore.indexes.json"
+      "firestore.indexes.json",
+      "storage.rules",
+      "cors.json",
+      "**/*.md",
+      "docs/**",
+      "**/*.log"
     ],
     "headers": [
       {

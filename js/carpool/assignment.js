@@ -19,6 +19,10 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         seat.classList.remove('filled');
         delete seat.dataset.person;
         delete seat.dataset.gradeColor;
+        // メンバー外乗員の印は「座席」ではなく「乗っている人」に付くもの。
+        // 残したままだと、空いた座席をタップしても配置画面ではなくメンバー外乗員の
+        // 編集画面が開き、その座席にメンバーを置けなくなっていた
+        delete seat.dataset.isExtraPassenger;
         seat.style.background = '';
 
         // 追加した要素をすべて削除
@@ -317,7 +321,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         var car = availableCars[carIndex];
         if (!car) return;
         var maxSeats = { frontSeat: 2, middleSeat: 4, backSeat: 4 };
-        var current = car[seatKey] || 0;
+        // 旧データでは座席数が文字列（"2"）のことがあり、"2"+1="21" で最大値に飛んでいた
+        var current = parseInt(car[seatKey], 10) || 0;
         var next = Math.max(0, Math.min(maxSeats[seatKey] || 4, current + delta));
         if (next === current) return;
         car[seatKey] = next;
@@ -1291,6 +1296,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         if (commentTextarea) {
             commentTextarea.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    // 既定動作を止めないと、投稿後に空になった欄へ改行が入ってしまう
+                    e.preventDefault();
                     Assignment.saveComment();
                 }
             });
@@ -2158,6 +2165,10 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
 
         seat.classList.add('filled');
         seat.dataset.person = personName;
+        // メンバー外乗員かどうかは人で判定する（座席同士の入れ替え・ドラッグで
+        // メンバー外乗員と選手が入れ替わっても、印が座席側に取り残されないように）
+        if (Assignment._isExtraPassengerName(personName)) seat.dataset.isExtraPassenger = 'true';
+        else delete seat.dataset.isExtraPassenger;
 
         // 既存の表示要素をクリア
         ['member-icon', 'seat-name-tag', 'seat-clear-btn'].forEach(function(cls) {
@@ -2194,6 +2205,19 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         nameTag.title = personName;
         if (gc) nameTag.style.color = gc;
         seat.insertBefore(nameTag, clearBtn.nextSibling);
+    };
+
+    /**
+     * メンバー外乗員（車提供で登録した、メンバー名簿にいない同乗者）かどうか
+     * @param {string} name
+     * @returns {boolean}
+     */
+    Assignment._isExtraPassengerName = function(name) {
+        if (!name) return false;
+        if ((app.Carpool.members || []).some(function(m) { return m.name === name; })) return false;
+        return (app.Carpool.appData.carRegistrations || []).some(function(c) {
+            return (c.extraPassengers || []).some(function(ep) { return ep.name === name; });
+        });
     };
 
     /** hex色をrgba文字列に変換 */
@@ -2620,21 +2644,13 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         const fromPerson = fromSeat.dataset.person;
         const toPerson = toSeat.dataset.person;
         
-        // 両方とも人が設定されていれば交換
-        if (fromPerson && toPerson) {
-            this.setSeatOccupant(fromSeat, toPerson);
-            this.setSeatOccupant(toSeat, fromPerson);
-        }
-        // 元だけ人が設定されていれば移動
-        else if (fromPerson) {
-            this.setSeatOccupant(toSeat, fromPerson);
-            this.clearSeat(fromSeat);
-        }
-        // 先だけ人が設定されていれば移動
-        else if (toPerson) {
-            this.setSeatOccupant(fromSeat, toPerson);
-            this.clearSeat(toSeat);
-        }
+        // 先に両方の座席を空けてから置き直す（埋まっている座席へ直接 setSeatOccupant すると
+        // 「○○さんをこの座席から外し…」という上書き用の通知が出て、入れ替えなのに
+        // 誰かが外されたように見えていた）
+        if (fromPerson) this.clearSeat(fromSeat);
+        if (toPerson) this.clearSeat(toSeat);
+        if (fromPerson) this.setSeatOccupant(toSeat, fromPerson);
+        if (toPerson) this.setSeatOccupant(fromSeat, toPerson);
         
         // 配置データを保存
         this.saveAssignments();

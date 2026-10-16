@@ -108,8 +108,15 @@
                     document.querySelector('.pending-msg').innerHTML =
                         '<strong style="color:#c00;">申請が却下されました。</strong><br>管理者にお問い合わせください。';
                 } else {
-                    document.querySelector('.pending-msg').innerHTML +=
-                        '<br><span style="color:#888;font-size:12px;">（まだ承認されていません）</span>';
+                    // ボタンを押すたびに同じ文言が増えていかないよう、表示欄は1つだけ使い回す
+                    var note = document.getElementById('pending-check-note');
+                    if (!note) {
+                        note = document.createElement('span');
+                        note.id = 'pending-check-note';
+                        note.style.cssText = 'display:block;color:#888;font-size:12px;margin-top:6px;';
+                        document.querySelector('.pending-msg').appendChild(note);
+                    }
+                    note.textContent = '（まだ承認されていません ' + new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) + ' 時点）';
                 }
             } catch(e) {
                 alert('確認に失敗しました: ' + e.message);
