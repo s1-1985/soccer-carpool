@@ -85,6 +85,13 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
             var name = el.dataset.name;
             if (name) extraPassengers.push({ name: name });
         });
+        // 名前を入力したまま「決定」を押さずに登録した分も含める（以前は黙って捨てられていた）
+        document.querySelectorAll('#extra-passenger-inputs .ep-row:not(.ep-done) input').forEach(function(input) {
+            var name = (input.value || '').trim();
+            if (name && !extraPassengers.some(function(ep) { return ep.name === name; })) {
+                extraPassengers.push({ name: name });
+            }
+        });
 
         const carRegistrations = FCOjima.Carpool.appData.carRegistrations || [];
         // 同じ運転者の登録がすでにあれば確認する（ボタンの二度押しや登録し直しで同じ車が

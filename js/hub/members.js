@@ -171,13 +171,21 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
         var numberGroup = document.getElementById('number-group');
         if (numberGroup) numberGroup.style.display = (role === 'player') ? 'block' : 'none';
 
+        // 子供の欄は父・母・役員（役員として登録された保護者）で出す。以前は役員に出なかったため、
+        // 役員の保護者の子供を設定・変更できなかった（参加予定・座席割り当ては役員の子供も扱う）
         var childrenGroup = document.getElementById('children-group');
         if (childrenGroup) {
-            childrenGroup.style.display = (role === 'father' || role === 'mother') ? 'block' : 'none';
-            if (role === 'father' || role === 'mother') {
+            var hasChildren = Members._roleHasChildren(role);
+            childrenGroup.style.display = hasChildren ? 'block' : 'none';
+            if (hasChildren) {
                 Members.renderChildrenSelector();
             }
         }
+    };
+
+    /** 子供の紐づけを編集できる役割か（父・母・役員） */
+    Members._roleHasChildren = function(role) {
+        return role === 'father' || role === 'mother' || role === 'officer';
     };
 
     /**
@@ -392,7 +400,17 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
                 infoHtml = '<div class="member-info-line">' + parts2.join(' | ') + '</div>';
                 if (childrenNames) infoHtml += '<div class="member-info-line" style="color:#666;font-size:0.85em;">' + UI.escapeHTML(childrenNames) + '</div>';
             } else {
-                infoHtml = '<div class="member-info-line">' + (roleLabels[member.role] || member.role) + '</div>';
+                infoHtml = '<div class="member-info-line">' + UI.escapeHTML(roleLabels[member.role] || member.role) + '</div>';
+                // 役員として登録された保護者は子供も表示する
+                if (Members._roleHasChildren(member.role) && member.childrenIds && member.childrenIds.length > 0) {
+                    var officerChildNames = member.childrenIds.map(function(cid) {
+                        var child = Utils.findChildMemberById(members, cid);
+                        return child ? child.name : null;
+                    }).filter(Boolean);
+                    if (officerChildNames.length > 0) {
+                        infoHtml += '<div class="member-info-line" style="color:#666;font-size:0.85em;">' + UI.escapeHTML('子: ' + officerChildNames.join('、')) + '</div>';
+                    }
+                }
             }
 
             var notesHtml = member.notes ?
@@ -427,7 +445,7 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
         if (member.kana) {
             html += '<tr><td style="padding:6px;font-weight:bold;">フリガナ</td><td style="padding:6px;color:#666;">' + UI.escapeHTML(member.kana) + '</td></tr>';
         }
-        html += '<tr><td style="padding:6px;font-weight:bold;">所属</td><td style="padding:6px;">' + (roleLabels[member.role] || member.role) + '</td></tr>';
+        html += '<tr><td style="padding:6px;font-weight:bold;">所属</td><td style="padding:6px;">' + UI.escapeHTML(roleLabels[member.role] || member.role) + '</td></tr>';
         if (member.gender) {
             html += '<tr><td style="padding:6px;font-weight:bold;">性別</td><td style="padding:6px;">' + (member.gender === 'male' ? '男性' : '女性') + '</td></tr>';
         }
@@ -443,7 +461,7 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
             html += '<tr><td style="padding:6px;font-weight:bold;">背番号</td><td style="padding:6px;">' + member.number + '</td></tr>';
         }
         // 保護者: 子どもの名前を表示
-        if ((member.role === 'father' || member.role === 'mother') && member.childrenIds && member.childrenIds.length > 0) {
+        if (Members._roleHasChildren(member.role) && member.childrenIds && member.childrenIds.length > 0) {
             var childNames = member.childrenIds.map(function(cid) {
                 var child = Utils.findChildMemberById(members, cid);
                 return child ? child.name : null;
@@ -543,7 +561,7 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
 
         // 子どものID（保護者の場合）
         var childrenIds = [];
-        if (role === 'father' || role === 'mother') {
+        if (Members._roleHasChildren(role)) {
             var hiddenChildren = document.getElementById('member-children-ids');
             if (hiddenChildren && hiddenChildren.value) {
                 try { childrenIds = JSON.parse(hiddenChildren.value); } catch(e) {}
@@ -571,7 +589,7 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
                 var origId = members[index].id;
                 // 子供欄は父・母のときしか表示されないため、役員など父・母以外の役割で登録された
                 // 保護者を編集すると子供の紐づけが空で保存されて消えていた。選手以外は元の値を引き継ぐ
-                if (role !== 'father' && role !== 'mother' && role !== 'player' && Array.isArray(members[index].childrenIds)) {
+                if (!Members._roleHasChildren(role) && role !== 'player' && Array.isArray(members[index].childrenIds)) {
                     childrenIds = members[index].childrenIds;
                 }
                 members[index] = { id: origId, name: name, kana: kana, abbr: abbr, birth: birth, gender: gender, role: role, number: number ? parseInt(number, 10) : null, grade: grade, notes: notes, childrenIds: childrenIds };

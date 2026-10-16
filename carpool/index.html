@@ -37,7 +37,8 @@
                 <h3 style="font-size:14px;margin:0 0 8px;color:#555;">添付ファイル</h3>
                 <div id="overview-files-list" style="margin-bottom:10px;display:flex;flex-direction:column;gap:6px;"></div>
                 <div style="display:flex;gap:8px;align-items:center;">
-                    <input type="file" id="overview-file-input" multiple style="display:none;">
+                    <input type="file" id="overview-file-input" multiple style="display:none;"
+                        accept=".pdf,.xls,.xlsx,.csv,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp,.heic,.heif,.bmp,.txt,.md">
                     <button id="overview-file-upload-btn" class="primary-button" style="font-size:13px;padding:8px 16px;">ファイルを追加</button>
                 </div>
             </div>
@@ -74,7 +75,7 @@
     <script src="../js/common/eventfiles.js?v=20261016d"></script>
 
     <!-- 配車管理用モジュール -->
-    <script src="../js/carpool/overview.js?v=20261016d"></script>
+    <script src="../js/carpool/overview.js?v=20261016e"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', async function() {

@@ -66,8 +66,14 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
             return new Date(b.date) - new Date(a.date);
         });
 
+        // 削除ボタンは投稿者本人か管理者・指導者・役員だけに出す（HUBの連絡事項と同じ）。
+        // 以前は全員に出ており、保護者が他の人の連絡を誤って消せた
+        const me = (FCOjima.Auth && FCOjima.Auth.getDisplayName) ? FCOjima.Auth.getDisplayName() : '';
+        const isManager = !!(FCOjima.Auth && FCOjima.Auth.isManager && FCOjima.Auth.isManager());
+
         sorted.forEach(function(n, i) {
             const idx = notifications.indexOf(n);
+            const canDelete = isManager || (n.user && me && n.user === me);
             const card = document.createElement('div');
             card.className = 'notification-card ' + (n.type || 'info');
             card.innerHTML =
@@ -78,7 +84,7 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
                 '<div class="notification-content">' + UI.escapeHTML(n.text).replace(/\n/g, '<br>') + '</div>' +
                 '<div class="notification-actions">' +
                     '<button type="button" class="secondary-button" onclick="FCOjima.Carpool.Notifications.shareNotification(' + idx + ')">共有</button> ' +
-                    '<button type="button" class="delete-button" onclick="FCOjima.Carpool.Notifications.deleteNotification(' + idx + ')">削除</button>' +
+                    (canDelete ? '<button type="button" class="delete-button" onclick="FCOjima.Carpool.Notifications.deleteNotification(' + idx + ')">削除</button>' : '') +
                 '</div>';
             list.appendChild(card);
         });

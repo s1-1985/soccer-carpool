@@ -744,6 +744,20 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         }
     });
 
+    // 保存中に画面上部のタブや概要のカードなど（ページ内リンク）で移動しようとしたら、保存が
+    // 終わってから移動する。スマホでは beforeunload の確認が出ないため、出欠を選んだ直後に
+    // 別のタブへ移ると通信が切られて回答が保存されないことがあった
+    document.addEventListener('click', function(e) {
+        if (_savePending === 0 || e.defaultPrevented || e.button !== 0) return;
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+        if (!a || (a.target && a.target !== '_self') || a.hasAttribute('download')) return;
+        if (a.origin !== window.location.origin) return;
+        e.preventDefault();
+        var href = a.href;
+        app.Carpool.whenSaved().then(function() { window.location.href = href; });
+    });
+
     /**
      * 選択中イベントを確定する。
      * - URLに ?event=ID があればそのイベントを選択（LINEで共有したリンクを別の端末・
