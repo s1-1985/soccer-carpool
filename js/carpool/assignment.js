@@ -220,8 +220,10 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
      *  - 選手: 対象学年（event.target）または学年外追加選手（event.extraPlayers）のうち、
      *    出欠で「参加」と回答済みの選手のみ（2026-07-20ユーザー指示:
      *    「出欠の確認がとれた選手しか割り当てには表示されない」。未回答・欠席は出さない）
-     *  - 保護者（父・母）: 本人が「参加」登録している、または子供が上記の対象選手として
-     *    「参加」登録している場合に対象。本人が「欠席」登録していれば除外
+     *  - 保護者（父・母・役員など選手と指導者以外）: 本人が「参加」登録している、または子供が
+     *    上記の対象選手として「参加」登録している場合に対象。本人が「欠席」登録していれば除外
+     *    （以前は父・母だけで、役員として登録された保護者は「参加」と答えても、子供が参加しても
+     *    座席の候補に出ず、乗せられなかった。出欠表には「イベント」種別で役員も載る）
      */
     Assignment.getEventFilteredMembers = function() {
         var event = Storage.getSelectedEvent();
@@ -272,7 +274,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         );
         var existingNames2 = new Set(filtered.map(function(m) { return m.name; }));
         filtered = filtered.concat(members.filter(function(m) {
-            if (m.role !== 'father' && m.role !== 'mother') return false;
+            if (!Assignment._isGuardianRole(m.role)) return false;
             if (existingNames2.has(m.name)) return false;
             if (absentNames.has(m.name)) return false;
             // 自分自身が参加表明している
@@ -292,6 +294,11 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             seen.add(key);
             return true;
         });
+    };
+
+    /** 保護者として扱う役割か（選手・監督・コーチ以外。父・母・役員など） */
+    Assignment._isGuardianRole = function(role) {
+        return role !== 'player' && role !== 'coach' && role !== 'assist';
     };
 
     /**
@@ -587,10 +594,10 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             .filter(function(n) { if (seenStaff.has(n)) return false; seenStaff.add(n); return true; });
         console.log(`非ドライバーのスタッフ: ${uniqueStaff.length}人`);
 
-        // 非ドライバーの参加確定保護者
+        // 非ドライバーの参加確定保護者（役員など父・母以外の保護者も含む）
         var seenParent = new Set();
         var uniqueParents = eligibleForRandom
-            .filter(function(m) { return (m.role === 'father' || m.role === 'mother') && !driverNameSet.has(m.name); })
+            .filter(function(m) { return Assignment._isGuardianRole(m.role) && !driverNameSet.has(m.name); })
             .map(function(m) { return m.name; })
             .filter(function(n) { if (seenParent.has(n)) return false; seenParent.add(n); return true; });
         console.log(`非ドライバーの参加確定保護者: ${uniqueParents.length}人`);
@@ -633,6 +640,15 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             }
             return false;
         }
+
+        // ── Step2b: 車提供で登録したメンバー外乗員（兄弟など）はその車に先に座らせる ──
+        // 以前は選手で座席を埋めてしまい、メンバー外乗員が車から押し出されて
+        // （画面にも割り当てにも出ず）乗れないことになっていた。配置順は画面の自動配置と同じ後列→中列→助手席
+        drivers.forEach(function(driver, ci) {
+            (driver.extraPassengers || []).forEach(function(ep) {
+                if (ep && ep.name) assignOneSeat(ep.name, ci, ['back', 'middle', 'front']);
+            });
+        });
 
         // ── Step3: スタッフを各車1名まで助手席優先で配置 ──
         var staffIdx = 0;
@@ -1776,6 +1792,11 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             return;
         }
         
+        // ヘッダーも他の配車管理ページと同じく「日付 イベント名」にする（以前はこのページだけ
+        // 「FC尾島ジュニア 座席割り当て」のままで、どの予定の割り当てか分からなかった）
+        const header = document.getElementById('event-header');
+        if (header) header.textContent = Utils.formatDateForDisplay(event.date) + ' ' + event.title;
+
         // イベントタイプのクラスを付与
         eventInfo.className = `event-summary ${event.type || 'other'}`;
         
@@ -2350,7 +2371,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                 roleGroups.coach.members.push(member);
             } else if (member.role === 'player') {
                 roleGroups.player.members.push(member);
-            } else if (member.role === 'father' || member.role === 'mother') {
+            } else if (member.role !== 'other' && Assignment._isGuardianRole(member.role)) {
+                // 父・母・役員（荷物などの 'other' は「その他」）
                 roleGroups.parent.members.push(member);
             } else {
                 roleGroups.other.members.push(member);

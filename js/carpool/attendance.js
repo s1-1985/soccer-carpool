@@ -200,10 +200,34 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
 
             tbody.appendChild(row);
 
+            // 選んだ時点で保存する。以前は「出欠を保存」を押さないと保存されず、選んだだけで
+            // ページを移動した保護者の回答が黙って消えていた（押し忘れが起きやすい）
             row.querySelector('.attendance-select').addEventListener('change', function() {
                 this.className = 'attendance-select ' + this.value;
+                Attendance._saveRow(index, { status: this.value });
+            });
+            row.querySelector('.attendance-notes').addEventListener('change', function() {
+                Attendance._saveRow(index, { notes: this.value });
             });
         });
+    };
+
+    /**
+     * 出欠表の1行分の変更をすぐ保存する
+     * @param {number} index - attendance 配列のインデックス
+     * @param {Object} changes - { status } または { notes }
+     */
+    Attendance._saveRow = function(index, changes) {
+        const attendance = FCOjima.Carpool.appData.attendance || [];
+        const item = attendance[index];
+        if (!item) return;
+        Object.assign(item, changes);
+        FCOjima.Carpool.saveData();
+        this.updateStats();
+        if (changes.status) {
+            const label = { present: '参加', absent: '不参加', unknown: '未回答' }[changes.status] || changes.status;
+            UI.showAlert(item.name + '：「' + label + '」で保存しました', 'success');
+        }
     };
 
     /**

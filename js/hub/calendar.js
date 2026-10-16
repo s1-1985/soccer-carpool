@@ -809,7 +809,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 <div id="calendar-event-files" style="margin:6px 0;display:flex;flex-direction:column;gap:4px;"></div>
                 <button type="button" id="calendar-event-file-btn" class="secondary-button" style="font-size:13px;padding:8px 16px;">ファイルを追加</button>
                 <input type="file" id="calendar-event-file-input" multiple style="display:none;"
-                    accept=".pdf,.xls,.xlsx,.csv,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp,.heic,.txt,.md">
+                    accept=".pdf,.xls,.xlsx,.csv,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp,.heic,.heif,.bmp,.txt,.md">
             </div>
             ${eventLogDisplay}
         `;
@@ -1221,6 +1221,11 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         
         // フォームにイベントIDを設定
         document.getElementById('event-form').setAttribute('data-event-id', event.id);
+
+        // 添付ファイルの選択は持ち越さない（編集フォームは reset() しないため、前に開いて
+        // キャンセルしたフォームで選んだファイルが、この予定に添付されてしまっていた）
+        var formFiles = document.getElementById('event-form-files');
+        if (formFiles) formFiles.value = '';
         
         // フォームに値を設定
         document.getElementById('event-date').value = event.date;
