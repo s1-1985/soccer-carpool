@@ -437,10 +437,42 @@ FCOjima.Utils = FCOjima.Utils || {};
 
         // フォールバック（登録時スナップショット）。メンバー再登録でIDが振り直されると
         // 旧IDが別人（選手以外含む）を指すことがあるため、選手として実在するIDのみ残す
-        return (userLike.childrenIds || []).filter(function(cid) {
+        var ids = (userLike.childrenIds || []).filter(function(cid) {
             return list.some(function(m) {
                 return m.role === 'player' && String(m.id) === String(cid);
             });
+        }).map(String);
+        // 登録時に入力された子供の氏名（childrenNames）でも照合する（承認時に管理者が
+        // 照合しなかった場合や、承認後に選手が登録された場合でも子供が見つかるように）。
+        // 管理者が承認時に照合した場合（childrenLinked）はその結果を優先し、自動照合しない
+        if (!userLike.childrenLinked) (userLike.childrenNames || []).forEach(function(n) {
+            var m = Utils.matchPlayerByName(list, n);
+            if (m && ids.indexOf(String(m.id)) === -1) ids.push(String(m.id));
+        });
+        return ids;
+    };
+
+    /**
+     * 入力された氏名に一致する選手を返す（空白・全角半角・ひらがな/カタカナの違いは無視。
+     * 氏名またはフリガナと一致）。一致する選手が複数いる場合は判断できないため null
+     * @param {Array} members
+     * @param {string} name
+     * @returns {Object|null}
+     */
+    Utils.matchPlayerByName = function(members, name) {
+        var key = Utils.normalizeNameLoose(name);
+        if (!key) return null;
+        var hits = (members || []).filter(function(m) {
+            return m.role === 'player' &&
+                (Utils.normalizeNameLoose(m.name) === key || (m.kana && Utils.normalizeNameLoose(m.kana) === key));
+        });
+        return hits.length === 1 ? hits[0] : null;
+    };
+
+    /** normalizeName に加えて、ひらがなをカタカナに揃える（読みでの照合用） */
+    Utils.normalizeNameLoose = function(name) {
+        return Utils.normalizeName(name).replace(/[\u3041-\u3096]/g, function(c) {
+            return String.fromCharCode(c.charCodeAt(0) + 0x60);
         });
     };
 

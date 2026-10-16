@@ -466,6 +466,8 @@ tr:hover { background: #fbf6e8; }
     position: fixed;
     bottom: 0; left: 0;
     width: 100%;
+    /* 幅100%＋左右の余白で画面より広くなり、右端のボタンが切れていた */
+    box-sizing: border-box;
     background: var(--grad-ink);
     padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
     box-shadow: 0 -6px 20px -6px rgba(0,0,0,.5);

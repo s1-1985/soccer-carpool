@@ -387,13 +387,21 @@ FCOjima.DB = FCOjima.DB || {};
         return users;
     };
 
-    DB.approveUser = async function(uid, approvedByUid) {
+    /**
+     * @param {Array<string>|null} [childrenIds] - 承認時に管理者が照合した子供（null/省略なら変更しない）
+     */
+    DB.approveUser = async function(uid, approvedByUid, childrenIds) {
+        const data = {
+            status: 'approved',
+            approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            approvedBy: approvedByUid
+        };
+        if (Array.isArray(childrenIds)) {
+            data.childrenIds = childrenIds.map(String);
+            data.childrenLinked = true; // 管理者が照合済み（入力された氏名での自動照合はしない）
+        }
         await db.collection('teams').doc(TEAM_ID)
-            .collection('users').doc(uid).update({
-                status: 'approved',
-                approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                approvedBy: approvedByUid
-            });
+            .collection('users').doc(uid).update(data);
     };
 
     DB.rejectUser = async function(uid) {

@@ -159,6 +159,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
      */
     Admin.createPendingCard = function(u) {
         var members = app.Hub.members || [];
+        var typedNames = Array.isArray(u.childrenNames) ? u.childrenNames.filter(Boolean) : [];
         var childNames = Admin._resolveChildrenIds(u, members).map(function(cid) {
             var m = FCOjima.Utils.findChildMemberById(members, cid);
             return m ? m.name : cid;
@@ -171,15 +172,60 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             '<div style="font-weight:bold;margin-bottom:4px;">' + esc(u.name || '') + '</div>' +
             '<div style="font-size:13px;color:#666;">メール: ' + esc(u.email || '不明') + '</div>' +
             '<div style="font-size:13px;color:#666;">性別: ' + (u.gender === 'male' ? '男性' : u.gender === 'female' ? '女性' : '不明') + '</div>' +
-            '<div style="font-size:13px;color:#666;">子供: ' + esc(childNames) + '</div>' +
+            (typedNames.length > 0
+                ? '<div style="font-size:13px;color:#666;margin-top:4px;">子供（申請時の入力を選手名簿と照合してください）:</div>' +
+                  '<div class="pending-children"></div>'
+                : '<div style="font-size:13px;color:#666;">子供: ' + esc(childNames) + '</div>') +
             '<div style="font-size:12px;color:#aaa;margin-top:4px;">申請日時: ' + (u.registeredAt ? new Date(u.registeredAt.seconds * 1000).toLocaleString('ja-JP') : '不明') + '</div>' +
             '<div style="display:flex;gap:8px;margin-top:10px;">' +
                 '<button class="approve-btn" data-uid="' + u.uid + '" style="flex:1;padding:8px;background:#2ecc71;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:bold;">承認</button>' +
                 '<button class="reject-btn" data-uid="' + u.uid + '" style="flex:1;padding:8px;background:#e74c3c;color:white;border:none;border-radius:6px;cursor:pointer;">却下</button>' +
             '</div>';
 
+        // 申請時に入力された子供の氏名ごとに、選手名簿から本人を選ぶ欄（一致する選手を初期選択）。
+        // 登録画面では承認前の人に名簿を見せないため、照合はここで管理者が行う
+        var childSelects = [];
+        var childBox = card.querySelector('.pending-children');
+        if (childBox) {
+            var players = members.filter(function(m) { return m.role === 'player'; }).slice().sort(function(a, b) {
+                return (a.name || '').localeCompare(b.name || '', 'ja');
+            });
+            typedNames.forEach(function(typed) {
+                var row = document.createElement('div');
+                row.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:4px 0;font-size:13px;';
+                var lbl = document.createElement('span');
+                lbl.textContent = '「' + typed + '」→';
+                var sel = document.createElement('select');
+                sel.className = 'pending-child-select';
+                sel.style.cssText = 'flex:1;min-width:140px;padding:4px 6px;border:1px solid #ddd;border-radius:4px;font-size:13px;';
+                var none = document.createElement('option');
+                none.value = '';
+                none.textContent = '（該当なし・あとで設定）';
+                sel.appendChild(none);
+                var match = FCOjima.Utils.matchPlayerByName(players, typed);
+                players.forEach(function(p) {
+                    var opt = document.createElement('option');
+                    opt.value = String(p.id);
+                    opt.textContent = p.name + (p.grade ? '（' + FCOjima.Utils.getGradeLabel(p.grade) + '）' : '');
+                    if (match && String(match.id) === String(p.id)) opt.selected = true;
+                    sel.appendChild(opt);
+                });
+                row.appendChild(lbl);
+                row.appendChild(sel);
+                childBox.appendChild(row);
+                childSelects.push(sel);
+            });
+        }
+
         card.querySelector('.approve-btn').addEventListener('click', function() {
-            Admin.approveUser(u.uid, u.name);
+            var ids = null;
+            if (childSelects.length > 0) {
+                ids = [];
+                childSelects.forEach(function(sel) {
+                    if (sel.value && ids.indexOf(sel.value) === -1) ids.push(sel.value);
+                });
+            }
+            Admin.approveUser(u.uid, u.name, ids);
         });
         card.querySelector('.reject-btn').addEventListener('click', function() {
             Admin.rejectUser(u.uid, u.name);
@@ -191,11 +237,25 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
     /**
      * ユーザーを承認
      */
-    Admin.approveUser = async function(uid, name) {
-        if (!confirm((name || uid) + ' を承認しますか？')) return;
+    /**
+     * @param {string} uid
+     * @param {string} name
+     * @param {Array<string>|null} [childrenIds] - 承認カードで照合した子供（null なら変更しない）
+     */
+    Admin.approveUser = async function(uid, name, childrenIds) {
+        var childLine = '';
+        if (Array.isArray(childrenIds)) {
+            var members = app.Hub.members || [];
+            var names = childrenIds.map(function(cid) {
+                var m = FCOjima.Utils.findChildMemberById(members, cid);
+                return m ? m.name : cid;
+            });
+            childLine = '\n子供: ' + (names.length > 0 ? names.join('、') : '（なし）');
+        }
+        if (!confirm((name || uid) + ' を承認しますか？' + childLine)) return;
         try {
             var currentUid = app.Auth && app.Auth.getCurrentUser() ? app.Auth.getCurrentUser().uid : null;
-            await FCOjima.DB.approveUser(uid, currentUid);
+            await FCOjima.DB.approveUser(uid, currentUid, childrenIds);
             if (UI) UI.showAlert((name || uid) + ' を承認しました', 'success');
             Admin.refresh();
         } catch(e) {
