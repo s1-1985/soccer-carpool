@@ -127,8 +127,34 @@ FCOjima.Auth = FCOjima.Auth || {};
             console.error('ユーザー情報の取得に失敗:', e);
             // Firestoreエラー時は管理者扱いで続行しない → ログインのみ確認
             Auth.currentUserProfile = null;
+            // 以前は何も表示されず、画面の枠だけが出たまま操作できない状態になっていた
+            Auth.showLoadError();
             return null;
         }
+    };
+
+    /**
+     * 読み込み失敗（オフライン・通信エラー）を画面に表示する
+     */
+    Auth.showLoadError = function() {
+        if (document.getElementById('fcojima-load-error')) return;
+        var box = document.createElement('div');
+        box.id = 'fcojima-load-error';
+        box.setAttribute('role', 'alert');
+        box.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(28,22,0,.6);display:flex;align-items:center;justify-content:center;padding:16px;';
+        var card = document.createElement('div');
+        card.style.cssText = 'background:#fff;border-radius:12px;padding:20px;max-width:360px;width:100%;text-align:center;font-family:sans-serif;';
+        var msg = document.createElement('p');
+        msg.style.cssText = 'margin:0 0 14px;line-height:1.6;color:#333;';
+        msg.textContent = 'データを読み込めませんでした。通信環境の良い所で、もう一度読み込んでください。';
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = '再読み込み';
+        btn.addEventListener('click', function() { window.location.reload(); });
+        card.appendChild(msg);
+        card.appendChild(btn);
+        box.appendChild(card);
+        (document.body || document.documentElement).appendChild(box);
     };
 
     /**

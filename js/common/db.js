@@ -42,6 +42,21 @@ FCOjima.DB = FCOjima.DB || {};
         return v;
     }
 
+    /**
+     * 一覧の読み込み結果がサーバーからのものか確認する。
+     * オフライン時、一覧の get() はエラーにならず端末内キャッシュ（初回は空）を返すため、
+     * そのまま「サーバーのデータ」として扱うと、空の一覧を見た画面が端末に残っている古いデータに
+     * 差し替え、その古い内容で保存して他の人の変更を上書きしていた
+     */
+    function ensureFromServer(snapshot) {
+        if (snapshot && snapshot.metadata && snapshot.metadata.fromCache) {
+            const err = new Error('サーバーに接続できません（オフライン）');
+            err.code = 'unavailable';
+            throw err;
+        }
+    }
+    DB.ensureFromServer = ensureFromServer;
+
     /** 読み込んだドキュメント群をbaselineとして記録する */
     function rememberDocs(name, docs) {
         const m = new Map();
@@ -58,7 +73,15 @@ FCOjima.DB = FCOjima.DB || {};
     };
 
     async function syncCollection(name, colRef, items) {
-        const base = _baselines[name] || new Map();
+        // 一度もサーバーから読み込めていない（オフライン等で端末内の古いデータにフォールバック中）
+        // ときは、手元のどれが変更なのか判断できない。そのまま書くと古い内容で他の人の変更を
+        // 上書きしてしまうため保存しない
+        if (!_baselines[name]) {
+            const err = new Error('サーバーから最新のデータを読み込めていないため保存できません。電波の良い所でページを再読み込みしてから、もう一度操作してください');
+            err.code = 'not-loaded';
+            throw err;
+        }
+        const base = _baselines[name];
         const next = new Map(base);
         const ops = [];
         const seen = new Set();
@@ -104,6 +127,7 @@ FCOjima.DB = FCOjima.DB || {};
 
     DB.loadMembers = async function() {
         const snapshot = await Collections.members().orderBy('role').get();
+        ensureFromServer(snapshot);
         rememberDocs('members', snapshot.docs);
         const members = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         // 4月1日を過ぎると学年が変わるため、birthから毎回再計算して上書き
@@ -143,6 +167,7 @@ FCOjima.DB = FCOjima.DB || {};
 
     DB.loadVenues = async function() {
         const snapshot = await Collections.venues().get();
+        ensureFromServer(snapshot);
         rememberDocs('venues', snapshot.docs);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     };
@@ -155,6 +180,7 @@ FCOjima.DB = FCOjima.DB || {};
 
     DB.loadEvents = async function() {
         const snapshot = await Collections.events().orderBy('date').get();
+        ensureFromServer(snapshot);
         rememberDocs('events', snapshot.docs);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     };
@@ -174,6 +200,7 @@ FCOjima.DB = FCOjima.DB || {};
         threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
         const snapshot = await Collections.notifications().get();
+        ensureFromServer(snapshot);
         // 期限切れも含めてbaselineに記録 → 返り値から外れたものは次回保存で削除される
         rememberDocs('notifications', snapshot.docs);
         return snapshot.docs

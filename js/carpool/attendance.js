@@ -42,9 +42,10 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
         // イベント情報を表示
         this.updateEventInfo();
 
-        // 出欠データが空なら対象学年の選手を自動追加
-        if (event && FCOjima.Carpool.appData.attendance.length === 0) {
-            this.autoPopulateFromTargetGrades(event);
+        // 対象者のうち出欠表にまだいない人を追加（後から入部した選手・後から変えた対象学年や
+        // 学年外追加選手も反映する）
+        if (event) {
+            this.syncTargets(event);
         }
 
         // テーブルと統計を更新
@@ -90,70 +91,57 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
     };
 
     /**
-     * 対象学年から出欠リストを自動生成
+     * イベントの対象者のうち、出欠表にまだいない人を「未回答」で追加する。
+     * 対象者 = 対象学年の選手（学年指定なしなら全選手）＋学年外追加選手
+     *          ＋（イベント種別「イベント」なら）父・母・役員
+     *
+     * 以前は出欠表が空のときにだけ作成していたため、出欠表を一度開いた後に入部した選手や、
+     * 後からイベントの対象学年・学年外追加選手を変えた分の選手が出欠表に出てこず、
+     * 保護者が回答できなかった（カレンダー・参加予定タブには「未回答」で出るのに食い違っていた）。
+     * 「参加者を削除」で手動で外した人（attendanceRemoved）は戻さない。
      * @param {Object} event - イベントオブジェクト
+     * @returns {number} 追加した人数
      */
-    Attendance.autoPopulateFromTargetGrades = function(event) {
-        const members = FCOjima.Carpool.members;
-        const targetGrades = (event && event.target && event.target.length > 0) ? event.target : null;
-        const isEventType = event && event.type === 'event';
+    Attendance.syncTargets = function(event) {
+        if (!event) return 0;
+        const appData = FCOjima.Carpool.appData;
+        const members = FCOjima.Carpool.members || [];
+        if (!Array.isArray(appData.attendance)) appData.attendance = [];
+        const attendance = appData.attendance;
+        const removed = new Set(appData.attendanceRemoved || []);
+        const existing = new Set(attendance.map(function(a) { return a.name; }));
+        const targetGrades = (event.target && event.target.length > 0) ? event.target : null;
 
-        // 選手を追加
-        const players = members.filter(function(m) {
-            if (m.role !== 'player') return false;
-            if (targetGrades) {
-                return m.grade && targetGrades.some(function(g) { return String(g) === String(m.grade); });
-            }
-            return true;
+        const names = [];
+        members.forEach(function(m) {
+            if (m.role !== 'player') return;
+            if (targetGrades && !(m.grade && targetGrades.some(function(g) { return String(g) === String(m.grade); }))) return;
+            names.push(m.name);
         });
-
-        players.forEach(function(player) {
-            FCOjima.Carpool.appData.attendance.push({
-                name: player.name,
-                status: 'unknown',
-                notes: ''
+        (event.extraPlayers || []).forEach(function(n) { names.push(n); });
+        if (event.type === 'event') {
+            members.forEach(function(m) {
+                if (m.role === 'mother' || m.role === 'father' || m.role === 'officer') names.push(m.name);
             });
-        });
-
-        // 学年外追加選手を追加（重複を除く）
-        const extraPlayers = (event && event.extraPlayers) ? event.extraPlayers : [];
-        const alreadyAdded = new Set(players.map(function(p) { return p.name; }));
-        extraPlayers.forEach(function(name) {
-            if (!alreadyAdded.has(name)) {
-                FCOjima.Carpool.appData.attendance.push({
-                    name: name,
-                    status: 'unknown',
-                    notes: ''
-                });
-                alreadyAdded.add(name);
-            }
-        });
-
-        // イベント種別が「イベント」の場合は保護者も追加
-        if (isEventType) {
-            const parents = members.filter(function(m) {
-                return m.role === 'mother' || m.role === 'father' || m.role === 'officer';
-            });
-            parents.forEach(function(parent) {
-                FCOjima.Carpool.appData.attendance.push({
-                    name: parent.name,
-                    status: 'unknown',
-                    notes: ''
-                });
-            });
-            if (parents.length > 0) {
-                console.log('イベントのため保護者 ' + parents.length + ' 人を出欠リストに追加しました');
-            }
         }
 
-        const extraAdded = extraPlayers.filter(function(n) { return !players.find(function(p) { return p.name === n; }); }).length;
-        const added = players.length + extraAdded + (isEventType ? members.filter(function(m) {
-            return m.role === 'mother' || m.role === 'father' || m.role === 'officer';
-        }).length : 0);
+        let added = 0;
+        names.forEach(function(name) {
+            if (!name || existing.has(name) || removed.has(name)) return;
+            attendance.push({ name: name, status: 'unknown', notes: '' });
+            existing.add(name);
+            added++;
+        });
         if (added > 0) {
             FCOjima.Carpool.saveData();
-            console.log('合計 ' + added + ' 人を出欠リストに追加しました');
+            console.log(added + ' 人を出欠リストに追加しました');
         }
+        return added;
+    };
+
+    /** 旧名（互換） */
+    Attendance.autoPopulateFromTargetGrades = function(event) {
+        return Attendance.syncTargets(event);
     };
 
     /**
@@ -198,6 +186,8 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
             const grade = member && member.grade ? FCOjima.Utils.getGradeLabel(member.grade) : '-';
 
             const row = document.createElement('tr');
+            // 出欠ステータスはクラス名に使うため既知の値に限定する
+            if (['present', 'absent', 'unknown'].indexOf(item.status) === -1) item.status = 'unknown';
             row.innerHTML =
                 '<td>' + UI.escapeHTML(item.name) + '</td>' +
                 '<td>' + UI.escapeHTML(grade) + '</td>' +
@@ -455,6 +445,9 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
             status: 'unknown',
             notes: ''
         });
+        // 以前に手動で外した人なら、その記録を消す（次回から対象者として扱う）
+        FCOjima.Carpool.appData.attendanceRemoved = (FCOjima.Carpool.appData.attendanceRemoved || [])
+            .filter(function(n) { return n !== member.name; });
         
         // データを保存
         FCOjima.Carpool.appData.attendance = attendance;
@@ -487,6 +480,11 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
             return;
         }
         
+        // 手動で外したことを記録（対象学年の選手でも、次に開いたとき自動で戻さない）
+        const removedList = FCOjima.Carpool.appData.attendanceRemoved || [];
+        if (removedList.indexOf(name) === -1) removedList.push(name);
+        FCOjima.Carpool.appData.attendanceRemoved = removedList;
+
         // データを保存
         FCOjima.Carpool.appData.attendance = newAttendance;
         FCOjima.Carpool.saveData();

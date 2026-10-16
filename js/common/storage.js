@@ -16,6 +16,20 @@ FCOjima.Storage = FCOjima.Storage || {};
     Storage.PREFIX = 'fcojima_';
 
     /**
+     * サーバーへの保存に失敗したことを画面に出す。
+     * 以前はコンソールに出すだけで、画面上は「保存しました」のまま再読み込みで消えていた
+     */
+    function reportSaveError(what, e) {
+        console.warn('Firestore ' + what + ':', e);
+        var UI = window.FCOjima && FCOjima.UI;
+        if (UI && UI.showAlert) {
+            var msg = (e && e.code === 'not-loaded') ? e.message
+                : 'サーバーへの保存に失敗しました。通信環境を確認して、ページを再読み込みしてからもう一度操作してください';
+            UI.showAlert(msg, 'error', 8000);
+        }
+    }
+
+    /**
      * メンバーデータをローカルストレージから読み込む
      * ※Firestoreデータはページ初期化時に app.Hub.members へ格納済み
      */
@@ -46,7 +60,7 @@ FCOjima.Storage = FCOjima.Storage || {};
     Storage.saveEvents = function(events) {
         localStorage.setItem(this.PREFIX + 'events', JSON.stringify(events));
         if (window.FCOjima && FCOjima.DB) {
-            FCOjima.DB.saveEvents(events).catch(e => console.warn('Firestore saveEvents:', e));
+            FCOjima.DB.saveEvents(events).catch(e => reportSaveError('saveEvents', e));
         }
     };
     
@@ -57,7 +71,7 @@ FCOjima.Storage = FCOjima.Storage || {};
     Storage.saveMembers = function(members) {
         localStorage.setItem(this.PREFIX + 'members', JSON.stringify(members));
         if (window.FCOjima && FCOjima.DB) {
-            FCOjima.DB.saveMembers(members).catch(e => console.warn('Firestore saveMembers:', e));
+            FCOjima.DB.saveMembers(members).catch(e => reportSaveError('saveMembers', e));
         }
     };
     
@@ -80,7 +94,7 @@ FCOjima.Storage = FCOjima.Storage || {};
     Storage.saveVenues = function(venues) {
         localStorage.setItem(this.PREFIX + 'venues', JSON.stringify(venues));
         if (window.FCOjima && FCOjima.DB) {
-            FCOjima.DB.saveVenues(venues).catch(e => console.warn('Firestore saveVenues:', e));
+            FCOjima.DB.saveVenues(venues).catch(e => reportSaveError('saveVenues', e));
         }
     };
     
@@ -242,7 +256,7 @@ FCOjima.Storage = FCOjima.Storage || {};
     Storage.saveNotifications = function(notifications) {
         localStorage.setItem(this.PREFIX + 'notifications', JSON.stringify(notifications));
         if (window.FCOjima && FCOjima.DB) {
-            FCOjima.DB.saveNotifications(notifications).catch(e => console.warn('Firestore saveNotifications:', e));
+            FCOjima.DB.saveNotifications(notifications).catch(e => reportSaveError('saveNotifications', e));
         }
     };
     

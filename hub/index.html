@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#1C1600">
     <link rel="apple-touch-icon" href="/img/icon-192.png">
     <link rel="stylesheet" href="../css/common.css?v=20261016">
-    <link rel="stylesheet" href="../css/hub/calendar.css?v=20260224a">
+    <link rel="stylesheet" href="../css/hub/calendar.css?v=20261016c">
     <link rel="stylesheet" href="../css/hub/members.css?v=20260719">
     <link rel="stylesheet" href="../css/hub/notifications.css?v=20260224a">
     <link rel="stylesheet" href="../css/hub/venues.css?v=20260224a">
@@ -876,23 +876,23 @@
 
     <!-- 共通モジュール -->
     <script src="../js/common/global.js?v=20260224a"></script>
-    <script src="../js/common/utils.js?v=20261016"></script>
-    <script src="../js/common/storage.js?v=20261016"></script>
+    <script src="../js/common/utils.js?v=20261016c"></script>
+    <script src="../js/common/storage.js?v=20261016c"></script>
     <script src="../js/common/ui.js?v=20260224a"></script>
-    <script src="../js/common/auth.js?v=20261016"></script>
-    <script src="../js/common/db.js?v=20261016b"></script>
+    <script src="../js/common/auth.js?v=20261016c"></script>
+    <script src="../js/common/db.js?v=20261016c"></script>
     <script src="../js/common/weather.js?v=20261016b"></script>
-    <script src="../js/common/checklist.js?v=20260721a"></script>
-    <script src="../js/common/eventfiles.js?v=20260721b"></script>
+    <script src="../js/common/checklist.js?v=20261016c"></script>
+    <script src="../js/common/eventfiles.js?v=20261016c"></script>
 
     <!-- HUBページ用モジュール -->
-    <script src="../js/hub/main.js?v=20261016"></script>
-    <script src="../js/hub/calendar.js?v=20261016"></script>
-    <script src="../js/hub/members.js?v=20261016"></script>
-    <script src="../js/hub/notifications.js?v=20260224a"></script>
+    <script src="../js/hub/main.js?v=20261016c"></script>
+    <script src="../js/hub/calendar.js?v=20261016c"></script>
+    <script src="../js/hub/members.js?v=20261016c"></script>
+    <script src="../js/hub/notifications.js?v=20261016c"></script>
     <script src="../js/hub/venues.js?v=20261016"></script>
-    <script src="../js/hub/myevents.js?v=20261016b"></script>
-    <script src="../js/hub/admin.js?v=20261016b"></script>
+    <script src="../js/hub/myevents.js?v=20261016c"></script>
+    <script src="../js/hub/admin.js?v=20261016c"></script>
 
     <script>
         // タブの切り替えに応じてフローティングボタンの表示を制御
@@ -982,17 +982,8 @@
             // モーダルの初期化
             FCOjima.UI.initModals();
 
-            // 浮動追加ボタンの初期設定
-            const floatingAddButton = document.getElementById('floating-add-button');
-            floatingAddButton.addEventListener('click', function(e) {
-                e.preventDefault();
-                const activeTab = document.querySelector('.tablinks.active');
-                if (activeTab && activeTab.textContent === 'メンバー') {
-                    FCOjima.Hub.Members.openAddMemberModal();
-                } else if (activeTab && activeTab.textContent === '会場登録') {
-                    FCOjima.Hub.Venues.openAddVenueModal();
-                }
-            });
+            // 浮動追加ボタンの動作は、タブ切り替え時に onclick で設定している（上の tablinks の処理）。
+            // ここでも addEventListener すると二重に動き、追加モーダルを2回開いていた
         });
     </script>
 </body>
