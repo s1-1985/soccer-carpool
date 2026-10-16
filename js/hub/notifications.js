@@ -59,7 +59,7 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
             var div = document.createElement('div');
             div.className = 'notification-card';
 
-            var dateStr = n.date || '';
+            var dateStr = UI.escapeHTML(n.date || '');
             var userStr = n.user ? UI.escapeHTML(n.user) : '';
             var textStr = UI.escapeHTML(n.text || '').replace(/\n/g, '<br>');
 

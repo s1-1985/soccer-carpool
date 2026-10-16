@@ -77,11 +77,11 @@ FCOjima.Checklist = FCOjima.Checklist || {};
      * @returns {string}
      */
     Checklist.formatLuggage = function(luggage) {
-        var list = (luggage || []).filter(function(it) { return it && it.name && it.count > 0; });
+        var list = (luggage || []).filter(function(it) { return it && it.name && parseInt(it.count, 10) > 0; });
         if (list.length === 0) return '';
         var UI = app.UI;
         var chips = list.map(function(it) {
-            return '<span class="checklist-chip">' + UI.escapeHTML(it.name) + '×' + it.count + '</span>';
+            return '<span class="checklist-chip">' + UI.escapeHTML(it.name) + '×' + parseInt(it.count, 10) + '</span>';
         }).join('');
         return '<div class="checklist-chips"><span class="checklist-label">📦 荷物:</span>' + chips + '</div>';
     };

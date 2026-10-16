@@ -107,26 +107,26 @@
     box-sizing: border-box;
 }
 
+/* イベント（保護者含む行事）・後方互換の other。
+   ※ カレンダーの予定要素は必ず class="event" を持つため、.event.event は「全予定」に一致する。
+     以前は試合・練習の後ろに書かれていたため同じ詳細度で上書きし、すべての予定が紫になっていた。
+     先に書いて既定色とし、試合・練習の色を後ろで上書きする */
+.event.event,
+.event.other {
+    background-color: #e8d5f5;
+    border-left: 3px solid #9b59b6;
+}
+
 .event.game {
     background-color: #fbe7d9;
     border-left: 3px solid #f39c12;
 }
 
-.event.practice {
+/* 練習（ナイター練習も練習の色） */
+.event.practice,
+.event.nighter {
     background-color: #d1f2eb;
     border-left: 3px solid #2ecc71;
-}
-
-/* イベント（保護者含む行事） */
-.event.event {
-    background-color: #e8d5f5;
-    border-left: 3px solid #9b59b6;
-}
-
-/* 後方互換 */
-.event.other {
-    background-color: #e8d5f5;
-    border-left: 3px solid #9b59b6;
 }
 
 /* リスト表示 */
@@ -161,7 +161,8 @@
     border-left-color: #f39c12;
 }
 
-.event-item.practice {
+.event-item.practice,
+.event-item.nighter {
     border-left-color: #2ecc71;
 }
 

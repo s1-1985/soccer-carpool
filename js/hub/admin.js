@@ -366,7 +366,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
 
             // 1. イベント取得（ナイター除外・日付昇順）
             var events = await FCOjima.DB.loadEvents();
-            var allNonNighter = events.filter(function(ev) { return ev.type !== 'nighter'; });
+            var allNonNighter = events.filter(function(ev) { return ev.type !== 'nighter'; }).sort(Utils.compareEvents);
             // 過去表示トグル（デフォルト: 今後のみ）
             var showPast = !!Admin._matrixShowPast;
             var targetEvents = showPast
@@ -1397,7 +1397,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         var typeLabel = Utils.getEventTypeLabel(ev.type);
         var html = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">'
             + '<h2 style="margin:0;font-size:18px;flex:1;">' + UI.escapeHTML(ev.title || typeLabel) + '</h2>'
-            + '<span style="background:#E8A200;color:#fff;border-radius:12px;padding:2px 10px;font-size:11px;white-space:nowrap;">' + typeLabel + '</span>'
+            + '<span style="background:#E8A200;color:#fff;border-radius:12px;padding:2px 10px;font-size:11px;white-space:nowrap;">' + UI.escapeHTML(typeLabel) + '</span>'
             + '</div>';
 
         // 日時グリッド
@@ -1407,10 +1407,10 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             + Utils.formatDateForDisplay(ev.date) + '</div></div>';
         if (ev.startTime) {
             html += '<div><div style="font-size:11px;color:#888;">時間</div><div style="font-weight:bold;font-size:14px;">'
-                + ev.startTime + (ev.endTime ? ' 〜 ' + ev.endTime : '') + '</div></div>';
+                + UI.escapeHTML(ev.startTime) + (ev.endTime ? ' 〜 ' + UI.escapeHTML(ev.endTime) : '') + '</div></div>';
         }
         if (ev.departureTime) {
-            html += '<div><div style="font-size:11px;color:#888;">出発時間</div><div style="font-weight:bold;font-size:14px;">' + ev.departureTime + '</div></div>';
+            html += '<div><div style="font-size:11px;color:#888;">出発時間</div><div style="font-weight:bold;font-size:14px;">' + UI.escapeHTML(ev.departureTime) + '</div></div>';
         }
         html += '</div>';
 
@@ -1440,7 +1440,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
 
         // 対象学年
         if (ev.target && ev.target.length > 0) {
-            var grades = ev.target.map(function(g) { return Utils.getGradeLabel(g); }).join('、');
+            var grades = ev.target.map(function(g) { return UI.escapeHTML(Utils.getGradeLabel(g)); }).join('、');
             html += '<div style="margin-bottom:8px;font-size:13px;"><span style="color:#888;">対象: </span>' + grades + '</div>';
         }
 
@@ -1456,11 +1456,11 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             var currentAssignment = (FCOjima.Hub.dutyAssignments || []).find(function(a) { return String(a.eventId) === String(ev.id); });
             html += '<div style="display:flex;align-items:center;gap:8px;margin:8px 0;font-size:13px;">'
                 + '<span style="color:#888;min-width:52px;">当番</span>'
-                + '<select id="event-duty-select" data-event-id="' + ev.id + '" style="padding:4px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;flex:1;max-width:220px;">'
+                + '<select id="event-duty-select" data-event-id="' + UI.escapeHTML(String(ev.id)) + '" style="padding:4px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;flex:1;max-width:220px;">'
                 + '<option value="">未設定</option>'
                 + dutyGroups.map(function(g) {
                     var selected = currentAssignment && String(currentAssignment.groupId) === String(g.id) ? ' selected' : '';
-                    return '<option value="' + g.id + '"' + selected + '>' + UI.escapeHTML(g.name) + '</option>';
+                    return '<option value="' + UI.escapeHTML(String(g.id)) + '"' + selected + '>' + UI.escapeHTML(g.name) + '</option>';
                   }).join('')
                 + '</select>'
                 + '</div>';

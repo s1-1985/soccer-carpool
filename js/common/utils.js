@@ -31,8 +31,12 @@ FCOjima.Utils = FCOjima.Utils || {};
      */
     Utils.formatDateForDisplay = function(dateString) {
         if (!dateString) return '-';
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) return dateString;
+        // YYYY-MM-DD は new Date() だとUTCの0時として解釈され、日本より西の時差の端末
+        // （海外滞在中など）では前日の日付・曜日になるため、端末のローカル日付として解釈する
+        const s = String(dateString);
+        const date = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(s + 'T00:00:00') : new Date(s);
+        // 日付として解釈できない値はそのまま返さない（HTMLに埋め込まれる箇所があるため）
+        if (isNaN(date.getTime())) return /^[0-9\/\-:. ]+$/.test(s) ? s : '-';
         const year = date.getFullYear();
         const month = date.getMonth() + 1;
         const day = date.getDate();
@@ -77,7 +81,8 @@ FCOjima.Utils = FCOjima.Utils || {};
      */
     Utils.calculateGrade = function(birthDate) {
         const today = new Date();
-        const birth = new Date(birthDate);
+        // YYYY-MM-DD を端末のローカル日付として解釈（UTC解釈だと4/1生まれ等の境界で学年がずれうる）
+        const birth = /^\d{4}-\d{2}-\d{2}$/.test(String(birthDate)) ? new Date(birthDate + 'T00:00:00') : new Date(birthDate);
         
         // 日本の学年制度は4月1日開始
         const schoolYearStartMonth = 3; // 0-indexedで3が4月
@@ -134,7 +139,7 @@ FCOjima.Utils = FCOjima.Utils || {};
      */
     Utils.isGraduated = function(birthDate) {
         if (!birthDate) return false;
-        const birth = new Date(birthDate);
+        const birth = /^\d{4}-\d{2}-\d{2}$/.test(String(birthDate)) ? new Date(birthDate + 'T00:00:00') : new Date(birthDate);
         if (isNaN(birth.getTime())) return false;
         const today = new Date();
         let schoolYear = today.getFullYear();
@@ -430,6 +435,17 @@ FCOjima.Utils = FCOjima.Utils || {};
                 return m.role === 'player' && String(m.id) === String(cid);
             });
         });
+    };
+
+    /**
+     * イベントの並び順（日付→開始時刻→タイトル）。
+     * 一覧は取得元によって順序が違い（初回は日付順・リアルタイム更新後はID順）、
+     * 同じ日の予定が開始時刻と関係ない順に並んでいたため、表示側で必ずこれで並べる
+     */
+    Utils.compareEvents = function(a, b) {
+        return String(a.date || '').localeCompare(String(b.date || ''))
+            || String(a.startTime || '99:99').localeCompare(String(b.startTime || '99:99'))
+            || String(a.title || '').localeCompare(String(b.title || ''), 'ja');
     };
 
     /**

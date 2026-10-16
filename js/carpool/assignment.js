@@ -1782,7 +1782,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         // イベント情報を表示
         eventInfo.innerHTML = `
             <strong>${UI.escapeHTML(event.title)}</strong>
-            (${Utils.formatDateForDisplay(event.date)} ${event.startTime || ''})
+            (${UI.escapeHTML(Utils.formatDateForDisplay(event.date))} ${UI.escapeHTML(event.startTime || '')})
         `;
         
         console.log('イベント情報の表示が完了しました');
@@ -2425,8 +2425,10 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         var participantCount = eligibleAll.filter(function(m) { return !driverNames.has(m.name); }).length;
 
         // 座席数（運転手席除く全席）
+        // ※ 旧データでは座席数が文字列のことがあり、+ で文字列連結されて「座席数 012」のように
+        //   表示されていたため数値に変換する
         var totalSeats = availableCars.reduce(function(sum, car) {
-            return sum + (car.frontSeat || 0) + (car.middleSeat || 0) + (car.backSeat || 0);
+            return sum + (parseInt(car.frontSeat, 10) || 0) + (parseInt(car.middleSeat, 10) || 0) + (parseInt(car.backSeat, 10) || 0);
         }, 0);
 
         // 配置済（荷物除く）

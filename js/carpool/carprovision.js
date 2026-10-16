@@ -87,6 +87,12 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         });
 
         const carRegistrations = FCOjima.Carpool.appData.carRegistrations || [];
+        // 同じ運転者の登録がすでにあれば確認する（ボタンの二度押しや登録し直しで同じ車が
+        // 2台になり、座席割り当てに同じ車が重複して出ていた）
+        if (carRegistrations.some(function(c) { return (c.parent || '').trim() === parentName; }) &&
+            !UI.showConfirm(parentName + 'さんの車はすでに登録されています。もう1台追加しますか？\n（内容を変えたい場合は、登録済みの車を削除してから登録し直してください）')) {
+            return;
+        }
         carRegistrations.push({ parent: parentName, canDrive, frontSeat, middleSeat, backSeat, notes, extraPassengers: extraPassengers });
         FCOjima.Carpool.appData.carRegistrations = carRegistrations;
         FCOjima.Carpool.saveData();
@@ -129,10 +135,10 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
                     const row = document.createElement('tr');
                     row.innerHTML =
                         '<td>' + UI.escapeHTML(car.parent) + '</td>' +
-                        '<td>' + (provideLabels[car.canDrive] || car.canDrive) + '</td>' +
-                        '<td>' + (car.frontSeat  || 0) + '</td>' +
-                        '<td>' + (car.middleSeat || 0) + '</td>' +
-                        '<td>' + (car.backSeat   || 0) + '</td>' +
+                        '<td>' + UI.escapeHTML(provideLabels[car.canDrive] || car.canDrive) + '</td>' +
+                        '<td>' + (parseInt(car.frontSeat, 10)  || 0) + '</td>' +
+                        '<td>' + (parseInt(car.middleSeat, 10) || 0) + '</td>' +
+                        '<td>' + (parseInt(car.backSeat, 10)   || 0) + '</td>' +
                         '<td>' + total + '</td>' +
                         '<td>' + UI.escapeHTML(car.notes || '') + '</td>' +
                         '<td><button type="button" class="delete-button" onclick="FCOjima.Carpool.CarProvision.deleteCarRegistration(' + index + ')">削除</button></td>';
@@ -160,7 +166,7 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
                     const total = (parseInt(car.frontSeat) || 0) +
                                   (parseInt(car.middleSeat) || 0) +
                                   (parseInt(car.backSeat) || 0);
-                    const label = provideLabels[car.canDrive] || car.canDrive;
+                    const label = UI.escapeHTML(provideLabels[car.canDrive] || car.canDrive);
                     const cls   = provideClass[car.canDrive]  || '';
                     var card = document.createElement('div');
                     card.className = 'car-card';
@@ -169,7 +175,7 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
                             '<span class="car-card-name">' + UI.escapeHTML(car.parent) + '</span>' +
                             '<span class="car-card-badge ' + cls + '">' + label + '</span>' +
                         '</div>' +
-                        '<div class="car-card-seats">助手席 ' + (car.frontSeat || 0) + ' ＋ 中列 ' + (car.middleSeat || 0) + ' ＋ 後列 ' + (car.backSeat || 0) + ' ＝ 合計 <strong>' + total + '</strong> 席</div>' +
+                        '<div class="car-card-seats">助手席 ' + (parseInt(car.frontSeat, 10) || 0) + ' ＋ 中列 ' + (parseInt(car.middleSeat, 10) || 0) + ' ＋ 後列 ' + (parseInt(car.backSeat, 10) || 0) + ' ＝ 合計 <strong>' + total + '</strong> 席</div>' +
                         (car.notes ? '<div class="car-card-notes">📝 ' + UI.escapeHTML(car.notes) + '</div>' : '') +
                         ((car.extraPassengers && car.extraPassengers.length > 0) ?
                             '<div class="car-card-notes">👤 メンバー外: ' + car.extraPassengers.map(function(ep) { return UI.escapeHTML(ep.name); }).join('、') + '</div>' : '') +

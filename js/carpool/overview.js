@@ -69,7 +69,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                 carEventInfo.innerHTML = '\
                     <div class="event-summary">\
                         <strong>' + UI.escapeHTML(event.title) + '</strong> \
-                        (' + Utils.formatDateForDisplay(event.date) + ' ' + (event.startTime || '') + ')\
+                        (' + Utils.formatDateForDisplay(event.date) + ' ' + UI.escapeHTML(event.startTime || '') + ')\
                     </div>';
             }
             
@@ -78,7 +78,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                 assignmentEventInfo.innerHTML = '\
                     <div class="event-summary">\
                         <strong>' + UI.escapeHTML(event.title) + '</strong> \
-                        (' + Utils.formatDateForDisplay(event.date) + ' ' + (event.startTime || '') + ')\
+                        (' + Utils.formatDateForDisplay(event.date) + ' ' + UI.escapeHTML(event.startTime || '') + ')\
                     </div>';
             }
             
@@ -112,13 +112,13 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         if (eventSummary) {
             // イベントタイプのバッジ
             var typeLabel = Utils.getEventTypeLabel(event.type);
-            var typeBadge = `<span class="event-type-badge ${event.type}">${typeLabel}</span>`;
+            var typeBadge = `<span class="event-type-badge ${UI.escapeHTML(event.type)}">${UI.escapeHTML(typeLabel)}</span>`;
             
             // 学年ターゲット表示
             var targetDisplay = '';
             if (event.target && event.target.length > 0) {
                 var targetGrades = event.target.map(function(grade) {
-                    return Utils.getGradeLabel(grade);
+                    return UI.escapeHTML(Utils.getGradeLabel(grade));
                 }).join(', ');
                 
                 targetDisplay = `
@@ -152,7 +152,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                 dateTimeInfo += `
                 <div class="date-time-item">
                     <div class="date-time-label">時間</div>
-                    <div class="date-time-value">${event.startTime}${event.endTime ? ' - ' + event.endTime : ''}</div>
+                    <div class="date-time-value">${UI.escapeHTML(event.startTime)}${event.endTime ? ' - ' + UI.escapeHTML(event.endTime) : ''}</div>
                 </div>`;
             }
             
@@ -160,7 +160,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                 dateTimeInfo += `
                 <div class="date-time-item">
                     <div class="date-time-label">出発時間</div>
-                    <div class="date-time-value">${event.departureTime}</div>
+                    <div class="date-time-value">${UI.escapeHTML(event.departureTime)}</div>
                 </div>`;
             }
             
@@ -488,7 +488,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         }
         container.className = 'event-summary ' + (event.type || 'other');
         container.innerHTML = '<strong>' + UI.escapeHTML(event.title) + '</strong>' +
-            ' (' + Utils.formatDateForDisplay(event.date) + ' ' + (event.startTime || '') + ')';
+            ' (' + Utils.formatDateForDisplay(event.date) + ' ' + UI.escapeHTML(event.startTime || '') + ')';
     };
 
     // =============================================
@@ -517,7 +517,9 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         notifications:     { mode: 'prepend' },
         comment:           { mode: 'replace', empty: '' },
         comments:          { mode: 'prepend' },
-        manualDriverNames: { mode: 'list' }
+        manualDriverNames: { mode: 'list' },
+        // 出欠表から手動で外した人（対象学年の選手でも自動で戻さないための記録）
+        attendanceRemoved: { mode: 'list' }
     };
 
     function emptyOf(field) {
@@ -885,9 +887,14 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                 if (toUpload.length === 0) return;
             }
             // 1イベントあたりの添付上限（既存分込みで10個。共通モジュールに集約）
-            if (app.EventFiles && app.EventFiles.countFiles) {
+            var taken = new Set();
+            if (app.EventFiles && app.EventFiles.listNames) {
                 var existingCount = 0;
-                try { existingCount = await app.EventFiles.countFiles(eventId); } catch (e) { /* 件数取得失敗時はチェックを諦める */ }
+                try {
+                    var names = await app.EventFiles.listNames(eventId);
+                    existingCount = names.length;
+                    names.forEach(function(n) { taken.add(n); });
+                } catch (e) { /* 件数取得失敗時はチェックを諦める */ }
                 var MAX_FILES = 10;
                 var room = MAX_FILES - existingCount;
                 if (room <= 0) {
@@ -903,7 +910,9 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
             var basePath = 'teams/' + FCOjimaFirebase.TEAM_ID + '/events/' + eventId + '/';
             for (var i = 0; i < toUpload.length; i++) {
                 var file = toUpload[i];
-                var ref = storage.ref(basePath + file.name);
+                // 同じ名前の既存ファイルを上書きしないよう名前をずらす
+                var fileName = (app.EventFiles && app.EventFiles.uniqueName) ? app.EventFiles.uniqueName(file.name, taken) : file.name;
+                var ref = storage.ref(basePath + fileName);
                 await ref.put(file);
             }
             await Overview.loadEventFiles(eventId, list);

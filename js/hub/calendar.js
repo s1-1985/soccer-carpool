@@ -22,8 +22,9 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
     Calendar.init = function() {
         console.log('カレンダー機能を初期化しています...');
 
-        // データの読み込み
-        app.Hub.events = Storage.loadEvents();
+        // データの読み込み（main.js の Hub.init で読み込み済み。サーバーから読めた一覧が空のときに
+        // 端末に残っている古い一覧へ差し替えないよう、未読み込みの場合だけ端末データを使う）
+        if (!Array.isArray(app.Hub.events)) app.Hub.events = Storage.loadEvents();
         
         // 現在の日付を設定
         app.Hub.currentDate = new Date();
@@ -439,11 +440,16 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
      * イベントをカレンダーに表示
      */
     Calendar.displayEvents = function() {
-        const events = Calendar.applyMyChildFilter(app.Hub.events);
+        const events = Calendar.applyMyChildFilter(app.Hub.events).slice().sort(Utils.compareEvents);
+
+        // 日付→マスの対応表（以前は querySelector の属性セレクタに event.date を直接埋め込んでいたため、
+        // 想定外の文字を含む日付のイベントが1件あるだけで例外になり、以降の予定が表示されなかった）
+        const dayMap = {};
+        document.querySelectorAll('#calendar-grid .calendar-day').forEach(function(d) { dayMap[d.dataset.date] = d; });
 
         events.forEach(event => {
             // 日付要素を取得
-            const dayElement = document.querySelector(`.calendar-day[data-date="${event.date}"]`);
+            const dayElement = dayMap[event.date];
             if (!dayElement) return;
             
             // イベント要素を作成
@@ -469,7 +475,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         const currentDate = app.Hub.currentDate;
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth();
-        const events = Calendar.applyMyChildFilter(app.Hub.events);
+        const events = Calendar.applyMyChildFilter(app.Hub.events).slice().sort(Utils.compareEvents);
         
         const listContainer = document.getElementById('events-list');
         listContainer.innerHTML = '';
@@ -539,7 +545,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         // 学年ターゲット表示
         let targetDisplay = '';
         if (Array.isArray(event.target) && event.target.length > 0) {
-            const targetGrades = event.target.map(grade => Utils.getGradeLabel(grade)).join(', ');
+            const targetGrades = event.target.map(grade => UI.escapeHTML(Utils.getGradeLabel(grade))).join(', ');
             targetDisplay = `<span class="badge">${targetGrades}</span> `;
         }
 
@@ -588,7 +594,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         // 学年ターゲット表示
         let targetDisplay = '';
         if (Array.isArray(event.target) && event.target.length > 0) {
-            const targetGrades = event.target.map(grade => Utils.getGradeLabel(grade)).join(', ');
+            const targetGrades = event.target.map(grade => UI.escapeHTML(Utils.getGradeLabel(grade))).join(', ');
             targetDisplay = `
             <div class="detail-item">
                 <span class="detail-label">対象:</span> ${targetGrades}
@@ -625,7 +631,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         if (event.departureTime) {
             departureDisplay = `
             <div class="detail-item">
-                <span class="detail-label">出発時間:</span> ${event.departureTime}
+                <span class="detail-label">出発時間:</span> ${UI.escapeHTML(event.departureTime)}
             </div>`;
         }
         
@@ -767,7 +773,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 <span class="detail-label">日付:</span> ${Utils.formatDateForDisplay(event.date)}
             </div>
             <div class="detail-item">
-                <span class="detail-label">種類:</span> ${Utils.getEventTypeLabel(event.type)}
+                <span class="detail-label">種類:</span> ${UI.escapeHTML(Utils.getEventTypeLabel(event.type))}
             </div>
             ${targetDisplay}
             ${deadlineDisplay}
@@ -777,9 +783,9 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 <span class="detail-label">会場:</span> ${UI.escapeHTML(event.venue || '未設定')}
                 ${venueMapBtn}
             </div>
-            <div id="event-weather-${event.id}"></div>
+            <div id="event-weather-${UI.escapeHTML(String(event.id))}"></div>
             <div class="detail-item">
-                <span class="detail-label">時間:</span> ${event.startTime || '未設定'}${event.endTime ? ` - ${event.endTime}` : ''}
+                <span class="detail-label">時間:</span> ${UI.escapeHTML(event.startTime || '未設定')}${event.endTime ? ` - ${UI.escapeHTML(event.endTime)}` : ''}
             </div>
             ${app.Checklist ? app.Checklist.formatChips(event.type, event.checklistExtra, event.checklist) : ''}
             ${app.Checklist ? app.Checklist.formatLuggage(event.luggage) : ''}
@@ -956,7 +962,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
     /**
      * 対象学年のチェックボックスを生成
      */
-    Calendar.generateGradeCheckboxes = function() {
+    Calendar.generateGradeCheckboxes = function(extraGrades) {
         const container = document.getElementById('event-target-grades');
         container.innerHTML = '';
         
@@ -969,9 +975,13 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 existingGrades.add(member.grade);
             }
         });
+        // 編集中のイベントの対象学年も必ず出す（今その学年の選手がいないと
+        // チェックボックスが作られず、保存すると対象学年から黙って外れていた）
+        const hasPlayerGrades = existingGrades.size > 0;
+        (extraGrades || []).forEach(function(g) { if (g) existingGrades.add(String(g)); });
         
         // 学年が存在しない場合は全学年を表示
-        if (existingGrades.size === 0) {
+        if (!hasPlayerGrades) {
             const grades = ['年少', '年中', '年長', '1', '2', '3', '4', '5', '6'];
             grades.forEach(grade => existingGrades.add(grade));
         }
@@ -1243,8 +1253,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         // 荷物を復元
         Calendar._setLuggageValue(event.luggage || []);
 
-        // 対象学年のチェックボックスを生成
-        this.generateGradeCheckboxes();
+        // 対象学年のチェックボックスを生成（イベントの対象学年は選手がいなくても出す）
+        this.generateGradeCheckboxes(Array.isArray(event.target) ? event.target : []);
         
         // 対象学年のチェックボックスを設定
         if (Array.isArray(event.target) && event.target.length > 0) {

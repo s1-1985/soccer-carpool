@@ -19,9 +19,14 @@ FCOjima.Hub.init = async function() {
             FCOjima.Hub.dutyEnabled     = data.dutySettings ? !!data.dutySettings.enabled : false;
             FCOjima.Hub.dutyGroups      = data.dutyGroups || [];
             FCOjima.Hub.dutyAssignments = data.dutyAssignments || [];
+            FCOjima.Hub._loadedFromFirestore = true;
             console.log('Firestoreからデータをロードしました');
         } catch (e) {
             console.warn('Firestoreロード失敗 → localStorageを使用:', e);
+            // 黙って古いデータを出すと、最新だと思って操作されてしまうため知らせる
+            if (FCOjima.UI && FCOjima.UI.showAlert) {
+                FCOjima.UI.showAlert('サーバーから最新のデータを読み込めませんでした。端末に残っている古いデータを表示しています（このままでは保存できません）。電波の良い所で再読み込みしてください', 'warning', 10000);
+            }
             FCOjima.Hub.members       = FCOjima.Storage.loadMembers();
             FCOjima.Hub.venues        = FCOjima.Storage.loadVenues();
             FCOjima.Hub.events        = FCOjima.Storage.loadEvents();
@@ -56,7 +61,10 @@ FCOjima.Hub.init = async function() {
 
     // 添付ファイルの自動削除（イベント終了後30日で掃除。マネージャーのみ・1日1回）
     var profile = FCOjima.Auth && FCOjima.Auth.currentUserProfile;
-    if (profile && ['admin', 'coach', 'assist', 'officer'].includes(profile.role) &&
+    // ※ イベント一覧をFirestoreから読めたときだけ実行する。オフライン等で端末内の古い一覧に
+    //   フォールバックした場合、一覧にない（＝削除済みと誤認した）まだ先のイベントの添付まで消しうる
+    if (FCOjima.Hub._loadedFromFirestore &&
+        profile && ['admin', 'coach', 'assist', 'officer'].includes(profile.role) &&
         FCOjima.EventFiles && FCOjima.EventFiles.cleanupOldFiles) {
         FCOjima.EventFiles.cleanupOldFiles(FCOjima.Hub.events);
     }
@@ -83,6 +91,9 @@ FCOjima.Hub.startEventsRealtimeSync = function() {
         FCOjima.Hub._eventsUnsub = FCOjimaFirebase.Collections.events().onSnapshot(function(snapshot) {
             // 初回スナップショットは loadAllData と同内容なので再描画不要
             if (first) { first = false; return; }
+            // オフライン中の端末キャッシュ由来のスナップショットは、一覧の差し替えにも保存時の
+            // 差分判定の基準にも使わない（再接続後にサーバーからのスナップショットが届く）
+            if (snapshot.metadata && snapshot.metadata.fromCache) return;
             var events = snapshot.docs.map(function(doc) {
                 var d = doc.data(); d.id = doc.id; return d;
             });

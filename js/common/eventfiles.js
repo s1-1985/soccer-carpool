@@ -101,6 +101,30 @@ FCOjima.EventFiles = FCOjima.EventFiles || {};
         return result.items.length;
     };
 
+    /** イベントの添付ファイル名一覧 */
+    EventFiles.listNames = async function(eventId) {
+        var result = await firebase.storage().ref(basePath(eventId)).listAll();
+        return result.items.map(function(it) { return it.name; });
+    };
+
+    /**
+     * 既存の添付と名前が重ならないファイル名を返す（「案内.pdf」→「案内 (2).pdf」）。
+     * 保存先パスはファイル名そのものなので、同じ名前のファイルを添付すると
+     * 既存のファイルが警告なしに上書きされていた
+     * @param {string} name
+     * @param {Set<string>} taken - 使用済みの名前（呼び出し後、返した名前を追加する）
+     */
+    EventFiles.uniqueName = function(name, taken) {
+        var result = name;
+        if (taken.has(result)) {
+            var m = String(name).match(/^(.*?)(\.[^.]*)?$/);
+            var base = m[1], ext = m[2] || '';
+            for (var n = 2; taken.has(result); n++) result = base + ' (' + n + ')' + ext;
+        }
+        taken.add(result);
+        return result;
+    };
+
     /**
      * ファイルを検証してアップロードし、一覧を再描画する。
      * 既存分込みで1イベント10個までに制限する（超える分はアップロードしない）。
@@ -117,8 +141,11 @@ FCOjima.EventFiles = FCOjima.EventFiles || {};
 
         // 既存の添付数を数え、上限(10個)を超える分は弾く
         var existingCount = 0;
+        var taken = new Set();
         try {
-            existingCount = await EventFiles.countFiles(eventId);
+            var names = await EventFiles.listNames(eventId);
+            existingCount = names.length;
+            names.forEach(function(n) { taken.add(n); });
         } catch (e) {
             // 件数取得に失敗してもアップロード自体は試みる（上限チェックだけ諦める）
             console.warn('添付件数の取得に失敗:', e);
@@ -139,7 +166,7 @@ FCOjima.EventFiles = FCOjima.EventFiles || {};
             for (var i = 0; i < toUpload.length; i++) {
                 var file = toUpload[i];
                 if (listEl) listEl.innerHTML = '<p style="color:#999;font-size:12px;">アップロード中... (' + (i + 1) + '/' + toUpload.length + ')</p>';
-                await firebase.storage().ref(basePath(eventId) + '/' + file.name).put(file);
+                await firebase.storage().ref(basePath(eventId) + '/' + EventFiles.uniqueName(file.name, taken)).put(file);
             }
         } catch (e) {
             alert('アップロードに失敗しました: ' + e.message);

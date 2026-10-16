@@ -88,7 +88,7 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
         var today = todayISO();
         var events = (app.Hub.events || []).filter(function(ev) {
             return ev.date && ev.date >= today && ev.type !== 'nighter';
-        }).slice().sort(function(a, b) { return (a.date || '').localeCompare(b.date || ''); });
+        }).slice().sort(Utils.compareEvents);
 
         // 各イベントの出欠を並列取得（不参加の子を除くため）
         var dataArr = await Promise.all(events.map(function(ev) {

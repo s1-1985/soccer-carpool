@@ -34,7 +34,7 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
     Members.init = function() {
         console.log('メンバー管理機能を初期化しています...');
         if (!app.Hub.members || app.Hub.members.length === 0) {
-            app.Hub.members = Storage.loadMembers();
+            if (!app.Hub._loadedFromFirestore) app.Hub.members = Storage.loadMembers();
         }
         // 自動卒団チェック
         Members.checkGraduation();
@@ -569,6 +569,11 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
             var index = members.findIndex(function(m) { return String(m.id) === String(memberFormId); });
             if (index !== -1) {
                 var origId = members[index].id;
+                // 子供欄は父・母のときしか表示されないため、役員など父・母以外の役割で登録された
+                // 保護者を編集すると子供の紐づけが空で保存されて消えていた。選手以外は元の値を引き継ぐ
+                if (role !== 'father' && role !== 'mother' && role !== 'player' && Array.isArray(members[index].childrenIds)) {
+                    childrenIds = members[index].childrenIds;
+                }
                 members[index] = { id: origId, name: name, kana: kana, abbr: abbr, birth: birth, gender: gender, role: role, number: number ? parseInt(number, 10) : null, grade: grade, notes: notes, childrenIds: childrenIds };
                 app.Hub.logs = Storage.addLog('members', 'メンバー更新', '「' + name + '」', logs);
             }
