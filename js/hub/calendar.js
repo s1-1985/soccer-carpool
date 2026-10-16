@@ -1030,23 +1030,17 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         });
     };
     
+    // 予定フォームで編集する項目（保存するイベントはこれと id だけで組み立てる）
+    var EVENT_FORM_FIELDS = ['date', 'type', 'title', 'target', 'extraPlayers', 'targetNotes', 'attendanceDeadline',
+        'departureTime', 'meetingPlace', 'venue', 'startTime', 'endTime', 'notes', 'checklist', 'luggage'];
+
     /**
-     * 新規イベント保存
+     * 予定フォームの入力内容を読み取る
+     * @returns {Object} EVENT_FORM_FIELDS の各項目
      */
-    Calendar.saveEvent = function() {
-        const events = app.Hub.events;
-        const logs = app.Hub.logs;
-        
-        const date = document.getElementById('event-date').value;
-        const type = document.getElementById('event-type').value;
-        // 空白だけのタイトルで「タイトルなし」の予定ができないよう前後の空白を除く
-        const title = document.getElementById('event-title').value.trim();
-        
+    Calendar._readEventForm = function() {
         // 対象学年を取得
         const targetCheckboxes = document.querySelectorAll('input[name="event-target"]:checked');
-        const target = Array.from(targetCheckboxes).map(cb => cb.value);
-        const targetNotes = document.getElementById('event-target-notes').value;
-        
         // 出欠回答期限を取得
         const deadlineDate = document.getElementById('event-attendance-deadline-date').value;
         const deadlineTime = document.getElementById('event-attendance-deadline-time').value;
@@ -1058,19 +1052,41 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 attendanceDeadline = `${deadlineDate}T23:59`;
             }
         }
-        
-        const departureTime = document.getElementById('event-departure-time').value;
-        const meetingPlace = document.getElementById('event-meeting-place').value;
-        const venue = document.getElementById('event-venue').value;
-        const startTime = document.getElementById('event-start-time').value;
-        const endTime = document.getElementById('event-end-time').value;
-        const notes = document.getElementById('event-notes').value;
         // 持ち物（完全上書きリストとして保存。空でも保存＝持ち物なし）
         // ※ undefinedはFirestoreが拒否するため必ず配列にする
         const checklistEl = document.getElementById('event-checklist');
-        const checklist = (app.Checklist && checklistEl) ? app.Checklist.parseInput(checklistEl.value) : [];
-        // 荷物（共用備品）: [{name, count}] の配列
-        const luggage = Calendar._getLuggageValue();
+        const extraPlayersVal = document.getElementById('event-extra-players');
+        return {
+            date: document.getElementById('event-date').value,
+            type: document.getElementById('event-type').value,
+            // 空白だけのタイトルで「タイトルなし」の予定ができないよう前後の空白を除く
+            title: document.getElementById('event-title').value.trim(),
+            target: Array.from(targetCheckboxes).map(cb => cb.value),
+            extraPlayers: extraPlayersVal && extraPlayersVal.value ? extraPlayersVal.value.split(',').filter(Boolean) : [],
+            targetNotes: document.getElementById('event-target-notes').value,
+            attendanceDeadline,
+            departureTime: document.getElementById('event-departure-time').value,
+            meetingPlace: document.getElementById('event-meeting-place').value,
+            venue: document.getElementById('event-venue').value,
+            startTime: document.getElementById('event-start-time').value,
+            endTime: document.getElementById('event-end-time').value,
+            notes: document.getElementById('event-notes').value,
+            checklist: (app.Checklist && checklistEl) ? app.Checklist.parseInput(checklistEl.value) : [],
+            // 荷物（共用備品）: [{name, count}] の配列
+            luggage: Calendar._getLuggageValue()
+        };
+    };
+
+    /**
+     * 新規イベント保存
+     */
+    Calendar.saveEvent = function() {
+        const events = app.Hub.events;
+        const logs = app.Hub.logs;
+
+        const form = Calendar._readEventForm();
+        const { date, type, title, target, targetNotes, attendanceDeadline, departureTime, meetingPlace,
+            venue, startTime, endTime, notes, checklist, luggage } = form;
         
         // バリデーション（タイトルのみ必須）
         if (!date || !title) {
@@ -1126,8 +1142,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         const newId = Date.now();
 
         // 追加選手
-        const extraPlayersVal = document.getElementById('event-extra-players');
-        const extraPlayers = extraPlayersVal && extraPlayersVal.value ? extraPlayersVal.value.split(',').filter(Boolean) : [];
+        const extraPlayers = form.extraPlayers;
 
         if (eventFormId) {
             // 既存イベントの更新
@@ -1140,25 +1155,18 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 return;
             }
             if (index !== -1) {
-                const origId = events[index].id;
-                events[index] = {
-                    id: origId,
-                    date,
-                    type,
-                    title,
-                    target,
-                    extraPlayers,
-                    targetNotes,
-                    attendanceDeadline,
-                    departureTime,
-                    meetingPlace,
-                    venue,
-                    startTime,
-                    endTime,
-                    notes,
-                    checklist,
-                    luggage
-                };
+                const current = events[index];
+                // フォームを開いたときの内容から自分が変えていない項目は、今の（リアルタイム同期で届いた
+                // 最新の）内容を残す。以前はフォームの内容で丸ごと置き換えていたため、編集中に他の人が
+                // 変えた開始時刻や、出欠状況の表から追加された学年外の選手などを古い内容で上書きしていた
+                const base = (Calendar._editBaseline && Calendar._editBaseline.id === String(eventFormId))
+                    ? Calendar._editBaseline.values : null;
+                const updated = { id: current.id };
+                EVENT_FORM_FIELDS.forEach(function(f) {
+                    const unchanged = base && JSON.stringify(form[f]) === JSON.stringify(base[f]);
+                    updated[f] = (unchanged && current[f] !== undefined) ? current[f] : form[f];
+                });
+                events[index] = updated;
                 
                 // ログに記録（eventId付き）
                 const updatedEventId = events[events.findIndex(e => String(e.id) === String(eventFormId))].id;
@@ -1306,6 +1314,9 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 }
             }
         }
+
+        // 開いた時点のフォームの内容（保存時に、自分が変えた項目だけを反映するため）
+        Calendar._editBaseline = { id: String(event.id), values: Calendar._readEventForm() };
 
         // 詳細モーダルを閉じて編集モーダルを開く
         UI.closeModal('event-details-modal');

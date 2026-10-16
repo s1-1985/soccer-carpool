@@ -472,6 +472,9 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
         // 以前に手動で外した人なら、その記録を消す（次回から対象者として扱う）
         FCOjima.Carpool.appData.attendanceRemoved = (FCOjima.Carpool.appData.attendanceRemoved || [])
             .filter(function(n) { return n !== member.name; });
+        // 対象学年外の選手なら、予定の「学年外追加」にも入れる。以前は出欠表にだけ加わり、HUBの
+        // 参加予定・予定の詳細・出欠状況の表では対象にならず、保護者の参加予定にも出なかった
+        Attendance._addAsExtraPlayer(member);
         
         // データを保存
         FCOjima.Carpool.appData.attendance = attendance;
@@ -485,6 +488,25 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
         console.log(`メンバーを出欠リストに追加しました: ${member.name}`);
     };
     
+    /**
+     * 対象学年外の選手を、選択中の予定の学年外追加選手（extraPlayers）に加える
+     * @param {Object} member
+     */
+    Attendance._addAsExtraPlayer = function(member) {
+        const event = FCOjima.Storage.getSelectedEvent();
+        if (!event || !member || member.role !== 'player') return;
+        const extras = Array.isArray(event.extraPlayers) ? event.extraPlayers : [];
+        if (FCOjima.Utils.isTargetFor(member, event) || extras.includes(member.name)) return;
+        event.extraPlayers = extras.concat([member.name]);
+        FCOjima.Storage.setSelectedEvent(event);
+        if (window.FCOjima && FCOjima.DB && FCOjima.DB.addEventExtraPlayer) {
+            FCOjima.DB.addEventExtraPlayer(event.id, member.name).catch(function(e) {
+                console.warn('学年外追加選手の保存に失敗:', e);
+                UI.showAlert(member.name + 'を予定の学年外追加に保存できませんでした（出欠表には追加済み）。通信環境を確認してください', 'error', 6000);
+            });
+        }
+    };
+
     /**
      * 出欠リストからメンバーを削除
      * @param {string} name - メンバー名
