@@ -125,11 +125,31 @@ FCOjima.Hub.startEventsRealtimeSync = function() {
     }
 };
 
+/**
+ * イベントの当番割り当てを返す（当番表機能が無効・未割り当てなら null）。
+ * 割り当て（dutyAssignments）には割り当てた時点のグループ名も保存されているが、
+ * その後グループ名を変えても古い名前のまま表示され、グループを削除しても
+ * 「当番: （削除したグループ）」が残っていた。表示名は現在のグループから引く
+ * @param {string|number} eventId
+ * @returns {{eventId:string, groupId:string, groupName:string}|null}
+ */
+FCOjima.Hub.getDutyAssignment = function(eventId) {
+    if (!FCOjima.Hub.dutyEnabled) return null;
+    var a = (FCOjima.Hub.dutyAssignments || []).find(function(x) { return String(x.eventId) === String(eventId); });
+    if (!a) return null;
+    var groups = FCOjima.Hub.dutyGroups || [];
+    var g = groups.find(function(x) { return String(x.id) === String(a.groupId); });
+    if (!g) return null; // グループが削除済み
+    return { eventId: String(a.eventId), groupId: String(a.groupId), groupName: g.name };
+};
+
 FCOjima.Hub.openLogsModal = function(type) {
     const logs = FCOjima.Hub.logs || [];
     const filtered = type ? logs.filter(l => l.type === type) : logs;
     const logsContent = document.getElementById('logs-content');
     if (!logsContent) return;
+    const logsTitle = document.querySelector('#logs-modal h2');
+    if (logsTitle) logsTitle.textContent = '操作ログ';
 
     if (filtered.length === 0) {
         logsContent.innerHTML = '<p>ログがありません。</p>';

@@ -8,7 +8,7 @@
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#1C1600">
     <link rel="apple-touch-icon" href="/img/icon-192.png">
-    <link rel="stylesheet" href="../css/common.css?v=20261016">
+    <link rel="stylesheet" href="../css/common.css?v=20261016d">
     <style>
         .register-container {
             max-width: 500px;
@@ -146,10 +146,12 @@
                     .collection('users').doc(user.uid).get();
                 if (doc.exists) {
                     const status = doc.data().status;
-                    if (status === 'pending') {
-                        window.location.href = '/hub/pending.html';
-                    } else if (status === 'approved') {
+                    if (status === 'approved') {
                         window.location.href = '/hub/index.html';
+                    } else {
+                        // 承認待ち・却下済み（却下の案内とサインアウトは承認待ちページで行う）。
+                        // 以前は却下済みだと空の申請フォームのまま止まり、送信しても権限エラーになった
+                        window.location.href = '/hub/pending.html';
                     }
                     return;
                 }

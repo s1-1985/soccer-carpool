@@ -115,9 +115,10 @@ FCOjima.Auth = FCOjima.Auth || {};
                 return null;
             }
             if (profile.status === 'rejected') {
-                document.body.innerHTML = '<div style="text-align:center;padding:60px;font-family:sans-serif;">' +
-                    '<h2>アクセスが拒否されました</h2>' +
-                    '<p>管理者にお問い合わせください。</p></div>';
+                // 却下の案内は承認待ちページで出す（サインアウトボタンがあるため）。以前はこの場で
+                // 画面を「アクセスが拒否されました」だけに差し替えており、ログアウトする手段がなく、
+                // 間違ったGoogleアカウントで申請した人が別のアカウントで入り直せなかった
+                window.location.href = '/hub/pending.html';
                 return null;
             }
 

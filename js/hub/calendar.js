@@ -588,6 +588,9 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             console.warn('イベントが見つかりません: id=' + eventId, events.map(e=>e.id));
             return;
         }
+        // 出欠の読み込みを待つ間に別の予定をタップした場合、後から届いた前の予定の内容で
+        // 上書きしないよう、最後に開こうとした予定だけを表示する
+        const requestToken = (Calendar._detailsToken = (Calendar._detailsToken || 0) + 1);
         
         const content = document.getElementById('event-details-content');
         
@@ -652,7 +655,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         // 当番グループ（機能が有効かつ割り当てがある場合のみ表示。閲覧のみ・変更は管理タブから）
         let dutyDisplay = '';
         if (app.Hub.dutyEnabled) {
-            var dutyAssignmentForEvent = (app.Hub.dutyAssignments || []).find(function(a) { return String(a.eventId) === String(event.id); });
+            var dutyAssignmentForEvent = app.Hub.getDutyAssignment ? app.Hub.getDutyAssignment(event.id) : null;
             if (dutyAssignmentForEvent) {
                 dutyDisplay = `
             <div class="detail-item">
@@ -731,9 +734,11 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 return `<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:${bg};border-radius:6px;"><span style="font-weight:bold;color:${clr};font-size:14px;width:16px;text-align:center;">${icon}</span><span style="font-size:13px;">${UI.escapeHTML(m.name)}</span></div>`;
             }).join('');
 
-            const presentCount = targetMembers.filter(m => (statusMap[m.name] || 'pending') === 'present').length;
-            const absentCount = targetMembers.filter(m => (statusMap[m.name] || 'pending') === 'absent').length;
-            const pendingCount = targetMembers.filter(m => !statusMap[m.name] || statusMap[m.name] === 'pending').length;
+            // 参加・不参加以外（出欠表に自動で追加された 'unknown' や未登録）はすべて未回答。
+            // 以前は 'unknown' をどれにも数えず、自動補完された人の分だけ「未回答」が少なく出ていた
+            const presentCount = targetMembers.filter(m => statusMap[m.name] === 'present').length;
+            const absentCount = targetMembers.filter(m => statusMap[m.name] === 'absent').length;
+            const pendingCount = targetMembers.length - presentCount - absentCount;
             const summary = `<div style="display:flex;gap:12px;margin-bottom:8px;font-size:12px;"><span style="color:#2e7d32;">○ 参加: ${presentCount}</span><span style="color:#c62828;">× 不参加: ${absentCount}</span><span style="color:#9e9e9e;">－ 未回答: ${pendingCount}</span></div>`;
             attendanceDisplay = `<div class="detail-item"><span class="detail-label">出欠確認:</span><br>${summary}<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:4px;margin-top:4px;">${rows}</div></div>`;
         }
@@ -767,6 +772,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             eventLogDisplay = `<div class="detail-item" style="margin-top:8px;"><span class="detail-label">ログ（直近5件）:</span><div>${logRows}</div></div>`;
         }
 
+        if (requestToken !== Calendar._detailsToken) return;
+
         content.innerHTML = `
             <h3>${UI.escapeHTML(event.title)}</h3>
             <div class="detail-item">
@@ -790,10 +797,10 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             ${app.Checklist ? app.Checklist.formatChips(event.type, event.checklistExtra, event.checklist) : ''}
             ${app.Checklist ? app.Checklist.formatLuggage(event.luggage) : ''}
             ${dutyDisplay}
-            ${event.notes ? `
+            ${(event.notes || event.description) ? `
             <div class="detail-item">
-                <span class="detail-label">備考:</span><br>
-                ${UI.escapeHTML(event.notes)}
+                <span class="detail-label">備考:</span>
+                <div class="detail-notes">${UI.escapeHTML(event.notes || event.description)}</div>
             </div>
             ` : ''}
             ${attendanceDisplay}
@@ -1030,7 +1037,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         
         const date = document.getElementById('event-date').value;
         const type = document.getElementById('event-type').value;
-        const title = document.getElementById('event-title').value;
+        // 空白だけのタイトルで「タイトルなし」の予定ができないよう前後の空白を除く
+        const title = document.getElementById('event-title').value.trim();
         
         // 対象学年を取得
         const targetCheckboxes = document.querySelectorAll('input[name="event-target"]:checked');
@@ -1242,7 +1250,9 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         document.getElementById('event-venue').value = event.venue || '';
         document.getElementById('event-start-time').value = event.startTime || '';
         document.getElementById('event-end-time').value = event.endTime || '';
-        document.getElementById('event-notes').value = event.notes || '';
+        // 旧データは備考を description に持っている（表示側は notes || description）。
+        // フォームに出さないと、編集して保存したときに備考が消えていた
+        document.getElementById('event-notes').value = event.notes || event.description || '';
 
         // 持ち物を復元（個別リストがあればそれ、なければテンプレ+旧extra）
         var clEl = document.getElementById('event-checklist');

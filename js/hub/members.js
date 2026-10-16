@@ -396,7 +396,7 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
             }
 
             var notesHtml = member.notes ?
-                '<div class="member-info-line" style="color:#888;font-size:0.8em;">' + UI.escapeHTML(member.notes) + '</div>' : '';
+                '<div class="member-info-line member-notes" style="color:#888;font-size:0.8em;">' + UI.escapeHTML(member.notes) + '</div>' : '';
 
             card.innerHTML =
                 '<h3>' + (icon ? '<span class="member-role-icon">' + icon + '</span> ' : '') + UI.escapeHTML(member.name) + abbrHtml + '</h3>' +
@@ -456,7 +456,7 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
             html += '<tr><td style="padding:6px;font-weight:bold;">略称</td><td style="padding:6px;">' + UI.escapeHTML(member.abbr) + '</td></tr>';
         }
         if (member.notes) {
-            html += '<tr><td style="padding:6px;font-weight:bold;">備考</td><td style="padding:6px;">' + UI.escapeHTML(member.notes) + '</td></tr>';
+            html += '<tr><td style="padding:6px;font-weight:bold;">備考</td><td class="member-notes" style="padding:6px;">' + UI.escapeHTML(member.notes) + '</td></tr>';
         }
         html += '</table>';
 
@@ -640,6 +640,9 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
         var logsContent = document.getElementById('logs-content');
         if (!logsContent) return;
 
+        // 操作ログ用のモーダルを流用しているため、見出しを「操作ログ」のままにしない
+        var modalTitle = document.querySelector('#logs-modal h2');
+        if (modalTitle) modalTitle.textContent = 'メンバーを選択';
         var h3 = document.createElement('h3');
         h3.textContent = '編集するメンバーを選択';
         var selectList = document.createElement('div');
@@ -675,6 +678,9 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
         var logsContent = document.getElementById('logs-content');
         if (!logsContent) return;
 
+        // 操作ログ用のモーダルを流用しているため、見出しを「操作ログ」のままにしない
+        var modalTitle = document.querySelector('#logs-modal h2');
+        if (modalTitle) modalTitle.textContent = 'メンバーを選択';
         var h3 = document.createElement('h3');
         h3.textContent = '削除するメンバーを選択';
         var selectList = document.createElement('div');

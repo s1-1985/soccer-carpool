@@ -1377,7 +1377,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         if (!workArea) return;
         var isH = workArea.classList.toggle('layout-h');
         var layout = isH ? 'horizontal' : 'vertical';
-        localStorage.setItem('assignmentLayout', layout);
+        try { localStorage.setItem('assignmentLayout', layout); } catch (e) {}
         Assignment._updateLayoutBtnLabels(layout);
     };
 

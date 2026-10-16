@@ -181,38 +181,45 @@ FCOjima.Utils = FCOjima.Utils || {};
     Utils.copyToClipboard = function(text) {
         // 新しい実装（navigator.clipboard APIが使用可能な場合はそちらを優先）
         if (navigator.clipboard && window.isSecureContext) {
-            // 非同期だが、プロミスを返す
+            // 非同期のため結果を待たずに true を返す（呼び出し側は「コピーしました」と表示する）。
+            // 以前は失敗しても何も出ず、コピーされていないのに貼り付けようとして困っていた。
+            // 失敗したら従来方式で再試行し、それでもだめなら失敗を表示し直す
             navigator.clipboard.writeText(text)
                 .then(function() {
                     console.log('テキストをクリップボードにコピーしました');
-                    return true;
                 })
                 .catch(function(err) {
                     console.error('クリップボードへのコピーに失敗しました', err);
-                    return false;
+                    if (!legacyCopy(text) && FCOjima.UI && FCOjima.UI.showAlert) {
+                        FCOjima.UI.showAlert('クリップボードへのコピーに失敗しました。もう一度お試しください', 'error', 6000);
+                    }
                 });
             return true;
-        } else {
-            // 以前のアプローチ（互換性のため）
-            const textArea = document.createElement('textarea');
-            textArea.value = text;
-            textArea.style.position = 'fixed';  // スクロールを防止
-            textArea.style.opacity = '0';       // 非表示に
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            
-            try {
-                const success = document.execCommand('copy');
-                document.body.removeChild(textArea);
-                return success;
-            } catch (err) {
-                console.error('クリップボードへのコピーに失敗しました', err);
-                document.body.removeChild(textArea);
-                return false;
-            }
         }
+        return legacyCopy(text);
     };
+
+    /** 従来方式のコピー（execCommand）。成功したら true */
+    function legacyCopy(text) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.setAttribute('readonly', '');   // iOSでキーボードが出ないように
+        textArea.style.position = 'fixed';  // スクロールを防止
+        textArea.style.opacity = '0';       // 非表示に
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try { textArea.setSelectionRange(0, text.length); } catch (e) {}
+
+        try {
+            return document.execCommand('copy');
+        } catch (err) {
+            console.error('クリップボードへのコピーに失敗しました', err);
+            return false;
+        } finally {
+            document.body.removeChild(textArea);
+        }
+    }
     
     /**
      * LINEで共有（モバイルのみ）

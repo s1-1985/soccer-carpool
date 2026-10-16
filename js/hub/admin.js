@@ -286,6 +286,12 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 saveBtn.addEventListener('click', function() {
                     Admin.updateRole(u.uid, select.value, u.name);
                 });
+                // 役割を変えられない行（自分・管理者）はボタンも押せないようにする
+                // （以前は押せてしまい、押すと権限エラーの表示になっていた）
+                if (select.disabled) {
+                    saveBtn.disabled = true;
+                    saveBtn.title = select.title;
+                }
 
                 ctrl.appendChild(select);
                 ctrl.appendChild(saveBtn);
@@ -505,7 +511,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 var titleForTooltip = (ev.title || '') + '　参加' + brk.present + '/未回答' + brk.unknown + '/欠席' + brk.absent + '（対象' + brk.target + '人）';
 
                 if (FCOjima.Hub.dutyEnabled) {
-                    var dutyAssignment = (FCOjima.Hub.dutyAssignments || []).find(function(a) { return String(a.eventId) === String(ev.id); });
+                    var dutyAssignment = FCOjima.Hub.getDutyAssignment(ev.id);
                     if (dutyAssignment) {
                         var dutyDiv = document.createElement('div');
                         dutyDiv.className = 'e-duty';
@@ -1154,8 +1160,16 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
 
     Admin.renameDutyGroup = async function(group, newName) {
         try {
-            await FCOjima.DB.saveDutyGroup({ id: group.id, name: newName, memberIds: group.memberIds || [] });
-            Admin.loadDutyGroups();
+            // メンバーの追加・削除はarrayUnion/arrayRemoveで行っているため、ここで手元の
+            // memberIds を書き戻すと、開いた後に他の人が追加したメンバーが消える。名前だけ更新する
+            await FCOjima.DB.saveDutyGroup({ id: group.id, name: newName });
+            // 割り当て側に保存されている名前も揃える（表示は getDutyAssignment で現在の名前を引く）
+            await FCOjima.DB.renameDutyAssignmentsGroup(group.id, newName);
+            (FCOjima.Hub.dutyAssignments || []).forEach(function(a) {
+                if (String(a.groupId) === String(group.id)) a.groupName = newName;
+            });
+            await Admin.loadDutyGroups();
+            Admin._refreshDutyViews();
         } catch (e) {
             alert('グループ名の変更に失敗しました: ' + e.message);
         }
@@ -1164,9 +1178,29 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
     Admin.deleteDutyGroup = async function(group) {
         try {
             await FCOjima.DB.deleteDutyGroup(group.id);
-            Admin.loadDutyGroups();
+            // このグループを割り当てていた予定の割り当ても消す（残すと削除したグループが
+            // 予定の「当番」に出続けていた）
+            await FCOjima.DB.deleteDutyAssignmentsForGroup(group.id);
+            FCOjima.Hub.dutyAssignments = (FCOjima.Hub.dutyAssignments || []).filter(function(a) {
+                return String(a.groupId) !== String(group.id);
+            });
+            await Admin.loadDutyGroups();
+            Admin._refreshDutyViews();
         } catch (e) {
             alert('グループの削除に失敗しました: ' + e.message);
+        }
+    };
+
+    /** 当番の表示（出欠マトリクス・参加予定）を最新の割り当てで描き直す */
+    Admin._refreshDutyViews = function() {
+        var matrixEl = document.getElementById('attendance-matrix-container');
+        if (matrixEl && matrixEl.querySelector('.attendance-matrix')) Admin.loadAttendanceMatrix();
+        var Me = FCOjima.Hub.MyEvents;
+        if (Me && Me.refresh) {
+            Me.refresh().then(function() {
+                var tab = document.getElementById('my-events');
+                if (tab && tab.style.display !== 'none' && Me.renderList) Me.renderList(false);
+            }).catch(function() {});
         }
     };
 
@@ -1453,7 +1487,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         // 当番グループ割り当て（機能が有効な場合のみ・管理者が変更可）
         if (FCOjima.Hub.dutyEnabled) {
             var dutyGroups = FCOjima.Hub.dutyGroups || [];
-            var currentAssignment = (FCOjima.Hub.dutyAssignments || []).find(function(a) { return String(a.eventId) === String(ev.id); });
+            var currentAssignment = FCOjima.Hub.getDutyAssignment(ev.id);
             html += '<div style="display:flex;align-items:center;gap:8px;margin:8px 0;font-size:13px;">'
                 + '<span style="color:#888;min-width:52px;">当番</span>'
                 + '<select id="event-duty-select" data-event-id="' + UI.escapeHTML(String(ev.id)) + '" style="padding:4px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;flex:1;max-width:220px;">'

@@ -223,6 +223,7 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
                 venues[index] = { id: orig.id, name: name, address: address, notes: notes, createdBy: orig.createdBy || currentUser };
                 app.Hub.venues = venues; // 編集後もapp.Hub.venuesを最新状態に保つ
                 app.Hub.logs = Storage.addLog('venues', '会場更新', '「' + name + '」', logs);
+                if (orig.name && orig.name !== name) Venues._renameInEvents(orig.name, name);
             }
         } else {
             // タイムスタンプIDで採番（parseInt(最大値)+1 方式はFirestoreの英数字IDが
@@ -242,6 +243,27 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
             form.removeAttribute('data-venue-id');
         }
         UI.showAlert('会場を保存しました', 'success');
+    };
+
+    /**
+     * 会場名を変えたとき、その会場を使っている予定の会場名・集合場所も揃える（確認あり）。
+     * 予定は会場を名前で持っているため、名前だけ変わると予定側から会場の住所が引けなくなり、
+     * 地図が旧名での検索になる・天気が住所で取れなくなる
+     */
+    Venues._renameInEvents = function(oldName, newName) {
+        var events = app.Hub.events || [];
+        var targets = events.filter(function(ev) { return ev.venue === oldName || ev.meetingPlace === oldName; });
+        if (targets.length === 0) return;
+        if (!UI.showConfirm('「' + oldName + '」を会場・集合場所にしている予定が' + targets.length + '件あります。\n予定の会場名も「' + newName + '」に変更しますか？')) return;
+        targets.forEach(function(ev) {
+            if (ev.venue === oldName) ev.venue = newName;
+            if (ev.meetingPlace === oldName) ev.meetingPlace = newName;
+        });
+        Storage.saveEvents(events);
+        if (app.Hub.Calendar) {
+            if (app.Hub.Calendar.renderCalendar) app.Hub.Calendar.renderCalendar();
+            if (app.Hub.Calendar.renderEventsList) app.Hub.Calendar.renderEventsList();
+        }
     };
 
     /**
