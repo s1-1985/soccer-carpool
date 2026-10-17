@@ -121,7 +121,7 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
         (event.extraPlayers || []).forEach(function(n) { names.push(n); });
         if (event.type === 'event') {
             members.forEach(function(m) {
-                if (m.role === 'mother' || m.role === 'father' || m.role === 'officer') names.push(m.name);
+                if (FCOjima.Utils.isGuardian(m)) names.push(m.name);
             });
         }
 
@@ -196,7 +196,7 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
                     '<option value="present"' + (item.status === 'present' ? ' selected' : '') + '>参加</option>' +
                     '<option value="absent"' + (item.status === 'absent'  ? ' selected' : '') + '>不参加</option>' +
                 '</select></td>' +
-                '<td><input type="text" class="attendance-notes" data-index="' + index + '" value="' + UI.escapeHTML(item.notes || '') + '"></td>';
+                '<td><input type="text" class="attendance-notes" data-index="' + index + '" value="' + UI.escapeHTML(item.notes || '') + '" placeholder="備考（任意）" aria-label="' + UI.escapeHTML(item.name) + 'の備考"></td>';
 
             tbody.appendChild(row);
 
@@ -386,7 +386,7 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
         const players = FCOjima.Carpool.members.filter(member => {
             if (attendanceNames.includes(member.name)) return false;
             if (member.role === 'player') return true;
-            if (isEventType && (member.role === 'mother' || member.role === 'father' || member.role === 'officer')) return true;
+            if (isEventType && FCOjima.Utils.isGuardian(member)) return true;
             return false;
         });
         

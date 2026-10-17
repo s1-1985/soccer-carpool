@@ -171,21 +171,27 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
         var numberGroup = document.getElementById('number-group');
         if (numberGroup) numberGroup.style.display = (role === 'player') ? 'block' : 'none';
 
-        // 子供の欄は父・母・役員（役員として登録された保護者）で出す。以前は役員に出なかったため、
-        // 役員の保護者の子供を設定・変更できなかった（参加予定・座席割り当ては役員の子供も扱う）
+        // 子供の欄は父・母・役員（役員として登録された保護者）・コーチ（保護者を兼ねる場合）で出す。
+        // 以前は役員・コーチに出なかったため、その人の子供を設定・変更できなかった
         var childrenGroup = document.getElementById('children-group');
         if (childrenGroup) {
             var hasChildren = Members._roleHasChildren(role);
             childrenGroup.style.display = hasChildren ? 'block' : 'none';
+            var childrenLabel = childrenGroup.querySelector('label');
+            if (childrenLabel) {
+                childrenLabel.textContent = role === 'assist'
+                    ? '子どもの名前（保護者を兼ねる場合。複数選択可）'
+                    : '子どもの名前（複数選択可）';
+            }
             if (hasChildren) {
                 Members.renderChildrenSelector();
             }
         }
     };
 
-    /** 子供の紐づけを編集できる役割か（父・母・役員） */
+    /** 子供の紐づけを編集できる役割か（父・母・役員・コーチ。コーチは保護者を兼ねる場合だけ子供を選ぶ） */
     Members._roleHasChildren = function(role) {
-        return role === 'father' || role === 'mother' || role === 'officer';
+        return role === 'father' || role === 'mother' || role === 'officer' || role === 'assist';
     };
 
     /**

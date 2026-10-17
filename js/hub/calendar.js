@@ -705,7 +705,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         // イベント種別「イベント」の場合は保護者も表示
         if (isEventType) {
             members.forEach(function(m) {
-                if (m.role === 'mother' || m.role === 'father' || m.role === 'officer') {
+                // 保護者（父・母・役員、保護者を兼ねるコーチ）。コーチは選手と重複しないよう名前で確認
+                if (Utils.isGuardian(m) && !targetMembers.some(function(t) { return t.name === m.name; })) {
                     targetMembers.push(m);
                 }
             });

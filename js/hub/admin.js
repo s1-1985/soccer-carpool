@@ -691,9 +691,12 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 requestAnimationFrame(function() {
                     var upTh = wrap.querySelector('.mx-evt.mx-upcoming');
                     if (upTh) {
-                        var leftCols = 30 + (thName.offsetWidth || 60);
-                        var target = upTh.offsetLeft - leftCols - 8;
-                        if (target > 0) wrap.scrollLeft = target;
+                        // 左に固定した学年・氏名の列の右端に、直近の予定の列の左端を合わせる（前に列があれば少しだけ見せる）。
+                        // 以前は固定列の幅を決め打ちで計算しており、直近の予定が先頭の列のときに、その列の左側が
+                        // 固定列の下に潜り込んで日付の頭が切れていた
+                        var delta = upTh.getBoundingClientRect().left - thName.getBoundingClientRect().right;
+                        if (upcomingIdx > 0) delta -= 8;
+                        wrap.scrollLeft = Math.max(0, wrap.scrollLeft + delta);
                     }
                 });
             }
@@ -808,7 +811,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             // 一度も運転していない父母（登録0件）も表示 → 声かけの参考になる
             var driverNames = new Set(Object.keys(counts));
             var zeroDrivers = (FCOjima.Hub.members || [])
-                .filter(function(m) { return (m.role === 'father' || m.role === 'mother') && !driverNames.has(m.name); })
+                .filter(function(m) { return FCOjima.Utils.isGuardian(m) && !driverNames.has(m.name); })
                 .map(function(m) { return m.name; });
 
             if (zeroDrivers.length > 0) {
@@ -1075,9 +1078,9 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             _dutyGroups = groups;
             FCOjima.Hub.dutyGroups = groups;
 
-            // 候補メンバー: 指導者（coach/assist）・父・母
+            // 候補メンバー: 指導者（coach/assist）・父・母・役員（役員も子供が所属している保護者）
             var candidates = (FCOjima.Hub.members || []).filter(function(m) {
-                return ['coach', 'assist', 'father', 'mother'].includes(m.role);
+                return ['coach', 'assist', 'father', 'mother', 'officer'].includes(m.role);
             });
 
             container.innerHTML = '';
@@ -1134,7 +1137,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         // 旧実装（全候補チェックボックスのタップでトグル）は実機モバイルChromeで
         // 2度タップ不良が報告されたため、ネイティブUI（button/select）のみで構成する。
         // グループは作成時メンバー0人で、あとから追加していく。他グループとの重複所属OK
-        var MEMBER_ROLE_LABELS = { coach: '監督', assist: 'コーチ', father: '父', mother: '母' };
+        var MEMBER_ROLE_LABELS = { coach: '監督', assist: 'コーチ', father: '父', mother: '母', officer: '役員' };
         var memberIds = (group.memberIds || []).map(String);
         var body = document.createElement('div');
         body.className = 'duty-group-members';
@@ -1190,7 +1193,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         } else if (candidates.length === 0) {
             var noCand = document.createElement('p');
             noCand.style.cssText = 'color:#999;font-size:12px;margin:4px 0;';
-            noCand.textContent = '指導者・父・母のメンバーが登録されていません。';
+            noCand.textContent = '指導者・父・母・役員のメンバーが登録されていません。';
             card.appendChild(noCand);
         }
         return card;

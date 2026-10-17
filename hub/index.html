@@ -8,7 +8,7 @@
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#1C1600">
     <link rel="apple-touch-icon" href="/img/icon-192.png">
-    <link rel="stylesheet" href="../css/common.css?v=20261016f">
+    <link rel="stylesheet" href="../css/common.css?v=20261017a">
     <link rel="stylesheet" href="../css/hub/calendar.css?v=20261016c">
     <link rel="stylesheet" href="../css/hub/members.css?v=20260719">
     <link rel="stylesheet" href="../css/hub/notifications.css?v=20260224a">
@@ -167,7 +167,10 @@
         .attendance-matrix .mx-evt .e-dow  { font-size: 10px; line-height: 1.3; }
         .attendance-matrix .mx-evt .e-title {
             font-size: 11px; color: #2b4a7a; margin: 2px 0 3px;
-            max-width: 62px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            /* 予定名は2行まで表示（1行だと「第35回 …」「練習試合 …」ばかりで区別できなかった） */
+            max-width: 62px; overflow: hidden; line-height: 1.25;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+            white-space: normal; word-break: break-all;
             text-decoration: underline; text-decoration-color: #b8c8e0;
         }
         .attendance-matrix .mx-evt .e-brk {
@@ -265,7 +268,11 @@
     <div class="hub-sticky-top">
         <header style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
             <h1 style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">FC 尾島ジュニア HUB</h1>
-            <button id="logout-btn" type="button" style="background:none;border:1px solid #E8A200;color:#E8A200;font-size:12px;padding:6px 12px;border-radius:6px;flex-shrink:0;white-space:nowrap;min-height:32px;">ログアウト</button>
+            <div class="header-account">
+                <!-- ログイン中の名前（以前は見出しの後ろに付けていたため、スマホでは見出しごと「…」で切れて見えなかった） -->
+                <span id="header-user-name" class="header-user-name"></span>
+                <button id="logout-btn" type="button" style="background:none;border:1px solid #E8A200;color:#E8A200;font-size:12px;padding:6px 12px;border-radius:6px;flex-shrink:0;white-space:nowrap;min-height:32px;">ログアウト</button>
+            </div>
         </header>
 
         <!-- タブナビゲーション -->
@@ -876,7 +883,7 @@
 
     <!-- 共通モジュール -->
     <script src="../js/common/global.js?v=20260224a"></script>
-    <script src="../js/common/utils.js?v=20261016h"></script>
+    <script src="../js/common/utils.js?v=20261017a"></script>
     <script src="../js/common/storage.js?v=20261016d"></script>
     <script src="../js/common/ui.js?v=20261016d"></script>
     <script src="../js/common/auth.js?v=20261016g"></script>
@@ -887,12 +894,12 @@
 
     <!-- HUBページ用モジュール -->
     <script src="../js/hub/main.js?v=20261016g"></script>
-    <script src="../js/hub/calendar.js?v=20261016i"></script>
-    <script src="../js/hub/members.js?v=20261016g"></script>
+    <script src="../js/hub/calendar.js?v=20261017a"></script>
+    <script src="../js/hub/members.js?v=20261017a"></script>
     <script src="../js/hub/notifications.js?v=20261016c"></script>
     <script src="../js/hub/venues.js?v=20261016g"></script>
     <script src="../js/hub/myevents.js?v=20261016h"></script>
-    <script src="../js/hub/admin.js?v=20261016h"></script>
+    <script src="../js/hub/admin.js?v=20261017a"></script>
 
     <script>
         // タブの切り替えに応じてフローティングボタンの表示を制御
@@ -944,9 +951,9 @@
             // ログインユーザー名をヘッダーに表示
             const user = FCOjima.Auth.getCurrentUser();
             if (user) {
-                const header = document.querySelector('header h1');
+                const nameEl = document.getElementById('header-user-name');
                 const name = userProfile ? userProfile.name : (user.displayName || user.email);
-                header.textContent += '  [' + name + ']';
+                if (nameEl) { nameEl.textContent = name; nameEl.title = name; }
             }
 
             // 操作ログはマネージャーしか読めない（Firestoreルール）。保護者には常に「ログがありません」と

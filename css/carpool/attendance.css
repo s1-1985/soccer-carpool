@@ -163,12 +163,11 @@
         padding: 8px 4px;
     }
 
-    /* 名前列 */
+    /* 名前列（「…」で切らず、姓と名の間で折り返す。長い名前の保護者が「武者小路 千…」と切れていた） */
     .attendance-table td:first-child {
-        max-width: 90px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        white-space: normal;
+        word-break: keep-all;
+        overflow-wrap: anywhere;
     }
 
     /* 学年列を非表示（スマホでは省略） */
@@ -207,7 +206,43 @@
         padding: 10px 4px;
         white-space: normal;
         word-break: keep-all;
+        /* 空白のない長い文言（「未回答者にリマインド」）は、ボタンからはみ出さず折り返す */
+        overflow-wrap: anywhere;
         text-align: center;
         line-height: 1.3;
+    }
+
+    /* 出欠表は1人2段（上段: 名前と出欠、下段: 備考を横幅いっぱい）。
+       以前は備考の欄が狭く、書かれた備考が「体調不」のように数文字しか見えなかった */
+    .attendance-table,
+    .attendance-table tbody {
+        display: block;
+        width: 100%;
+    }
+    .attendance-table thead {
+        display: none;
+    }
+    .attendance-table tbody tr {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        column-gap: 8px;
+        row-gap: 6px;
+        padding: 8px 4px;
+        border-bottom: 1px solid #eee;
+    }
+    .attendance-table tbody td {
+        padding: 0;
+        border: none;
+    }
+    .attendance-table tbody td:nth-child(4) {
+        grid-column: 1 / -1;
+    }
+    .attendance-table tbody td.empty-row {
+        grid-column: 1 / -1;
+    }
+    .attendance-table .attendance-notes {
+        width: 100%;
+        box-sizing: border-box;
     }
 }
