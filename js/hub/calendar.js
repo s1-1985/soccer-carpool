@@ -427,6 +427,13 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         
         // データ属性に日付を設定
         day.dataset.date = Utils.formatDate(date);
+
+        // 日付の数字の行をタップするとその日の予定一覧を開く（マスのほかの部分は従来どおり予定追加）
+        const dateStr = day.dataset.date;
+        dateDiv.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.openDayModal(dateStr);
+        });
         
         // 日付クリックで予定追加モーダルを開く
         day.addEventListener('click', () => {
@@ -466,6 +473,59 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             
             dayElement.appendChild(eventElement);
         });
+
+        // その日の予定一覧を開いたまま予定が追加・変更・削除されたら一覧も最新にする
+        const dayModal = document.getElementById('day-events-modal');
+        if (dayModal && dayModal.style.display === 'flex' && Calendar._dayModalDate) {
+            Calendar.renderDayModal();
+        }
+    };
+
+    /**
+     * その日の予定一覧モーダルを開く（同じ日に予定が並んで押しにくいとき用）
+     * @param {string} dateStr - YYYY-MM-DD
+     */
+    Calendar.openDayModal = function(dateStr) {
+        Calendar._dayModalDate = String(dateStr);
+        const addBtn = document.getElementById('day-events-add');
+        if (addBtn && !addBtn._bound) {
+            addBtn._bound = true;
+            addBtn.addEventListener('click', function() {
+                const d = Calendar._dayModalDate;
+                UI.closeModal('day-events-modal');
+                Calendar.openAddEventModal(new Date(d + 'T00:00:00'));
+            });
+        }
+        Calendar.renderDayModal();
+        UI.openModal('day-events-modal');
+    };
+
+    Calendar.renderDayModal = function() {
+        const dateStr = Calendar._dayModalDate;
+        const list = document.getElementById('day-events-list');
+        const title = document.getElementById('day-events-title');
+        if (!list || !dateStr) return;
+        // 年は月の見出しにあるので省く（スマホで見出しが2行に折り返さないように）
+        const dd = new Date(dateStr + 'T00:00:00');
+        title.textContent = (dd.getMonth() + 1) + '月' + dd.getDate() + '日(' + ['日', '月', '火', '水', '木', '金', '土'][dd.getDay()] + ') の予定';
+        const all = (app.Hub.events || []).filter(function(ev) { return String(ev.date) === dateStr; });
+        const shown = Calendar.applyMyChildFilter(all).slice().sort(Utils.compareEvents);
+        list.innerHTML = '';
+        if (shown.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'day-events-empty';
+            empty.textContent = 'この日の予定はありません';
+            list.appendChild(empty);
+        }
+        // 詳細はこの一覧の上に重ねて開く（閉じると一覧に戻る）
+        shown.forEach(function(ev) { list.appendChild(Calendar.createEventListItem(ev)); });
+        const hidden = all.length - shown.length;
+        if (hidden > 0) {
+            const note = document.createElement('div');
+            note.className = 'day-events-hidden';
+            note.textContent = '「自分の子供のみ」の絞り込みで ' + hidden + '件 を表示していません';
+            list.appendChild(note);
+        }
     };
     
     /**
@@ -807,6 +867,10 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             </div>
             ` : ''}
             ${attendanceDisplay}
+            ${(app.PlayerMove && app.PlayerMove.canUse() && app.PlayerMove.isMovableEvent(event)) ? `
+            <div class="detail-item">
+                <button type="button" id="event-player-move-btn" class="secondary-button" style="font-size:13px;padding:8px 14px;">⇄ 他の予定・お休みの選手を入れる</button>
+            </div>` : ''}
             <div class="detail-item" style="margin-top:10px;">
                 <span class="detail-label">📎 添付ファイル:</span>
                 <div id="calendar-event-files" style="margin:6px 0;display:flex;flex-direction:column;gap:4px;"></div>
@@ -816,6 +880,18 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             </div>
             ${eventLogDisplay}
         `;
+
+        // 同じ日の別の予定・その日に予定のない選手をこの予定に入れる（管理者・指導者・役員）
+        var moveBtn = document.getElementById('event-player-move-btn');
+        if (moveBtn) {
+            moveBtn.addEventListener('click', function() {
+                app.PlayerMove.open(event, {
+                    members: app.Hub.members || [],
+                    events: function() { return app.Hub.events || []; },
+                    onClose: function(changed) { if (changed) Calendar.showEventDetails(event.id); }
+                });
+            });
+        }
 
         // 添付ファイル（配車管理画面と同じStorageパスを参照＝同期される）
         if (app.EventFiles) {

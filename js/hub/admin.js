@@ -527,6 +527,9 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 });
                 breakdown.push({ present: present, absent: absent, unknown: targetN - present - absent, target: targetN });
             });
+            // 参加イベント移動の画面で、移動先の候補に人数を出すため
+            Admin._matrixBreakdown = {};
+            targetEvents.forEach(function(ev, i) { Admin._matrixBreakdown[String(ev.id)] = breakdown[i]; });
 
             // 直近イベント（今日以降で最初）のインデックス
             var upcomingIdx = -1;
@@ -652,10 +655,11 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                     td.textContent = disp.text;
                     td.classList.add(disp.cls);
 
-                    // 同じ日に他のイベントがある対象セルはタップで「参加イベント移動」モーダルを開く
-                    if (status !== 'na') {
+                    // 同じ日に他の試合・練習がある対象セルはタップで「参加イベント移動」モーダルを開く
+                    // （行事は同じ日の試合と両方に出られるため、移動元・移動先にしない）
+                    if (status !== 'na' && FCOjima.PlayerMove.isMovableEvent(ev)) {
                         var sameDayOthers = targetEvents.filter(function(o) {
-                            return String(o.id) !== String(ev.id) && o.date === ev.date;
+                            return String(o.id) !== String(ev.id) && o.date === ev.date && FCOjima.PlayerMove.isMovableEvent(o);
                         });
                         if (sameDayOthers.length > 0) {
                             td.classList.add('mx-cell-movable');
@@ -1385,7 +1389,10 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 title.textContent = toEv.title || Utils.getEventTypeLabel(toEv.type);
                 var meta = document.createElement('div');
                 meta.style.cssText = 'font-size:12px;color:#777;margin-top:2px;';
-                meta.textContent = targetLabel + (toEv.startTime ? '　' + toEv.startTime + '〜' : '');
+                // 移動先の人数（参加・未回答・不参加）。どの予定が足りないか分かるように
+                var brk = (Admin._matrixBreakdown || {})[String(toEv.id)];
+                meta.textContent = targetLabel + (toEv.startTime ? '　' + toEv.startTime + '〜' : '') +
+                    (brk ? '　参加' + brk.present + '・未回答' + brk.unknown + '・不参加' + brk.absent : '');
                 btn.appendChild(title);
                 btn.appendChild(meta);
                 btn.addEventListener('click', function() {
@@ -1406,87 +1413,10 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
      */
     Admin.movePlayerToEvent = async function(member, fromEv, toEv) {
         try {
-            var Storage = FCOjima.Storage;
-
-            // 出欠の更新はトランザクションで最新の内容に対して行う（読み込んでから書き込むまでの
-            // 間に保護者が回答した出欠や、配車担当が保存した座席割り当てを古い内容で上書きしない。
-            // 書き込むのは attendance フィールドだけ）
-            function upsert(list, status, notes) {
-                var item = list.find(function(a) {
-                    return (a.memberId && String(a.memberId) === String(member.id)) || a.name === member.name;
-                });
-                if (item) {
-                    item.status = status;
-                    if (notes !== undefined) item.notes = notes;
-                } else {
-                    var it = { name: member.name, status: status, notes: notes || '' };
-                    if (member.id != null) it.memberId = String(member.id);
-                    list.push(it);
-                }
-            }
-            function updateAttendance(eventId, status, notes) {
-                return FCOjima.DB.updateEventData(eventId, function(data) {
-                    var list = (data && Array.isArray(data.attendance))
-                        ? data.attendance.map(function(a) { return Object.assign({}, a); })
-                        : [];
-                    upsert(list, status, notes);
-                    return { attendance: list };
-                });
-            }
-
-            // 移動先の対象学年に含まれない場合は学年外追加選手として登録
-            var targets = (toEv.target && toEv.target.length > 0) ? toEv.target : null;
-            var inTarget = !targets || (member.grade && targets.some(function(g) { return String(g) === String(member.grade); }));
-            if (!inTarget && !(toEv.extraPlayers || []).includes(member.name)) {
-                toEv.extraPlayers = (toEv.extraPlayers || []).concat([member.name]);
-                // Hub.events（リアルタイム同期で最新）を優先して保存する。マトリクス読込時の
-                // 配列を保存すると、その後に他の人が編集したイベントを古い内容で上書きしてしまう
-                var hubEv = (FCOjima.Hub.events || []).find(function(e) { return String(e.id) === String(toEv.id); });
-                if (hubEv) hubEv.extraPlayers = toEv.extraPlayers.slice();
-                var matrixEvents = Admin._matrixEvents || [];
-                var evInMatrix = matrixEvents.find(function(e) { return String(e.id) === String(toEv.id); });
-                if (evInMatrix) evInMatrix.extraPlayers = toEv.extraPlayers.slice();
-                Storage.saveEvents(hubEv ? FCOjima.Hub.events : matrixEvents);
-            }
-
-            await updateAttendance(toEv.id, 'present', '');
-            await updateAttendance(fromEv.id, 'absent', '「' + (toEv.title || '') + '」へ移動');
-
-            // 連絡事項へ変更通知を投稿（構造化フィールド付き＝保護者ダイアログが参照）
-            var now = new Date();
-            var dateStr = now.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }) +
-                          ' ' + now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
-            var operator = (FCOjima.Auth && FCOjima.Auth.getDisplayName) ? FCOjima.Auth.getDisplayName() : 'システム';
-            var d = new Date(fromEv.date + 'T00:00:00');
-            var evDateLabel = (d.getMonth() + 1) + '/' + d.getDate();
-            var notice = {
-                id: Date.now().toString() + Math.floor(Math.random() * 1000),
-                type: 'move',
-                date: dateStr,
-                user: operator,
-                text: '【参加変更】' + evDateLabel + ' ' + member.name + '：「' + (fromEv.title || '') + '」→「' + (toEv.title || '') + '」',
-                ts: Date.now(),
-                eventDate: fromEv.date,
-                memberId: member.id != null ? String(member.id) : null,
-                memberName: member.name,
-                fromEventId: String(fromEv.id),
-                fromEventTitle: fromEv.title || '',
-                toEventId: String(toEv.id),
-                toEventTitle: toEv.title || ''
-            };
-            FCOjima.Hub.notifications = FCOjima.Hub.notifications || [];
-            FCOjima.Hub.notifications.unshift(notice);
-            Storage.saveNotifications(FCOjima.Hub.notifications);
-
-            // 連絡事項タブを即時再描画（初期化時に一度描画されたきりなので、
-            // これがないと移動した本人の画面ではリロードするまで通知が出ない）
-            if (FCOjima.Hub.Notifications && FCOjima.Hub.Notifications.renderNotifications) {
-                FCOjima.Hub.Notifications.renderNotifications();
-            }
-
-            // 操作ログ
-            FCOjima.Hub.logs = Storage.addLog('attendance', '参加イベント変更',
-                member.name + ': ' + (fromEv.title || '') + ' → ' + (toEv.title || ''), FCOjima.Hub.logs);
+            // 出欠（移動先: 参加／移動元: 不参加）・学年外追加・変更のお知らせは共通の処理で行う
+            // （FCOjima.PlayerMove。予定の詳細・配車管理の出欠ページの「選手を入れる」と同じ）。
+            // 学年外追加はその1人だけを追加し、他の人が同時に編集した予定の内容には触れない
+            await FCOjima.PlayerMove.move(member, fromEv, toEv);
 
             FCOjima.UI.closeModal('matrix-move-modal');
             FCOjima.UI.showAlert(member.name + ' を「' + (toEv.title || '') + '」へ移動しました', 'success');

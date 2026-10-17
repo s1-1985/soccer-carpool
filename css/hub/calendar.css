@@ -70,6 +70,35 @@
     margin-bottom: 3px;
 }
 
+/* 日付の数字の行（マスの幅いっぱい）をタップするとその日の予定一覧を開く。
+   同じ日に予定が並ぶと目的の予定を押しにくいため、指で押せる高さを確保する */
+.calendar-day .date {
+    margin: -4px -4px 3px;
+    padding: 4px 6px 3px;
+    min-height: 22px;
+    box-sizing: border-box;
+    cursor: pointer;
+    border-radius: 3px;
+}
+.calendar-day .date:hover {
+    background-color: rgba(232, 162, 0, 0.15);
+}
+
+/* その日の予定一覧モーダル */
+#day-events-list .event-item:hover {
+    transform: none;
+}
+#day-events-list .day-events-empty {
+    color: #888;
+    font-size: 14px;
+    padding: 12px 4px;
+}
+#day-events-list .day-events-hidden {
+    color: #888;
+    font-size: 12px;
+    margin-top: 6px;
+}
+
 .other-month {
     background-color: #f9f9f9 !important;
     color: #bbb;
@@ -248,6 +277,12 @@
 
     .date {
         font-size: 10px;
+    }
+
+    .calendar-day .date {
+        margin: -2px -2px 2px;
+        padding: 4px 4px 4px;
+        min-height: 22px;
     }
 
     .event {

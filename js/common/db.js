@@ -275,6 +275,18 @@ FCOjima.DB = FCOjima.DB || {};
             extraPlayers: firebase.firestore.FieldValue.arrayUnion(String(name))
         });
     };
+    DB.removeEventExtraPlayer = async function(eventId, name) {
+        await Collections.events().doc(String(eventId)).update({
+            extraPlayers: firebase.firestore.FieldValue.arrayRemove(String(name))
+        });
+    };
+
+    /** 指定した日の予定（配車管理のページなど、予定の一覧を読み込んでいない画面から使う） */
+    DB.loadEventsOnDate = async function(date) {
+        const snapshot = await Collections.events().where('date', '==', String(date)).get();
+        ensureFromServer(snapshot);
+        return snapshot.docs.map(doc => DB.normalizeEvent({ id: doc.id, ...doc.data() }));
+    };
 
     // ========== 連絡事項 ==========
 
@@ -308,6 +320,17 @@ FCOjima.DB = FCOjima.DB || {};
             if (!n.id) n.id = Date.now().toString() + '_' + i;
         });
         await syncCollection('notifications', Collections.notifications(), notifications);
+    };
+
+    /** 連絡事項を1件、ID を指定して書き込む／消す（一覧全体の保存を経由しない） */
+    DB.putNotification = async function(notification) {
+        const data = Object.assign({}, notification);
+        const id = String(data.id);
+        delete data.id;
+        await Collections.notifications().doc(id).set(cleanForFirestore(data));
+    };
+    DB.deleteNotification = async function(id) {
+        await Collections.notifications().doc(String(id)).delete();
     };
 
     DB.addNotification = async function(notification) {
