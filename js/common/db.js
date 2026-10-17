@@ -144,6 +144,12 @@ FCOjima.DB = FCOjima.DB || {};
     DB.normalizeMember = function(m) {
         fixArrayField(m, 'childrenIds', String);
         fixArrayField(m, 'formerNames', String);
+        // 兄弟児（チームに所属していない子）: [{ name, note }]。名前のない要素は除く
+        if (m && m.siblings !== undefined) {
+            m.siblings = toArray(m.siblings).filter(function(s) {
+                return s && typeof s === 'object' && typeof s.name === 'string' && s.name.trim() !== '';
+            });
+        }
         return m;
     };
     DB.normalizeEvent = function(ev) {
@@ -214,6 +220,23 @@ FCOjima.DB = FCOjima.DB || {};
 
     DB.saveMembers = async function(members) {
         await syncCollection('members', Collections.members(), members);
+    };
+
+    /**
+     * 保護者のメンバー情報に兄弟児を1人加える／外す（兄弟児の項目だけを書き換える。
+     * 保護者本人も自分の家族の分だけ変更できる: firestore.rules の members を参照）
+     * @param {string} memberId
+     * @param {{name:string, note:string}} sibling - 外すときは読み込んだときの内容そのもの
+     */
+    DB.addMemberSibling = async function(memberId, sibling) {
+        await Collections.members().doc(String(memberId)).update({
+            siblings: firebase.firestore.FieldValue.arrayUnion({ name: String(sibling.name), note: String(sibling.note || '') })
+        });
+    };
+    DB.removeMemberSibling = async function(memberId, sibling) {
+        await Collections.members().doc(String(memberId)).update({
+            siblings: firebase.firestore.FieldValue.arrayRemove(sibling)
+        });
     };
 
     // ========== 会場 ==========
