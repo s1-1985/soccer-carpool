@@ -315,7 +315,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         if (!target) return;
         var venueData = Overview._findVenue(event.venue);
         var address = venueData && venueData.address;
-        app.Weather.getDailyForecast(event.venue, address, event.date).then(function(result) {
+        app.Weather.getDailyForecast(event.venue, address, event.date, event).then(function(result) {
             var el = document.getElementById('overview-weather');
             if (el) el.innerHTML = app.Weather.formatWidget(result, event.venue, address);
         });
