@@ -1734,3 +1734,47 @@ body.canvas-select-active #canvas-mode .seat:not(.driver-seat):not(.filled) {
     padding: 9px 4px;
 }
 
+
+/* ---------- スマホでの見切れ対策（10巡目） ---------- */
+@media screen and (max-width: 768px) {
+    /* 座席の × を座席の右上の角の外に出す（座席の中に置くと名前の末尾に重なって読めなかった） */
+    .seat-clear-btn {
+        top: -9px;
+        right: -9px;
+        width: 15px;
+        height: 15px;
+        font-size: 9px;
+        line-height: 13px;
+        background: #fff;
+        border: 1px solid #dc3545;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+    }
+    /* 名前は姓と名の間（空白）で折り返す。以前は「長谷川 美/由紀」「佐々/木」のように途中で切れていた */
+    .seat-name-tag,
+    .member-item {
+        word-break: keep-all;
+        overflow-wrap: anywhere;
+    }
+    /* 見出し（車両座席配置・配置待ちメンバー）が「配置待ちメンバ/ー」と折り返さないよう小さく */
+    .car-seats-container > h3,
+    .members-assignment-container > h3 {
+        font-size: 15px;
+        word-break: keep-all;
+        overflow-wrap: anywhere;
+    }
+    /* 下部の操作ボタン: 文字を途中で折り返さず（「ランダ/ム配置」「画像で出/力」になっていた）、
+       1行に入りきらないときは2段に並べる */
+    .assignment-action-buttons {
+        gap: 6px;
+    }
+    .assignment-action-buttons button {
+        flex: 1 1 28%;
+        white-space: nowrap;
+        font-size: 12px;
+        padding: 8px 4px;
+    }
+    /* キャンバスモードの下部の操作ボタンも同じく2段まで */
+    #canvas-mode .assignment-action-buttons {
+        flex-wrap: wrap;
+    }
+}

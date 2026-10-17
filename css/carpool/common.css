@@ -212,3 +212,16 @@ header {
         bottom: 60px;
     }
 }
+/* ---------- スマホ: 見出しとタブの重なり対策 ----------
+   予定名が2行以上になると見出し（固定）の高さが42pxを超え、その下に固定していたタブ
+   （概要・出欠確認・車提供・割り当て）がスクロールすると見出しの裏に隠れて押せなかった。
+   スマホでは見出しは固定せず、タブだけを画面の上端に固定する */
+@media screen and (max-width: 768px) {
+    header { position: relative; }
+    .carpool-nav { top: 0; }
+}
+@media screen and (max-width: 360px) {
+    /* 5つのタブが1行に収まるよう詰める（320pxで「連絡」だけ2行目に落ちていた） */
+    .carpool-nav { padding: 8px 8px; gap: 3px; }
+    .carpool-nav a { padding: 6px 7px; font-size: 13px; }
+}

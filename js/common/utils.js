@@ -496,6 +496,17 @@ FCOjima.Utils = FCOjima.Utils || {};
      * @param {{target?: Array, extraPlayers?: Array}} event - イベント
      * @returns {boolean}
      */
+    /**
+     * 保護者として扱うメンバーか。父・母・役員（役員は子供が所属している保護者）と、
+     * 子供を紐づけたコーチ（保護者を兼ねるコーチ。子供が卒団したなどでコーチだけの人は含まない）
+     * @param {Object} m - メンバー
+     */
+    Utils.isGuardian = function(m) {
+        if (!m) return false;
+        if (m.role === 'father' || m.role === 'mother' || m.role === 'officer') return true;
+        return m.role === 'assist' && Array.isArray(m.childrenIds) && m.childrenIds.length > 0;
+    };
+
     Utils.isTargetFor = function(member, event) {
         var evTargets = (event.target && event.target.length > 0) ? event.target : null;
         var extraPlayers = event.extraPlayers || [];

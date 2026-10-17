@@ -244,6 +244,15 @@ FCOjima.DB = FCOjima.DB || {};
         await syncCollection('events', Collections.events(), events);
     };
 
+    /**
+     * 予定の学年外追加選手（extraPlayers）に1人加える（他の項目・他の人の追加には触れない）
+     */
+    DB.addEventExtraPlayer = async function(eventId, name) {
+        await Collections.events().doc(String(eventId)).update({
+            extraPlayers: firebase.firestore.FieldValue.arrayUnion(String(name))
+        });
+    };
+
     // ========== 連絡事項 ==========
 
     DB.loadNotifications = async function() {

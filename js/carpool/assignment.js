@@ -254,8 +254,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             players = members.filter(function(m) { return m.role === 'player'; });
         }
         // 学年外追加選手
+        var existingNames = new Set(players.map(function(m) { return m.name; }));
         if (event && event.extraPlayers && event.extraPlayers.length > 0) {
-            var existingNames = new Set(players.map(function(m) { return m.name; }));
             event.extraPlayers.forEach(function(name) {
                 if (!existingNames.has(name)) {
                     var m = members.find(function(x) { return x.name === name; });
@@ -263,6 +263,14 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                 }
             });
         }
+        // 出欠ページの「参加者を追加」で出欠表に加えた選手（対象学年外でも）。以前は出欠で「参加」に
+        // しても座席の候補に出ず、その子の保護者だけが候補に出ていた
+        members.forEach(function(m) {
+            if (m.role === 'player' && !existingNames.has(m.name) && presentNames.has(m.name)) {
+                players.push(m);
+                existingNames.add(m.name);
+            }
+        });
         // 出欠「参加」と回答済みの選手のみ残す（未回答・欠席は割り当てに出さない）
         players = players.filter(function(m) { return presentNames.has(m.name); });
         filtered = filtered.concat(players);
@@ -2218,11 +2226,19 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         }
     };
 
-    /** 出欠が「不参加」の人の名前 */
+    /**
+     * 出欠が「不参加」の人と、出欠ページで参加者から外した人（attendanceRemoved。出欠表に戻した人は除く）の名前
+     */
     Assignment._absentNameSet = function() {
-        return new Set((app.Carpool.appData.attendance || []).filter(function(a) {
+        var attendance = app.Carpool.appData.attendance || [];
+        var set = new Set(attendance.filter(function(a) {
             return a && a.status === 'absent';
         }).map(function(a) { return a.name; }));
+        var listed = new Set(attendance.map(function(a) { return a && a.name; }));
+        (app.Carpool.appData.attendanceRemoved || []).forEach(function(n) {
+            if (n && !listed.has(n)) set.add(n);
+        });
+        return set;
     };
 
     /**
@@ -2249,7 +2265,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         }
         box.innerHTML = '';
         var msg = document.createElement('span');
-        msg.textContent = '⚠ 割り当てた後に「不参加」になった人が座席に残っています: ' + names.join('、');
+        msg.textContent = '⚠ 割り当てた後に「不参加」になった人（参加者から外した人を含む）が座席に残っています: ' + names.join('、');
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'seat-absent-clear-btn';
