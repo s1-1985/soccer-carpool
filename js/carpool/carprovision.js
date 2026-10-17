@@ -125,9 +125,8 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
             } else {
                 tbody.innerHTML = '';
                 carRegistrations.forEach(function(car, index) {
-                    const total = (parseInt(car.frontSeat) || 0) +
-                                  (parseInt(car.middleSeat) || 0) +
-                                  (parseInt(car.backSeat) || 0);
+                    // 乗車可能 = 座席数 − 兄弟児など（その席には選手を割り当てない）
+                    const total = FCOjima.Utils.carOpenSeats(car);
                     const row = document.createElement('tr');
                     row.innerHTML =
                         '<td>' + UI.escapeHTML(car.parent) + '</td>' +
@@ -160,9 +159,8 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
                 cardList.appendChild(empty);
             } else {
                 carRegistrations.forEach(function(car, index) {
-                    const total = (parseInt(car.frontSeat) || 0) +
-                                  (parseInt(car.middleSeat) || 0) +
-                                  (parseInt(car.backSeat) || 0);
+                    const total = FCOjima.Utils.carOpenSeats(car);
+                    const extra = FCOjima.Utils.carExtraCount(car);
                     const label = UI.escapeHTML(provideLabels[car.canDrive] || car.canDrive);
                     const cls   = provideClass[car.canDrive]  || '';
                     var card = document.createElement('div');
@@ -172,7 +170,8 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
                             '<span class="car-card-name">' + UI.escapeHTML(car.parent) + '</span>' +
                             '<span class="car-card-badge ' + cls + '">' + label + '</span>' +
                         '</div>' +
-                        '<div class="car-card-seats">助手席 ' + (parseInt(car.frontSeat, 10) || 0) + ' ＋ 中列 ' + (parseInt(car.middleSeat, 10) || 0) + ' ＋ 後列 ' + (parseInt(car.backSeat, 10) || 0) + ' ＝ 合計 <strong>' + total + '</strong> 席</div>' +
+                        '<div class="car-card-seats">助手席 ' + (parseInt(car.frontSeat, 10) || 0) + ' ＋ 中列 ' + (parseInt(car.middleSeat, 10) || 0) + ' ＋ 後列 ' + (parseInt(car.backSeat, 10) || 0) +
+                            (extra > 0 ? ' − 兄弟児など ' + extra : '') + ' ＝ 乗車可能 <strong>' + total + '</strong> 席</div>' +
                         (car.notes ? '<div class="car-card-notes">📝 ' + UI.escapeHTML(car.notes) + '</div>' : '') +
                         (CarProvision._passengerText(car) ?
                             '<div class="car-card-notes">👤 メンバー外: ' + UI.escapeHTML(CarProvision._passengerText(car)) + '</div>' : '') +
@@ -187,18 +186,17 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         const statsDiv = document.getElementById('car-stats');
         if (statsDiv) {
             const available = carRegistrations.filter(function(c) { return c.canDrive !== 'no'; });
-            const totalSeats = available.reduce(function(sum, car) {
-                return sum + (parseInt(car.frontSeat) || 0) +
-                             (parseInt(car.middleSeat) || 0) +
-                             (parseInt(car.backSeat) || 0);
-            }, 0);
+            // 乗車可能な席の数（兄弟児などが乗る席は除く）
+            const totalSeats = available.reduce(function(sum, car) { return sum + FCOjima.Utils.carOpenSeats(car); }, 0);
+            const extraTotal = available.reduce(function(sum, car) { return sum + FCOjima.Utils.carExtraCount(car); }, 0);
             const presentCount = (FCOjima.Carpool.appData.attendance || [])
                 .filter(function(a) { return a.status === 'present'; }).length;
             const requiredSeatsLabel = presentCount > 0 ? ' / 必要 ' + presentCount + '席' : '';
             statsDiv.innerHTML =
                 '<div class="stat-item"><span class="stat-label">車両数</span><span class="stat-value">' + carRegistrations.length + '台</span></div>' +
                 '<div class="stat-item"><span class="stat-label">提供可能</span><span class="stat-value">' + available.length + '台</span></div>' +
-                '<div class="stat-item"><span class="stat-label">総座席数</span><span class="stat-value">' + totalSeats + '席' + requiredSeatsLabel + '</span></div>';
+                '<div class="stat-item"><span class="stat-label">乗車可能</span><span class="stat-value">' + totalSeats + '席' + requiredSeatsLabel + '</span></div>' +
+                (extraTotal > 0 ? '<div class="stat-item stat-note"><span class="stat-label">兄弟児など</span><span class="stat-value">' + extraTotal + '人（座席数から除いています）</span></div>' : '');
         }
     };
 
@@ -300,15 +298,14 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         message += FCOjima.Utils.formatDateForDisplay(event.date) + ' ' + event.title + '\n\n';
         
         // 車両数と座席数の統計
+        // 乗車可能な席の数（兄弟児などが乗る席は除く）
         let totalSeats = 0;
         availableCars.forEach(car => {
-            totalSeats += parseInt(car.frontSeat || 0) + 
-                         parseInt(car.middleSeat || 0) + 
-                         parseInt(car.backSeat || 0);
+            totalSeats += FCOjima.Utils.carOpenSeats(car);
         });
         
         message += `車両数: ${availableCars.length}台\n`;
-        message += `総座席数: ${totalSeats}席\n\n`;
+        message += `乗車可能: ${totalSeats}席\n\n`;
         
         // 車両情報の詳細
         message += '【車両一覧】\n';
@@ -324,10 +321,9 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
             message += `   ${provideLabels[car.canDrive]}\n`;
             
             // 座席数
-            const totalCarSeats = parseInt(car.frontSeat || 0) + 
-                                 parseInt(car.middleSeat || 0) + 
-                                 parseInt(car.backSeat || 0);
-            message += `   座席数: ${totalCarSeats}席 (助手席: ${car.frontSeat}, 中列: ${car.middleSeat}, 後列: ${car.backSeat})\n`;
+            const extraCount = FCOjima.Utils.carExtraCount(car);
+            message += `   乗車可能: ${FCOjima.Utils.carOpenSeats(car)}席 (助手席: ${car.frontSeat}, 中列: ${car.middleSeat}, 後列: ${car.backSeat}` +
+                (extraCount > 0 ? `, 兄弟児など: ${extraCount}人` : '') + ')\n';
             
             // 備考
             if (car.notes) {
@@ -781,8 +777,10 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         var taken = CarProvision._passengers.length;
         var sum = document.getElementById('cp-seat-summary');
         if (sum) {
-            sum.innerHTML = '合計 <strong>' + total + '</strong> 席' +
-                (taken > 0 ? '（選手が乗れる席 <strong>' + (total - taken) + '</strong>・兄弟児など ' + taken + '人）' : '');
+            // 乗車可能 = 座席数 − 兄弟児など（登録済みの車・配車の概要・割り当ての座席数も同じ数え方）
+            sum.innerHTML = taken > 0
+                ? '座席 ' + total + ' − 兄弟児など ' + taken + ' ＝ 乗車可能 <strong>' + Math.max(0, total - taken) + '</strong> 席'
+                : '乗車可能 <strong>' + total + '</strong> 席';
         }
     };
 

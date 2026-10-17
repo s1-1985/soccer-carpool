@@ -347,11 +347,10 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         var carRegistrations = eventData.carRegistrations || [];
         var totalCars = carRegistrations.length;
         var availableCars = carRegistrations.filter(function(c) { return c.canDrive !== 'no'; }).length;
+        // 乗車可能な席の数（車提供で登録した兄弟児などが乗る席は除く。その席には選手を割り当てない）
         var totalSeats = carRegistrations.reduce(function(sum, car) {
             if (car.canDrive === 'no') return sum;
-            return sum + (parseInt(car.frontSeat, 10) || 0) +
-                   (parseInt(car.middleSeat, 10) || 0) +
-                   (parseInt(car.backSeat, 10) || 0);
+            return sum + app.Utils.carOpenSeats(car);
         }, 0);
         
         // 割り当て状況の集計: 「参加」の人（運転手を除く）のうち、今ある車の座席に割り当て済みの人数。
@@ -399,7 +398,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                     <div class="ov-body">
                         <div class="ov-title">車両</div>
                         <div class="ov-main">${availableCars}<span class="ov-of">/${totalCars}</span></div>
-                        <div class="ov-sub">座席 <strong>${totalSeats}</strong>席</div>
+                        <div class="ov-sub">乗車可能 <strong>${totalSeats}</strong>席</div>
                     </div>
                     <div class="ov-arrow">›</div>
                 </a>
