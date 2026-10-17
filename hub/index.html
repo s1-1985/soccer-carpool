@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#1C1600">
     <link rel="apple-touch-icon" href="/img/icon-192.png">
     <link rel="stylesheet" href="../css/common.css?v=20261017a">
-    <link rel="stylesheet" href="../css/hub/calendar.css?v=20261016c">
+    <link rel="stylesheet" href="../css/hub/calendar.css?v=20261017c">
     <link rel="stylesheet" href="../css/hub/members.css?v=20260719">
     <link rel="stylesheet" href="../css/hub/notifications.css?v=20260224a">
     <link rel="stylesheet" href="../css/hub/venues.css?v=20260224a">
@@ -238,6 +238,12 @@
         }
         /* 直近イベント列のデータセルを薄く強調 */
         .attendance-matrix td.mx-cell.mx-col-hi { background: #fffaf0; }
+        /* 同じ日の別の予定へ移せるマス（タップで参加イベントの移動）に ⇄ の印 */
+        .attendance-matrix .mx-cell-movable { position: relative; cursor: pointer; }
+        .attendance-matrix .mx-cell-movable::after {
+            content: '⇄'; position: absolute; top: 1px; right: 2px;
+            font-size: 9px; line-height: 1; color: #c9a14a;
+        }
         .attendance-matrix .mx-present { color: #27ae60; font-weight: bold; }
         .attendance-matrix .mx-absent  { color: #e74c3c; }
         .attendance-matrix .mx-unknown { color: #bbb; }
@@ -617,6 +623,19 @@
         </div>
     </div>
 
+    <!-- その日の予定一覧（カレンダーの日付の数字をタップ）。
+         イベント詳細・予定追加のモーダルより前に置き、詳細を閉じるとこの一覧に戻るようにしている -->
+    <div id="day-events-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="day-events-title">予定</h2>
+            <div id="day-events-list"></div>
+            <div class="modal-actions">
+                <button type="button" id="day-events-add">＋ この日に予定を追加</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 予定追加・編集モーダル -->
     <div id="event-modal" class="modal">
         <div class="modal-content">
@@ -894,19 +913,20 @@
     <script src="../js/common/storage.js?v=20261016d"></script>
     <script src="../js/common/ui.js?v=20261016d"></script>
     <script src="../js/common/auth.js?v=20261016g"></script>
-    <script src="../js/common/db.js?v=20261017b"></script>
+    <script src="../js/common/db.js?v=20261017c"></script>
     <script src="../js/common/weather.js?v=20261016b"></script>
     <script src="../js/common/checklist.js?v=20261016c"></script>
+    <script src="../js/common/playermove.js?v=20261017c"></script>
     <script src="../js/common/eventfiles.js?v=20261016h"></script>
 
     <!-- HUBページ用モジュール -->
     <script src="../js/hub/main.js?v=20261016g"></script>
-    <script src="../js/hub/calendar.js?v=20261017a"></script>
+    <script src="../js/hub/calendar.js?v=20261017c"></script>
     <script src="../js/hub/members.js?v=20261017b"></script>
     <script src="../js/hub/notifications.js?v=20261016c"></script>
     <script src="../js/hub/venues.js?v=20261016g"></script>
-    <script src="../js/hub/myevents.js?v=20261016h"></script>
-    <script src="../js/hub/admin.js?v=20261017a"></script>
+    <script src="../js/hub/myevents.js?v=20261017c"></script>
+    <script src="../js/hub/admin.js?v=20261017c"></script>
 
     <script>
         // タブの切り替えに応じてフローティングボタンの表示を制御

@@ -67,6 +67,8 @@
                 <button type="button" id="reminder-attendance" class="reminder-button">未回答者に<wbr>リマインド</button>
                 <button type="button" id="add-attendee">参加者を追加</button>
                 <button type="button" id="remove-attendee" class="delete-button">参加者を削除</button>
+                <!-- 同じ日の別の予定・その日に予定のない選手をこの予定に入れる（管理者・指導者・役員のみ表示） -->
+                <button type="button" id="player-move-attendance" class="secondary-button" style="display:none;grid-column:1 / -1;">⇄ 他の予定・お休みの選手を入れる</button>
             </div>
         </div>
     </div>
@@ -113,10 +115,11 @@
     <script src="../js/common/storage.js?v=20261016d"></script>
     <script src="../js/common/ui.js?v=20261016d"></script>
     <script src="../js/common/auth.js?v=20261016g"></script>
-    <script src="../js/common/db.js?v=20261017b"></script>
+    <script src="../js/common/db.js?v=20261017c"></script>
 
     <!-- 配車管理用モジュール -->
     <script src="../js/carpool/overview.js?v=20261016h"></script>
+    <script src="../js/common/playermove.js?v=20261017c"></script>
     <script src="../js/carpool/attendance.js?v=20261017a"></script>
 
     <script>
@@ -177,6 +180,30 @@
                 });
             }
             
+            // 他の予定・その日に予定のない選手をこの予定に入れる（管理者・指導者・役員のみ）
+            var playerMoveButton = document.getElementById('player-move-attendance');
+            var selectedForMove = FCOjima.Storage.getSelectedEvent();
+            if (playerMoveButton && FCOjima.PlayerMove && FCOjima.PlayerMove.canUse() && FCOjima.PlayerMove.isMovableEvent(selectedForMove)) {
+                playerMoveButton.style.display = '';
+                playerMoveButton.addEventListener('click', async function() {
+                    // 選んだばかりの出欠の保存が終わってから開く（入れた選手の出欠と食い違わないように）
+                    await FCOjima.Carpool.whenSaved();
+                    FCOjima.PlayerMove.open(FCOjima.Storage.getSelectedEvent(), {
+                        members: FCOjima.Carpool.members || [],
+                        onClose: async function(changed) {
+                            if (!changed) return;
+                            // 入れた選手（学年外追加）・出欠を読み直して表示し直す
+                            await FCOjima.Carpool.ensureSelectedEvent();
+                            await FCOjima.Carpool.loadEventDataForSelected();
+                            FCOjima.Carpool.Attendance.updateAttendance();
+                            FCOjima.Carpool.Attendance.updateStats();
+                        }
+                    });
+                });
+            } else if (playerMoveButton) {
+                playerMoveButton.remove();
+            }
+
             // HUBに戻るボタンの設定
             document.getElementById('back-to-hub').addEventListener('click', function() {
                 if (FCOjima.Carpool.Overview && FCOjima.Carpool.Overview.goToMainPage) {

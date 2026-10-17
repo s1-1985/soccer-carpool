@@ -205,6 +205,13 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
         return changes;
     };
 
+    /** 参加イベント変更の内容（移動元がない＝その日に予定のなかった子を入れた場合は「〇〇に参加」） */
+    function moveText(n) {
+        return n.fromEventTitle
+            ? '「' + n.fromEventTitle + '」→「' + (n.toEventTitle || '') + '」へ変更'
+            : '「' + (n.toEventTitle || '') + '」に参加することになりました';
+    }
+
     /** 未読の参加イベント変更通知（type:'move'）を返す */
     MyEvents.unseenMoves = function() {
         if (!_profile) return [];
@@ -252,7 +259,7 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
             strong.textContent = fmtDate(n.eventDate) + '　' + (n.memberName || '');
             var detail = document.createElement('div');
             detail.style.cssText = 'font-size:13px;';
-            detail.textContent = '「' + (n.fromEventTitle || '') + '」→「' + (n.toEventTitle || '') + '」へ変更';
+            detail.textContent = moveText(n);
             div.appendChild(strong);
             div.appendChild(detail);
             body.appendChild(div);
@@ -281,7 +288,7 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
         var changesEl = document.getElementById('my-events-changes');
         if (changesEl) {
             var moveMsgs = MyEvents.unseenMoves().map(function(n) {
-                return fmtDate(n.eventDate) + ' ' + (n.memberName || '') + '：「' + (n.fromEventTitle || '') + '」→「' + (n.toEventTitle || '') + '」へ変更';
+                return fmtDate(n.eventDate) + ' ' + (n.memberName || '') + '：' + moveText(n);
             });
             var allMsgs = moveMsgs.concat(_changes.map(function(c) { return c.msg; }));
             if (allMsgs.length > 0) {
