@@ -41,7 +41,7 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
 
         this.updateEventInfo();
         this.updateCarRegistrations();
-        this.initExtraPassengerUI();
+        this.initSeatMap();
         this.initSiblingUI();
         console.log('車提供機能の初期化が完了しました');
     };
@@ -69,9 +69,9 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
     CarProvision.registerCar = function() {
         const parentName = (document.getElementById('parentName').value || '').trim();
         const canDrive   = document.getElementById('canDrive').value;
-        const frontSeat  = parseInt(document.getElementById('frontSeat').value)  || 0;
-        const middleSeat = parseInt(document.getElementById('middleSeat').value) || 0;
-        const backSeat   = parseInt(document.getElementById('backSeat').value)   || 0;
+        const frontSeat  = CarProvision._seats.frontSeat;
+        const middleSeat = CarProvision._seats.middleSeat;
+        const backSeat   = CarProvision._seats.backSeat;
         const notes      = (document.getElementById('carNotes').value || '').trim();
 
         if (!parentName) {
@@ -79,24 +79,9 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
             return;
         }
 
-        // メンバー外乗員を収集（チェックした兄弟児も含める）
-        var extraPassengers = [];
-        document.querySelectorAll('#sibling-options .sibling-check:checked').forEach(function(cb) {
-            if (cb.value && !extraPassengers.some(function(ep) { return ep.name === cb.value; })) {
-                extraPassengers.push({ name: cb.value });
-            }
-        });
-        var epInputs = document.querySelectorAll('.ep-confirmed-name');
-        epInputs.forEach(function(el) {
-            var name = el.dataset.name;
-            if (name) extraPassengers.push({ name: name });
-        });
-        // 名前を入力したまま「決定」を押さずに登録した分も含める（以前は黙って捨てられていた）
-        document.querySelectorAll('#extra-passenger-inputs .ep-row:not(.ep-done) input').forEach(function(input) {
-            var name = (input.value || '').trim();
-            if (name && !extraPassengers.some(function(ep) { return ep.name === name; })) {
-                extraPassengers.push({ name: name });
-            }
+        // メンバー外乗員（兄弟児など）とその席。座席割り当てではこの席に座り、選手は割り当てない
+        var extraPassengers = CarProvision._passengers.map(function(p) {
+            return { name: p.name, seatType: p.seatType, seatIndex: p.seatIndex };
         });
 
         const carRegistrations = FCOjima.Carpool.appData.carRegistrations || [];
@@ -113,12 +98,8 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         // フォームをクリア
         document.getElementById('parentName').value  = '';
         document.getElementById('canDrive').value    = 'both';
-        document.getElementById('frontSeat').value   = '1';
-        document.getElementById('middleSeat').value  = '3';
-        document.getElementById('backSeat').value    = '0';
         document.getElementById('carNotes').value    = '';
-        CarProvision.resetExtraPassengerInputs();
-        CarProvision._siblingChecked = new Set();
+        CarProvision.resetSeatMap();
         CarProvision.refreshSiblings();
         const carDetails = document.getElementById('carDetails');
         if (carDetails) carDetails.style.display = 'block';
@@ -155,7 +136,8 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
                         '<td>' + (parseInt(car.middleSeat, 10) || 0) + '</td>' +
                         '<td>' + (parseInt(car.backSeat, 10)   || 0) + '</td>' +
                         '<td>' + total + '</td>' +
-                        '<td>' + UI.escapeHTML(car.notes || '') + '</td>' +
+                        '<td>' + UI.escapeHTML(car.notes || '') +
+                            (CarProvision._passengerText(car) ? '<br>👤 ' + UI.escapeHTML(CarProvision._passengerText(car)) : '') + '</td>' +
                         '<td><button type="button" class="delete-button" onclick="FCOjima.Carpool.CarProvision.deleteCarRegistration(' + index + ')">削除</button></td>';
                     tbody.appendChild(row);
                 });
@@ -192,8 +174,8 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
                         '</div>' +
                         '<div class="car-card-seats">助手席 ' + (parseInt(car.frontSeat, 10) || 0) + ' ＋ 中列 ' + (parseInt(car.middleSeat, 10) || 0) + ' ＋ 後列 ' + (parseInt(car.backSeat, 10) || 0) + ' ＝ 合計 <strong>' + total + '</strong> 席</div>' +
                         (car.notes ? '<div class="car-card-notes">📝 ' + UI.escapeHTML(car.notes) + '</div>' : '') +
-                        ((car.extraPassengers && car.extraPassengers.length > 0) ?
-                            '<div class="car-card-notes">👤 メンバー外: ' + car.extraPassengers.map(function(ep) { return UI.escapeHTML(ep.name); }).join('、') + '</div>' : '') +
+                        (CarProvision._passengerText(car) ?
+                            '<div class="car-card-notes">👤 メンバー外: ' + UI.escapeHTML(CarProvision._passengerText(car)) + '</div>' : '') +
                         '<button type="button" class="car-card-delete" onclick="FCOjima.Carpool.CarProvision.deleteCarRegistration(' + index + ')">削除</button>';
                     cardList.appendChild(card);
                 });
@@ -566,121 +548,295 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
     };
 
     // =============================================
-    // メンバー外乗員 UI
+    // 座席の図（乗車可能人数と、兄弟児などメンバー外の人の席）
+    // 割り当てと同じ形の車で、席の数を −／＋ で変え、席をタップして兄弟児などの席を決める。
+    // 決めた席は extraPassengers[].seatType / seatIndex に保存し、座席割り当てではその席に座る
+    // （選手は割り当てられない）
     // =============================================
 
-    CarProvision.initExtraPassengerUI = function() {
-        var group = document.getElementById('extra-passenger-group');
-        if (!group) return;
+    var SEAT_ROWS = [
+        { key: 'frontSeat',  type: '助手席', max: 1 },
+        { key: 'middleSeat', type: '中列',   max: 3 },
+        { key: 'backSeat',   type: '後列',   max: 3 }
+    ];
+    var DEFAULT_SEATS = { frontSeat: 1, middleSeat: 3, backSeat: 0 };
+    // 空いている席に乗せる順（座席割り当ての自動配置と同じ: 後列→中列→助手席）
+    var FILL_ORDER = ['後列', '中列', '助手席'];
 
-        // 座席数変更時に再描画
-        ['frontSeat', 'middleSeat', 'backSeat'].forEach(function(id) {
-            var el = document.getElementById(id);
-            if (el) el.addEventListener('change', function() {
-                CarProvision.refreshExtraPassengerInputs();
-            });
-        });
+    CarProvision._seats = Object.assign({}, DEFAULT_SEATS);
+    CarProvision._passengers = []; // { name, seatType, seatIndex, sibling }
 
-        this.refreshExtraPassengerInputs();
+    function rowOf(type) { return SEAT_ROWS.filter(function(r) { return r.type === type; })[0]; }
+    function countOf(type) { var r = rowOf(type); return r ? CarProvision._seats[r.key] : 0; }
+    function passengerAt(type, index) {
+        return CarProvision._passengers.filter(function(p) { return p.seatType === type && p.seatIndex === index; })[0] || null;
+    }
+    function seatName(type, index) { return type + (type === '助手席' ? '' : (index + 1)); }
+
+    /** 登録済みの車のメンバー外乗員（席つき）の表示 */
+    CarProvision._passengerText = function(car) {
+        return (car.extraPassengers || []).map(function(ep) {
+            return ep.name + (ep.seatType ? '（' + seatName(ep.seatType, parseInt(ep.seatIndex, 10) || 0) + '）' : '');
+        }).join('、');
     };
 
-    /** 総座席数を返す（運転席除く） */
-    CarProvision._getTotalSeats = function() {
-        var f = parseInt((document.getElementById('frontSeat') || {}).value) || 0;
-        var m = parseInt((document.getElementById('middleSeat') || {}).value) || 0;
-        var b = parseInt((document.getElementById('backSeat') || {}).value) || 0;
-        return f + m + b;
-    };
-
-    /** 現在確定済みメンバー外乗員の数を返す */
-    CarProvision._getConfirmedCount = function() {
-        return document.querySelectorAll('.ep-confirmed-name').length;
-    };
-
-    /** メンバー外乗員の入力欄を再描画 */
-    CarProvision.refreshExtraPassengerInputs = function() {
-        var group = document.getElementById('extra-passenger-group');
-        var container = document.getElementById('extra-passenger-inputs');
-        if (!container) return;
-
-        var totalSeats = CarProvision._getTotalSeats();
-        // 座席がない場合は非表示
-        if (totalSeats === 0) { group.style.display = 'none'; return; }
-        group.style.display = '';
-
-        var confirmed = CarProvision._getConfirmedCount();
-
-        // 超過分の確定行を除去
-        var confirmedRows = container.querySelectorAll('.ep-row.ep-done');
-        confirmedRows.forEach(function(row, i) {
-            if (i >= totalSeats) row.remove();
-        });
-
-        // 空の入力欄が既にあれば何もしない（または席が満杯なら消す）
-        var emptyRow = container.querySelector('.ep-row:not(.ep-done)');
-        confirmed = CarProvision._getConfirmedCount();
-        if (confirmed >= totalSeats) {
-            if (emptyRow) emptyRow.remove();
-            return;
+    CarProvision._firstFreeSeat = function() {
+        for (var t = 0; t < FILL_ORDER.length; t++) {
+            for (var i = 0; i < countOf(FILL_ORDER[t]); i++) {
+                if (!passengerAt(FILL_ORDER[t], i)) return { seatType: FILL_ORDER[t], seatIndex: i };
+            }
         }
-        if (!emptyRow) CarProvision._addEmptyEpRow(container);
+        return null;
     };
 
-    CarProvision._addEmptyEpRow = function(container) {
-        var row = document.createElement('div');
-        row.className = 'ep-row';
-        row.style.cssText = 'display:flex;gap:6px;align-items:center;';
+    /**
+     * メンバー外の人を席に乗せる（席を省略すると空いている席）。その席に別の人がいれば降ろす
+     * @returns {boolean} 乗せられたか
+     */
+    CarProvision.seatPassenger = function(name, sibling, seatType, seatIndex) {
+        name = String(name || '').trim();
+        if (!name) return false;
+        var others = CarProvision._passengers.filter(function(p) { return p.name !== name; });
+        var seat = (seatType != null) ? { seatType: seatType, seatIndex: seatIndex } : null;
+        if (!seat) {
+            var saved = CarProvision._passengers;
+            CarProvision._passengers = others;
+            seat = CarProvision._firstFreeSeat();
+            CarProvision._passengers = saved;
+        }
+        if (!seat) {
+            UI.showAlert('空いている席がありません。席の数を増やすか、ほかの人の席を空けてください', 'warning');
+            return false;
+        }
+        CarProvision._passengers = others.filter(function(p) {
+            return !(p.seatType === seat.seatType && p.seatIndex === seat.seatIndex);
+        }).concat([{ name: name, seatType: seat.seatType, seatIndex: seat.seatIndex, sibling: !!sibling }]);
+        return true;
+    };
 
-        var input = document.createElement('input');
-        input.type = 'text';
-        input.placeholder = '名前を入力';
-        input.style.cssText = 'flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;';
+    CarProvision.unseatPassenger = function(name) {
+        CarProvision._passengers = CarProvision._passengers.filter(function(p) { return p.name !== name; });
+    };
 
+    /** 席の数を変える。なくなった席に乗せていた人は空いている席へ（なければ降ろして知らせる） */
+    CarProvision.setSeatCount = function(key, n) {
+        var row = SEAT_ROWS.filter(function(r) { return r.key === key; })[0];
+        if (!row) return;
+        CarProvision._seats[key] = Math.max(0, Math.min(row.max, n));
+        var moved = [], dropped = [];
+        CarProvision._passengers.filter(function(p) {
+            return p.seatType === row.type && p.seatIndex >= CarProvision._seats[key];
+        }).forEach(function(p) {
+            CarProvision.unseatPassenger(p.name);
+            var free = CarProvision._firstFreeSeat();
+            if (free) {
+                CarProvision._passengers.push({ name: p.name, seatType: free.seatType, seatIndex: free.seatIndex, sibling: p.sibling });
+                moved.push(p.name + '→' + seatName(free.seatType, free.seatIndex));
+            } else {
+                dropped.push(p.name);
+            }
+        });
+        if (moved.length) UI.showAlert('席が減ったため、' + moved.join('、') + ' に移しました', 'info');
+        if (dropped.length) UI.showAlert('席が足りないため、' + dropped.join('、') + ' を降ろしました', 'warning', 6000);
+        CarProvision.renderSeatMap();
+        CarProvision.refreshSiblings();
+    };
+
+    CarProvision.initSeatMap = function() {
+        var nameInput = document.getElementById('parentName');
+        if (nameInput) nameInput.addEventListener('input', function() { CarProvision.renderSeatMap(); });
+        var modal = document.getElementById('cp-seat-modal');
+        var addBtn = document.getElementById('cp-seat-other-add');
+        var input = document.getElementById('cp-seat-other-name');
+        if (addBtn && input) {
+            var addOther = function() {
+                var name = (input.value || '').trim();
+                if (!name) { input.focus(); return; }
+                var st = CarProvision._pickerSeat;
+                // 家庭の兄弟児と同じ名前なら兄弟児として扱う
+                var sib = ((CarProvision._siblingFamily && CarProvision._siblingFamily.siblings) || []).some(function(x) {
+                    return FCOjima.Utils.normalizeName(x.name) === FCOjima.Utils.normalizeName(name);
+                });
+                if (CarProvision.seatPassenger(name, sib, st.seatType, st.seatIndex)) {
+                    input.value = '';
+                    UI.closeModal('cp-seat-modal');
+                    CarProvision.renderSeatMap();
+                    CarProvision.refreshSiblings();
+                }
+            };
+            addBtn.addEventListener('click', addOther);
+            input.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); addOther(); } });
+        }
+        var clearBtn = document.getElementById('cp-seat-clear');
+        if (clearBtn) clearBtn.addEventListener('click', function() {
+            var st = CarProvision._pickerSeat;
+            var p = st && passengerAt(st.seatType, st.seatIndex);
+            if (p) CarProvision.unseatPassenger(p.name);
+            UI.closeModal('cp-seat-modal');
+            CarProvision.renderSeatMap();
+            CarProvision.refreshSiblings();
+        });
+        if (modal) modal.addEventListener('click', function(e) { if (e.target === modal) UI.closeModal('cp-seat-modal'); });
+        CarProvision.renderSeatMap();
+    };
+
+    CarProvision.resetSeatMap = function() {
+        CarProvision._seats = Object.assign({}, DEFAULT_SEATS);
+        CarProvision._passengers = [];
+        CarProvision.renderSeatMap();
+    };
+
+    /** 席の要素 */
+    function seatButton(type, index) {
+        var p = passengerAt(type, index);
         var btn = document.createElement('button');
         btn.type = 'button';
-        btn.textContent = '決定';
-        btn.style.cssText = 'background:#E8A200;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;white-space:nowrap;';
+        btn.className = 'cp-seat' + (p ? ' cp-seat-taken' : '');
+        btn.dataset.seatType = type;
+        btn.dataset.seatIndex = index;
+        btn.title = seatName(type, index) + (p ? '：' + p.name : '：空き（選手が乗れる席）');
+        var name = document.createElement('span');
+        name.className = 'cp-seat-name';
+        name.textContent = p ? p.name : '空き';
+        var label = document.createElement('span');
+        label.className = 'cp-seat-label';
+        label.textContent = p ? (p.sibling ? '兄弟児' : '同乗者') : seatName(type, index);
+        btn.appendChild(name);
+        btn.appendChild(label);
+        btn.addEventListener('click', function() { CarProvision.openSeatPicker(type, index); });
+        return btn;
+    }
 
-        btn.addEventListener('click', function() {
-            var name = input.value.trim();
-            if (!name) return;
-            // 行を確定済みに変換
-            row.innerHTML = '';
-            row.classList.add('ep-done');
-            row.style.cssText = 'display:flex;gap:6px;align-items:center;background:#f0fff4;border:1px solid #28a745;border-radius:6px;padding:5px 10px;';
-
-            var nameSpan = document.createElement('span');
-            nameSpan.className = 'ep-confirmed-name';
-            nameSpan.dataset.name = name;
-            nameSpan.style.cssText = 'flex:1;font-size:13px;color:#155724;';
-            nameSpan.textContent = name;
-
-            var cancelBtn = document.createElement('button');
-            cancelBtn.type = 'button';
-            cancelBtn.textContent = '取消';
-            cancelBtn.style.cssText = 'background:transparent;border:1px solid #dc3545;color:#dc3545;border-radius:4px;padding:2px 8px;font-size:12px;cursor:pointer;';
-            cancelBtn.addEventListener('click', function() {
-                row.remove();
-                CarProvision.refreshExtraPassengerInputs();
-            });
-
-            row.appendChild(nameSpan);
-            row.appendChild(cancelBtn);
-
-            // 次の入力欄を追加（席数に余裕があれば）
-            CarProvision.refreshExtraPassengerInputs();
+    CarProvision.renderSeatMap = function() {
+        var car = document.getElementById('cp-car');
+        var steppers = document.getElementById('cp-steppers');
+        if (!car || !steppers) return;
+        car.innerHTML = '';
+        // 前列: 助手席（左）＋運転席（右）。右ハンドル
+        SEAT_ROWS.forEach(function(row) {
+            var rowEl = document.createElement('div');
+            rowEl.className = 'cp-row';
+            rowEl.dataset.row = row.type;
+            var n = CarProvision._seats[row.key];
+            for (var i = 0; i < n; i++) rowEl.appendChild(seatButton(row.type, i));
+            if (n === 0) {
+                var none = document.createElement('span');
+                none.className = 'cp-seat-none';
+                none.textContent = row.type + 'なし';
+                rowEl.appendChild(none);
+            }
+            if (row.type === '助手席') {
+                var driver = document.createElement('div');
+                driver.className = 'cp-seat cp-seat-driver';
+                var dn = (document.getElementById('parentName') || {}).value || '';
+                var dm = (FCOjima.Carpool.members || []).filter(function(m) { return m.name === dn.trim(); })[0];
+                var nameSpan = document.createElement('span');
+                nameSpan.className = 'cp-seat-name';
+                nameSpan.textContent = (dm && dm.abbr) ? dm.abbr : (dn.trim() || '運転者');
+                var label = document.createElement('span');
+                label.className = 'cp-seat-label';
+                label.textContent = '運転席';
+                driver.appendChild(nameSpan);
+                driver.appendChild(label);
+                rowEl.appendChild(driver);
+            }
+            car.appendChild(rowEl);
         });
 
-        row.appendChild(input);
-        row.appendChild(btn);
-        container.appendChild(row);
+        // 席の数（−／＋）
+        steppers.innerHTML = '';
+        SEAT_ROWS.forEach(function(row) {
+            var n = CarProvision._seats[row.key];
+            var wrap = document.createElement('div');
+            wrap.className = 'cp-stepper';
+            wrap.dataset.key = row.key;
+            var label = document.createElement('span');
+            label.className = 'cp-stepper-label';
+            label.textContent = row.type;
+            var minus = document.createElement('button');
+            minus.type = 'button';
+            minus.className = 'cp-step cp-step-minus';
+            minus.textContent = '−';
+            minus.setAttribute('aria-label', row.type + 'を1席減らす');
+            minus.disabled = n <= 0;
+            minus.addEventListener('click', function() { CarProvision.setSeatCount(row.key, n - 1); });
+            var count = document.createElement('span');
+            count.className = 'cp-step-count';
+            count.textContent = n + '席';
+            var plus = document.createElement('button');
+            plus.type = 'button';
+            plus.className = 'cp-step cp-step-plus';
+            plus.textContent = '＋';
+            plus.setAttribute('aria-label', row.type + 'を1席増やす');
+            plus.disabled = n >= row.max;
+            plus.addEventListener('click', function() { CarProvision.setSeatCount(row.key, n + 1); });
+            wrap.appendChild(label);
+            wrap.appendChild(minus);
+            wrap.appendChild(count);
+            wrap.appendChild(plus);
+            steppers.appendChild(wrap);
+        });
+
+        var total = CarProvision._seats.frontSeat + CarProvision._seats.middleSeat + CarProvision._seats.backSeat;
+        var taken = CarProvision._passengers.length;
+        var sum = document.getElementById('cp-seat-summary');
+        if (sum) {
+            sum.innerHTML = '合計 <strong>' + total + '</strong> 席' +
+                (taken > 0 ? '（選手が乗れる席 <strong>' + (total - taken) + '</strong>・兄弟児など ' + taken + '人）' : '');
+        }
+    };
+
+    /** 席をタップ: その席に乗せる人を選ぶ */
+    CarProvision.openSeatPicker = function(type, index) {
+        CarProvision._pickerSeat = { seatType: type, seatIndex: index };
+        var cur = passengerAt(type, index);
+        document.getElementById('cp-seat-title').textContent = seatName(type, index) + ' の席';
+        document.getElementById('cp-seat-current').textContent = cur
+            ? '今は ' + cur.name + '（' + (cur.sibling ? '兄弟児' : '同乗者') + '）が乗ります'
+            : '今は空き（選手が乗れる席）です';
+        var box = document.getElementById('cp-seat-siblings');
+        box.innerHTML = '';
+        var fam = CarProvision._siblingFamily;
+        var sibs = (fam && fam.member && fam.siblings) || [];
+        if (sibs.length > 0) {
+            var h = document.createElement('div');
+            h.className = 'cp-seat-sub';
+            h.textContent = '兄弟児をこの席に乗せる';
+            box.appendChild(h);
+            sibs.forEach(function(sib) {
+                var at = CarProvision._passengers.filter(function(p) { return p.name === sib.name; })[0];
+                var here = at && at.seatType === type && at.seatIndex === index;
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'cp-sib-choice' + (here ? ' cp-sib-here' : '');
+                b.dataset.name = sib.name;
+                b.disabled = !!here;
+                var nm = document.createElement('span');
+                nm.className = 'cp-sib-name';
+                nm.textContent = sib.name + (sib.note ? '（' + sib.note + '）' : '');
+                var st = document.createElement('span');
+                st.className = 'cp-sib-state';
+                st.textContent = here ? 'この席' : (at ? seatName(at.seatType, at.seatIndex) + 'から移す' : '乗せる');
+                b.appendChild(nm);
+                b.appendChild(st);
+                b.addEventListener('click', function() {
+                    if (CarProvision.seatPassenger(sib.name, true, type, index)) {
+                        UI.closeModal('cp-seat-modal');
+                        CarProvision.renderSeatMap();
+                        CarProvision.refreshSiblings();
+                    }
+                });
+                box.appendChild(b);
+            });
+        }
+        document.getElementById('cp-seat-other-name').value = '';
+        document.getElementById('cp-seat-clear').style.display = cur ? '' : 'none';
+        UI.openModal('cp-seat-modal');
     };
 
     // =============================================
     // 兄弟児（保護者のメンバー情報に登録した、チームに所属していない子）
     // =============================================
-
-    CarProvision._siblingChecked = new Set();
 
     CarProvision.initSiblingUI = function() {
         var nameInput = document.getElementById('parentName');
@@ -713,6 +869,11 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
             ['sibling-add-name', 'sibling-add-note'].forEach(function(id) { var el = document.getElementById(id); if (el) el.value = ''; });
         }
         CarProvision._siblingFamily = res;
+        // 別の家庭の運転者に変えたら、前の家庭の兄弟児は席から降ろす（名前を入れて乗せた人はそのまま）
+        var famNames = res.siblings.map(function(x) { return x.name; });
+        var before = CarProvision._passengers.length;
+        CarProvision._passengers = CarProvision._passengers.filter(function(p) { return !p.sibling || famNames.indexOf(p.name) !== -1; });
+        if (CarProvision._passengers.length !== before) CarProvision.renderSeatMap();
         if (!res.member) {
             group.style.display = 'none';
             return;
@@ -735,10 +896,17 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
             cb.type = 'checkbox';
             cb.className = 'sibling-check';
             cb.value = sib.name;
-            cb.checked = CarProvision._siblingChecked.has(sib.name);
+            var seated = CarProvision._passengers.filter(function(p) { return p.name === sib.name; })[0];
+            cb.checked = !!seated;
+            // チェック: 空いている席に乗せる（後列→中列→助手席）／外す: 席から降ろす
             cb.addEventListener('change', function() {
-                if (cb.checked) CarProvision._siblingChecked.add(sib.name);
-                else CarProvision._siblingChecked.delete(sib.name);
+                if (cb.checked) {
+                    if (!CarProvision.seatPassenger(sib.name, true)) cb.checked = false;
+                } else {
+                    CarProvision.unseatPassenger(sib.name);
+                }
+                CarProvision.renderSeatMap();
+                CarProvision.refreshSiblings();
             });
             // 名前の下にメモを小さく（狭い画面で名前とメモが何行にも折り返さないように）
             var text = document.createElement('span');
@@ -754,6 +922,12 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
             }
             label.appendChild(cb);
             label.appendChild(text);
+            if (seated) {
+                var seatTag = document.createElement('span');
+                seatTag.className = 'cp-sib-seat';
+                seatTag.textContent = seatName(seated.seatType, seated.seatIndex);
+                label.appendChild(seatTag);
+            }
             var rm = document.createElement('button');
             rm.type = 'button';
             rm.className = 'sibling-remove';
@@ -791,7 +965,8 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
             return;
         }
         res.member.siblings = (res.member.siblings || []).concat([sib]);
-        CarProvision._siblingChecked.add(name);
+        CarProvision.seatPassenger(name, true);
+        CarProvision.renderSeatMap();
         nameEl.value = '';
         noteEl.value = '';
         document.getElementById('sibling-add-form').style.display = 'none';
@@ -813,14 +988,9 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         }
         var owner = (FCOjima.Carpool.members || []).find(function(m) { return String(m.id) === sib.ownerId; });
         if (owner) owner.siblings = (owner.siblings || []).filter(function(s) { return s !== sib.raw; });
-        CarProvision._siblingChecked.delete(sib.name);
+        CarProvision.unseatPassenger(sib.name);
+        CarProvision.renderSeatMap();
         CarProvision.refreshSiblings();
     };
 
-    /** フォームリセット時にメンバー外乗員もリセット */
-    CarProvision.resetExtraPassengerInputs = function() {
-        var container = document.getElementById('extra-passenger-inputs');
-        if (container) container.innerHTML = '';
-        CarProvision.refreshExtraPassengerInputs();
-    };
 })();

@@ -653,84 +653,37 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         const requestToken = (Calendar._detailsToken = (Calendar._detailsToken || 0) + 1);
         
         const content = document.getElementById('event-details-content');
-        
-        // 学年ターゲット表示
-        let targetDisplay = '';
-        if (Array.isArray(event.target) && event.target.length > 0) {
-            const targetGrades = event.target.map(grade => UI.escapeHTML(Utils.getGradeLabel(grade))).join(', ');
-            targetDisplay = `
-            <div class="detail-item">
-                <span class="detail-label">対象:</span> ${targetGrades}
-            </div>`;
-            
-            if (event.targetNotes) {
-                targetDisplay += `
-                <div class="detail-item">
-                    <span class="detail-label">対象備考:</span> ${UI.escapeHTML(event.targetNotes)}
-                </div>`;
-            }
-        }
-        
-        // 出欠回答期限
-        let deadlineDisplay = '';
-        if (event.attendanceDeadline) {
-            const deadline = new Date(event.attendanceDeadline);
-            const formattedDeadline = deadline.toLocaleString('ja-JP', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            
-            deadlineDisplay = `
-            <div class="detail-item">
-                <span class="detail-label">出欠回答期限:</span> ${formattedDeadline}
-            </div>`;
-        }
-        
-        // 出発時間
-        let departureDisplay = '';
-        if (event.departureTime) {
-            departureDisplay = `
-            <div class="detail-item">
-                <span class="detail-label">出発時間:</span> ${UI.escapeHTML(event.departureTime)}
-            </div>`;
-        }
-        
-        // 集合場所（会場登録の住所でマップを開く）
-        let meetingPlaceDisplay = '';
-        if (event.meetingPlace) {
-            var allVenues = app.Hub.venues || [];
-            var meetingVenueData = allVenues.find(function(v) { return v.name === event.meetingPlace; });
-            var meetingMapQuery = (meetingVenueData && meetingVenueData.address) ? meetingVenueData.address : event.meetingPlace;
-            var meetingMapUrl = 'https://www.google.com/maps/search/?api=1&query=' + Utils.encodeForOnclick(meetingMapQuery);
-            meetingPlaceDisplay = `
-            <div class="detail-item">
-                <span class="detail-label">集合場所:</span> ${UI.escapeHTML(event.meetingPlace)}
-                <button type="button" class="map-button" onclick="window.open('${meetingMapUrl}','_blank')" style="margin-left:8px;font-size:11px;padding:2px 8px;background:#4285f4;color:#fff;border:none;border-radius:4px;cursor:pointer;">地図を開く</button>
-            </div>`;
-        }
+        const esc = UI.escapeHTML;
 
+        // ---- 見出し: 種類・対象学年・タイトル・日付（あと何日） ----
+        const typeKey = { game: 'game', practice: 'practice', nighter: 'nighter', event: 'event' }[event.type] || 'event';
+        const grades = (Array.isArray(event.target) && event.target.length > 0)
+            ? event.target.map(g => `<span class="ed-grade">${esc(Utils.getGradeLabel(g))}</span>`).join('')
+            : '<span class="ed-grade">全学年</span>';
+        const dayDiff = Math.round((new Date(event.date + 'T00:00:00') - new Date(Utils.formatDate(new Date()) + 'T00:00:00')) / 86400000);
+        const relDay = isNaN(dayDiff) ? '' : dayDiff === 0 ? '今日' : dayDiff === 1 ? '明日' : dayDiff > 1 ? 'あと' + dayDiff + '日' : '終了';
+
+        // ---- 要点: 時間・出発・集合・会場・当番 ----
+        const allVenues = app.Hub.venues || [];
+        const mapButton = function(place) {
+            const v = allVenues.find(x => x.name === place);
+            const q = (v && v.address) ? v.address : place;
+            return `<button type="button" class="map-button ed-map" onclick="window.open('https://www.google.com/maps/search/?api=1&query=${Utils.encodeForOnclick(q)}','_blank')">🗺️ 地図</button>`;
+        };
+        const fact = function(icon, label, value, action, extraCls) {
+            return `<div class="ed-fact${extraCls ? ' ' + extraCls : ''}"><span class="ed-fact-icon" aria-hidden="true">${icon}</span>` +
+                `<div class="ed-fact-body"><span class="ed-fact-label">${label}</span><span class="ed-fact-value">${value}</span></div>${action || ''}</div>`;
+        };
+        let facts = '';
+        facts += fact('🕘', '時間', event.startTime ? esc(event.startTime) + (event.endTime ? '〜' + esc(event.endTime) : '〜') : '未定', '', event.startTime ? '' : 'ed-muted');
+        if (event.departureTime) facts += fact('🚗', '出発', esc(event.departureTime));
+        // 場所は名前が長く地図ボタンもあるので1行まるごと使う
+        if (event.meetingPlace) facts += fact('📍', '集合', esc(event.meetingPlace), mapButton(event.meetingPlace), 'ed-wide');
+        facts += fact('🏟️', '会場', esc(event.venue || '未定'), event.venue ? mapButton(event.venue) : '', 'ed-wide' + (event.venue ? '' : ' ed-muted'));
         // 当番グループ（機能が有効かつ割り当てがある場合のみ表示。閲覧のみ・変更は管理タブから）
-        let dutyDisplay = '';
         if (app.Hub.dutyEnabled) {
-            var dutyAssignmentForEvent = app.Hub.getDutyAssignment ? app.Hub.getDutyAssignment(event.id) : null;
-            if (dutyAssignmentForEvent) {
-                dutyDisplay = `
-            <div class="detail-item">
-                <span class="detail-label">当番:</span> 🔔 ${UI.escapeHTML(dutyAssignmentForEvent.groupName)}
-            </div>`;
-            }
-        }
-
-        // 会場マップボタン（会場登録の住所を優先）
-        var venueMapBtn = '';
-        if (event.venue) {
-            var allVenuesForMap = app.Hub.venues || [];
-            var venueDataForMap = allVenuesForMap.find(function(v) { return v.name === event.venue; });
-            var venueQueryStr = (venueDataForMap && venueDataForMap.address) ? venueDataForMap.address : event.venue;
-            venueMapBtn = '<button type="button" class="map-button" onclick="window.open(\'https://www.google.com/maps/search/?api=1&query=' + Utils.encodeForOnclick(venueQueryStr) + '\',\'_blank\')" style="margin-left:8px;font-size:11px;padding:2px 8px;background:#4285f4;color:#fff;border:none;border-radius:4px;cursor:pointer;">地図を開く</button>';
+            const duty = app.Hub.getDutyAssignment ? app.Hub.getDutyAssignment(event.id) : null;
+            if (duty) facts += fact('🔔', '当番', esc(duty.groupName));
         }
 
         // 出欠一覧（イベントの対象学年メンバー）
@@ -772,6 +725,24 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             });
         }
 
+        // 出欠回答期限（あと何日・期限切れ）
+        let deadlineHtml = '';
+        if (event.attendanceDeadline) {
+            const deadline = new Date(event.attendanceDeadline);
+            if (!isNaN(deadline.getTime())) {
+                const left = deadline - new Date();
+                const leftDays = Math.ceil(left / 86400000);
+                const state = left < 0 ? 'over' : leftDays <= 2 ? 'soon' : '';
+                const leftText = left < 0 ? '締切済み' : leftDays <= 1 ? 'まもなく締切' : 'あと' + leftDays + '日';
+                deadlineHtml = `<div class="ed-deadline${state ? ' ed-deadline-' + state : ''}">⏰ 回答期限 ${(deadline.getMonth() + 1)}/${deadline.getDate()}(${['日', '月', '火', '水', '木', '金', '土'][deadline.getDay()]}) ` +
+                    `${String(deadline.getHours()).padStart(2, '0')}:${String(deadline.getMinutes()).padStart(2, '0')}<span class="ed-deadline-left">${leftText}</span></div>`;
+            }
+        }
+
+        // 参加者を追加（管理者・指導者・役員。同じ日の他の試合・練習の選手・その日に予定のない選手から入れる）
+        const canAdd = app.PlayerMove && app.PlayerMove.canUse() && app.PlayerMove.isMovableEvent(event);
+        const addBtn = canAdd ? '<button type="button" id="event-player-move-btn" class="secondary-button ed-add-btn">＋ 参加者を追加</button>' : '';
+
         if (targetMembers.length > 0) {
             // 出欠データはFirestore優先で取得（localStorageのみだと他端末の回答が見えない）
             let eventData = null;
@@ -789,21 +760,42 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             // 出欠ページで参加者から外した人は対象に含めない
             targetMembers = targetMembers.filter(m => !Utils.isRemovedFromEvent(m, eventData));
 
-            const rows = targetMembers.map(m => {
-                const st = statusMap[m.name] || 'pending';
-                const icon = st === 'present' ? '○' : st === 'absent' ? '×' : '－';
-                const bg = st === 'present' ? '#e8f5e9' : st === 'absent' ? '#ffebee' : '#f5f5f5';
-                const clr = st === 'present' ? '#2e7d32' : st === 'absent' ? '#c62828' : '#9e9e9e';
-                return `<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:${bg};border-radius:6px;"><span style="font-weight:bold;color:${clr};font-size:14px;width:16px;text-align:center;">${icon}</span><span style="font-size:13px;">${UI.escapeHTML(m.name)}</span></div>`;
-            }).join('');
-
             // 参加・不参加以外（出欠表に自動で追加された 'unknown' や未登録）はすべて未回答。
             // 以前は 'unknown' をどれにも数えず、自動補完された人の分だけ「未回答」が少なく出ていた
-            const presentCount = targetMembers.filter(m => statusMap[m.name] === 'present').length;
-            const absentCount = targetMembers.filter(m => statusMap[m.name] === 'absent').length;
+            const stOf = m => statusMap[m.name] === 'present' ? 'p' : statusMap[m.name] === 'absent' ? 'a' : 'u';
+            const presentCount = targetMembers.filter(m => stOf(m) === 'p').length;
+            const absentCount = targetMembers.filter(m => stOf(m) === 'a').length;
             const pendingCount = targetMembers.length - presentCount - absentCount;
-            const summary = `<div style="display:flex;gap:12px;margin-bottom:8px;font-size:12px;"><span style="color:#2e7d32;">○ 参加: ${presentCount}</span><span style="color:#c62828;">× 不参加: ${absentCount}</span><span style="color:#9e9e9e;">－ 未回答: ${pendingCount}</span></div>`;
-            attendanceDisplay = `<div class="detail-item"><span class="detail-label">出欠確認:</span><br>${summary}<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:4px;margin-top:4px;">${rows}</div></div>`;
+            const pct = n => targetMembers.length ? (n * 100 / targetMembers.length).toFixed(1) : 0;
+            // 参加 → 未回答 → 不参加 の順に並べる（同じ回答の中はメンバーの順）
+            const order = { p: 0, u: 1, a: 2 };
+            const rows = targetMembers.slice().sort((a, b) => order[stOf(a)] - order[stOf(b)]).map(m => {
+                const st = stOf(m);
+                const icon = st === 'p' ? '○' : st === 'a' ? '×' : '－';
+                return `<div class="ed-att ed-att-${st}"><span class="ed-att-icon">${icon}</span><span class="ed-att-name">${esc(m.name)}</span></div>`;
+            }).join('');
+            attendanceDisplay = `
+            <section class="ed-section ed-attendance">
+                <div class="ed-section-head"><h4>出欠確認</h4><span class="ed-section-sub">${targetMembers.length}人</span></div>
+                <div class="ed-att-bar" aria-hidden="true"><span class="ed-bar-p" style="width:${pct(presentCount)}%"></span><span class="ed-bar-u" style="width:${pct(pendingCount)}%"></span><span class="ed-bar-a" style="width:${pct(absentCount)}%"></span></div>
+                <div class="ed-att-legend"><span class="ed-leg-p">参加 <b>${presentCount}</b></span><span class="ed-leg-u">未回答 <b>${pendingCount}</b></span><span class="ed-leg-a">不参加 <b>${absentCount}</b></span></div>
+                ${deadlineHtml}
+                <div class="ed-att-grid">${rows}</div>
+                ${addBtn}
+            </section>`;
+        } else if (deadlineHtml || addBtn) {
+            attendanceDisplay = `<section class="ed-section ed-attendance"><div class="ed-section-head"><h4>出欠確認</h4></div>${deadlineHtml}${addBtn}</section>`;
+        }
+
+        // ---- 持ち物・荷物 ----
+        let itemsHtml = '';
+        if (app.Checklist) {
+            const personal = app.Checklist.getItems(event.type, event.checklistExtra, event.checklist);
+            const luggage = (event.luggage || []).filter(it => it && it.name && parseInt(it.count, 10) > 0);
+            const chipRow = (label, chips) => `<div class="ed-chip-row"><span class="ed-chip-label">${label}</span><div class="ed-chips">${chips}</div></div>`;
+            if (personal.length) itemsHtml += chipRow('🎒 個人', personal.map(i => `<span class="checklist-chip">${esc(i)}</span>`).join(''));
+            if (luggage.length) itemsHtml += chipRow('📦 荷物', luggage.map(it => `<span class="checklist-chip">${esc(it.name)}×${parseInt(it.count, 10)}</span>`).join(''));
+            if (itemsHtml) itemsHtml = `<section class="ed-section"><div class="ed-section-head"><h4>持ち物</h4></div>${itemsHtml}</section>`;
         }
 
         // このイベント固有のログのみ表示する。
@@ -829,59 +821,41 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 if (isNaN(d.getTime())) return '';
                 return Utils.formatDate(d) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
             };
-            const logRows = eventLogs.slice(-5).map(l =>
-                `<div style="font-size:0.85em;border-bottom:1px solid #eee;padding:2px 0;">${fmtLogTime(l.datetime)} [${UI.escapeHTML(l.user||'')}] ${UI.escapeHTML(l.action||'')} ${UI.escapeHTML(l.details||'')}</div>`
+            const logRows = eventLogs.slice(-5).reverse().map(l =>
+                `<li><span class="ed-log-time">${fmtLogTime(l.datetime)}</span> <span class="ed-log-user">${esc(l.user || '')}</span> ${esc(l.action || '')} ${esc(l.details || '')}</li>`
             ).join('');
-            eventLogDisplay = `<div class="detail-item" style="margin-top:8px;"><span class="detail-label">ログ（直近5件）:</span><div>${logRows}</div></div>`;
+            eventLogDisplay = `<details class="ed-log"><summary>変更履歴（直近${Math.min(5, eventLogs.length)}件）</summary><ul>${logRows}</ul></details>`;
         }
 
         if (requestToken !== Calendar._detailsToken) return;
 
         content.innerHTML = `
-            <h3>${UI.escapeHTML(event.title)}</h3>
-            <div class="detail-item">
-                <span class="detail-label">日付:</span> ${Utils.formatDateForDisplay(event.date)}
+            <div class="ed-head ed-type-${typeKey}">
+                <div class="ed-badges"><span class="ed-type">${esc(Utils.getEventTypeLabel(event.type))}</span>${grades}</div>
+                <h3 class="ed-title">${esc(event.title)}</h3>
+                <div class="ed-date">${Utils.formatDateForDisplay(event.date)}${relDay ? `<span class="ed-rel${dayDiff < 0 ? ' ed-rel-past' : ''}">${relDay}</span>` : ''}</div>
+                ${event.targetNotes ? `<div class="ed-target-notes">対象: ${esc(event.targetNotes)}</div>` : ''}
             </div>
-            <div class="detail-item">
-                <span class="detail-label">種類:</span> ${UI.escapeHTML(Utils.getEventTypeLabel(event.type))}
-            </div>
-            ${targetDisplay}
-            ${deadlineDisplay}
-            ${departureDisplay}
-            ${meetingPlaceDisplay}
-            <div class="detail-item">
-                <span class="detail-label">会場:</span> ${UI.escapeHTML(event.venue || '未設定')}
-                ${venueMapBtn}
-            </div>
-            <div id="event-weather-${UI.escapeHTML(String(event.id))}"></div>
-            <div class="detail-item">
-                <span class="detail-label">時間:</span> ${UI.escapeHTML(event.startTime || '未設定')}${event.endTime ? ` - ${UI.escapeHTML(event.endTime)}` : ''}
-            </div>
-            ${app.Checklist ? app.Checklist.formatChips(event.type, event.checklistExtra, event.checklist) : ''}
-            ${app.Checklist ? app.Checklist.formatLuggage(event.luggage) : ''}
-            ${dutyDisplay}
-            ${(event.notes || event.description) ? `
-            <div class="detail-item">
-                <span class="detail-label">備考:</span>
-                <div class="detail-notes">${UI.escapeHTML(event.notes || event.description)}</div>
-            </div>
-            ` : ''}
+            <div class="ed-facts">${facts}</div>
+            <div id="event-weather-${esc(String(event.id))}" class="ed-weather"></div>
             ${attendanceDisplay}
-            ${(app.PlayerMove && app.PlayerMove.canUse() && app.PlayerMove.isMovableEvent(event)) ? `
-            <div class="detail-item">
-                <button type="button" id="event-player-move-btn" class="secondary-button" style="font-size:13px;padding:8px 14px;">⇄ 他の予定・お休みの選手を入れる</button>
-            </div>` : ''}
-            <div class="detail-item" style="margin-top:10px;">
-                <span class="detail-label">📎 添付ファイル:</span>
-                <div id="calendar-event-files" style="margin:6px 0;display:flex;flex-direction:column;gap:4px;"></div>
-                <button type="button" id="calendar-event-file-btn" class="secondary-button" style="font-size:13px;padding:8px 16px;">ファイルを追加</button>
+            ${itemsHtml}
+            ${(event.notes || event.description) ? `
+            <section class="ed-section detail-item">
+                <div class="ed-section-head"><h4>備考</h4></div>
+                <div class="detail-notes">${esc(event.notes || event.description)}</div>
+            </section>` : ''}
+            <section class="ed-section">
+                <div class="ed-section-head"><h4>📎 添付ファイル</h4></div>
+                <div id="calendar-event-files" class="ed-files"></div>
+                <button type="button" id="calendar-event-file-btn" class="secondary-button ed-file-btn">＋ ファイルを追加</button>
                 <input type="file" id="calendar-event-file-input" multiple style="display:none;"
                     accept=".pdf,.xls,.xlsx,.csv,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp,.heic,.heif,.bmp,.txt,.md">
-            </div>
+            </section>
             ${eventLogDisplay}
         `;
 
-        // 同じ日の別の予定・その日に予定のない選手をこの予定に入れる（管理者・指導者・役員）
+        // 参加者を追加（同じ日の別の予定・その日に予定のない選手をこの予定に入れる。管理者・指導者・役員）
         var moveBtn = document.getElementById('event-player-move-btn');
         if (moveBtn) {
             moveBtn.addEventListener('click', function() {

@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#1C1600">
     <link rel="apple-touch-icon" href="/img/icon-192.png">
     <link rel="stylesheet" href="../css/common.css?v=20261017a">
-    <link rel="stylesheet" href="../css/hub/calendar.css?v=20261017c">
+    <link rel="stylesheet" href="../css/hub/calendar.css?v=20261017e">
     <link rel="stylesheet" href="../css/hub/members.css?v=20260719">
     <link rel="stylesheet" href="../css/hub/notifications.css?v=20260224a">
     <link rel="stylesheet" href="../css/hub/venues.css?v=20260224a">
@@ -731,14 +731,15 @@
     <!-- イベント詳細モーダル -->
     <div id="event-details-modal" class="modal">
         <div class="modal-content">
-            <span class="close">&times;</span>
+            <span class="close" aria-label="閉じる">&times;</span>
             <div id="event-details-content">
                 <!-- イベント詳細がJSで動的に生成される -->
             </div>
-            <div class="modal-actions">
-                <button id="manage-event">配車管理画面へ</button>
-                <button id="edit-event">編集</button>
-                <button id="delete-event">削除</button>
+            <!-- 画面の下に固定（長い予定でもスクロールせずに押せる） -->
+            <div class="modal-actions ed-actions">
+                <button id="manage-event" class="ed-manage">🚗 配車管理へ</button>
+                <button id="edit-event" class="secondary-button">編集</button>
+                <button id="delete-event" class="ed-delete">削除</button>
             </div>
         </div>
     </div>
@@ -916,12 +917,12 @@
     <script src="../js/common/db.js?v=20261017c"></script>
     <script src="../js/common/weather.js?v=20261017d"></script>
     <script src="../js/common/checklist.js?v=20261016c"></script>
-    <script src="../js/common/playermove.js?v=20261017c"></script>
+    <script src="../js/common/playermove.js?v=20261017e"></script>
     <script src="../js/common/eventfiles.js?v=20261016h"></script>
 
     <!-- HUBページ用モジュール -->
     <script src="../js/hub/main.js?v=20261016g"></script>
-    <script src="../js/hub/calendar.js?v=20261017d"></script>
+    <script src="../js/hub/calendar.js?v=20261017e"></script>
     <script src="../js/hub/members.js?v=20261017b"></script>
     <script src="../js/hub/notifications.js?v=20261016c"></script>
     <script src="../js/hub/venues.js?v=20261016g"></script>

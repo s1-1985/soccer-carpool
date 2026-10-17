@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" href="/img/icon-192.png">
     <link rel="stylesheet" href="../css/common.css?v=20261017a">
     <link rel="stylesheet" href="../css/carpool/common.css?v=20261017a">
-    <link rel="stylesheet" href="../css/carpool/carprovision.css?v=20260307">
+    <link rel="stylesheet" href="../css/carpool/carprovision.css?v=20261017e">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -53,44 +53,16 @@
                     </select>
                 </div>
                 <div id="carDetails">
-                    <h4>乗車可能人数</h4>
-                    <div class="seat-inputs">
-                        <div class="form-group">
-                            <div class="seat-type-icon">
-                                <div class="seat-icon">助</div>
-                            </div>
-                            <label for="frontSeat">助手席:</label>
-                            <select id="frontSeat">
-                                <option value="0">0席</option>
-                                <option value="1" selected>1席</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <div class="seat-type-icon">
-                                <div class="seat-icon">中</div>
-                            </div>
-                            <label for="middleSeat">中列:</label>
-                            <select id="middleSeat">
-                                <option value="0">0席</option>
-                                <option value="1">1席</option>
-                                <option value="2">2席</option>
-                                <option value="3" selected>3席</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <div class="seat-type-icon">
-                                <div class="seat-icon">後</div>
-                            </div>
-                            <label for="backSeat">後列:</label>
-                            <select id="backSeat">
-                                <option value="0" selected>0席</option>
-                                <option value="1">1席</option>
-                                <option value="2">2席</option>
-                                <option value="3">3席</option>
-                            </select>
-                        </div>
+                    <h4>座席</h4>
+                    <!-- 車の図（割り当てと同じ形）。席の数は −／＋ で変え、兄弟児など選手以外が乗る席は席をタップして決める。
+                         決めた席は座席割り当てでその人の席になり、選手は割り当てられない -->
+                    <p class="cp-hint">兄弟児など<strong>選手以外が乗る席</strong>は、席をタップして決めてください。その席には選手を割り当てません。</p>
+                    <div class="cp-seat-area">
+                        <div id="cp-car" class="cp-car" aria-label="座席の図"></div>
+                        <div id="cp-steppers" class="cp-steppers"></div>
                     </div>
-                    <!-- 運転者の家庭の兄弟児（保護者のメンバー情報に登録）。チェックすると「メンバー外乗員」として登録される -->
+                    <div id="cp-seat-summary" class="cp-seat-summary"></div>
+                    <!-- 運転者の家庭の兄弟児（保護者のメンバー情報に登録）。チェックすると空いている席に乗せる -->
                     <div class="form-group" id="sibling-group" style="display:none;">
                         <label>同乗する兄弟児:</label>
                         <div id="sibling-options" style="display:flex;flex-direction:column;gap:6px;margin-top:4px;"></div>
@@ -100,10 +72,6 @@
                             <input type="text" id="sibling-add-note" placeholder="メモ（例: 3歳・チャイルドシート）" maxlength="40" style="flex:1 1 140px;min-width:0;">
                             <button type="button" id="sibling-add-save" style="flex:0 0 auto;">登録</button>
                         </div>
-                    </div>
-                    <div class="form-group" id="extra-passenger-group" style="display:none;">
-                        <label>メンバー外乗員:</label>
-                        <div id="extra-passenger-inputs" style="display:flex;flex-direction:column;gap:6px;margin-top:4px;"></div>
                     </div>
                     <div class="form-group">
                         <label for="carNotes">備考:</label>
@@ -159,6 +127,24 @@
         </div>
     </div>
 
+    <!-- 席をタップしたとき: その席に乗せる人（兄弟児・その他のメンバー外の人）を選ぶ -->
+    <div id="cp-seat-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="cp-seat-title" style="font-size:18px;">席</h2>
+            <p id="cp-seat-current" class="cp-seat-current"></p>
+            <div id="cp-seat-siblings" class="cp-seat-siblings"></div>
+            <div class="cp-seat-other">
+                <label for="cp-seat-other-name">ほかの人を乗せる（兄弟児・友だちなど）</label>
+                <div class="cp-seat-other-row">
+                    <input type="text" id="cp-seat-other-name" placeholder="名前" maxlength="30">
+                    <button type="button" id="cp-seat-other-add">乗せる</button>
+                </div>
+            </div>
+            <button type="button" id="cp-seat-clear" class="secondary-button cp-seat-clear">この席を空ける（選手が乗れる席に戻す）</button>
+        </div>
+    </div>
+
     <!-- グローバルナビゲーション -->
     <div class="global-navigation">
         <button id="back-to-hub">HUBに戻る</button>
@@ -181,7 +167,7 @@
 
     <!-- 配車管理用モジュール -->
     <script src="../js/carpool/overview.js?v=20261017d"></script>
-    <script src="../js/carpool/carprovision.js?v=20261017b"></script>
+    <script src="../js/carpool/carprovision.js?v=20261017e"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', async function() {
