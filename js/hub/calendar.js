@@ -934,7 +934,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         var venueData = (app.Hub.venues || []).find(function(v) { return v.name === event.venue; });
         var address = venueData && venueData.address;
         target.innerHTML = '<span class="weather-chip weather-chip-muted">天気を取得中...</span>';
-        app.Weather.getDailyForecast(event.venue, address, event.date).then(function(result) {
+        app.Weather.getDailyForecast(event.venue, address, event.date, event).then(function(result) {
             var el = document.getElementById('event-weather-' + event.id);
             if (el) el.innerHTML = app.Weather.formatWidget(result, event.venue, address);
         });

@@ -1540,7 +1540,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 var venueDataForWeather = venues.find(function(v) { return v.name === ev.venue; });
                 var weatherAddr = venueDataForWeather && venueDataForWeather.address;
                 weatherTarget.innerHTML = '<span class="weather-chip weather-chip-muted">天気を取得中...</span>';
-                FCOjima.Weather.getDailyForecast(ev.venue, weatherAddr, ev.date).then(function(result) {
+                FCOjima.Weather.getDailyForecast(ev.venue, weatherAddr, ev.date, ev).then(function(result) {
                     // 取得中に別のイベントを開き直していたら差し込まない
                     if (weatherTarget.isConnected) {
                         weatherTarget.innerHTML = FCOjima.Weather.formatWidget(result, ev.venue, weatherAddr);
