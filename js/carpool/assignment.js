@@ -2544,17 +2544,18 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         // 参加人数（運転手除く）
         var participantCount = eligibleAll.filter(function(m) { return !driverNames.has(m.name); }).length;
 
-        // 座席数（運転手席除く全席）
+        // 座席数 = 乗車可能な席（運転手席と、車提供で登録した兄弟児などが乗る席を除く。参加人数にも
+        // 兄弟児などは入らないので、同じ基準で比べる）
         // ※ 旧データでは座席数が文字列のことがあり、+ で文字列連結されて「座席数 012」のように
-        //   表示されていたため数値に変換する
+        //   表示されていたため数値に変換する（Utils.carSeatTotal）
         var totalSeats = availableCars.reduce(function(sum, car) {
-            return sum + (parseInt(car.frontSeat, 10) || 0) + (parseInt(car.middleSeat, 10) || 0) + (parseInt(car.backSeat, 10) || 0);
+            return sum + Utils.carOpenSeats(car);
         }, 0);
 
-        // 配置済（荷物除く）
+        // 配置済（荷物・兄弟児などを除く）
         var assignedCount = 0;
         document.querySelectorAll('.seat.filled[data-person]').forEach(function(s) {
-            if (s.dataset.person && s.dataset.person !== '荷物') assignedCount++;
+            if (s.dataset.person && s.dataset.person !== '荷物' && s.dataset.isExtraPassenger !== 'true') assignedCount++;
         });
 
         // 空席

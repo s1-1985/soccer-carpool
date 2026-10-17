@@ -508,6 +508,28 @@ FCOjima.Utils = FCOjima.Utils || {};
     };
 
     /**
+     * 車の座席数（運転席を除く）。旧データでは座席数が文字列のことがあるため数値にして足す
+     * @param {Object} car - carRegistrations の1台
+     */
+    Utils.carSeatTotal = function(car) {
+        if (!car) return 0;
+        return (parseInt(car.frontSeat, 10) || 0) + (parseInt(car.middleSeat, 10) || 0) + (parseInt(car.backSeat, 10) || 0);
+    };
+
+    /** 車提供で登録した、その車に乗る兄弟児など（メンバー外乗員）の人数 */
+    Utils.carExtraCount = function(car) {
+        return ((car && car.extraPassengers) || []).filter(function(ep) { return ep && ep.name; }).length;
+    };
+
+    /**
+     * 乗車可能な席の数（選手・指導者・保護者が乗れる席）= 座席数 − 兄弟児など。
+     * 兄弟児などが座る席には選手を割り当てないため、提供できる席の数から差し引く
+     */
+    Utils.carOpenSeats = function(car) {
+        return Math.max(0, Utils.carSeatTotal(car) - Utils.carExtraCount(car));
+    };
+
+    /**
      * 運転者（保護者）の家庭の兄弟児を返す。家庭 = その保護者と、同じ子供に紐づいている保護者
      * （父と母がそれぞれ登録していても、どちらに登録した兄弟児も呼び出せるように）
      * @param {Array} members
