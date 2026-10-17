@@ -810,6 +810,13 @@
                     <div id="children-selector" style="max-height:200px;overflow-y:auto;border:1px solid #ddd;border-radius:6px;padding:8px;"></div>
                     <input type="hidden" id="member-children-ids" value="[]">
                 </div>
+                <!-- 兄弟児（チームに所属していない子）。車提供の登録で「メンバー外乗員」としてすぐ選べるようにする -->
+                <div class="form-group" id="siblings-group" style="display:none;">
+                    <label>兄弟児（チームに所属していない子）</label>
+                    <p style="font-size:11px;color:#888;margin:2px 0 6px;">車提供の登録のときに、同乗する兄弟児としてすぐ選べます。メンバー（選手）にはなりません。</p>
+                    <div id="siblings-editor" style="display:flex;flex-direction:column;gap:6px;"></div>
+                    <button type="button" id="add-sibling-row" class="secondary-button" style="margin-top:6px;font-size:13px;padding:6px 12px;">＋ 兄弟児を追加</button>
+                </div>
                 <div class="form-group">
                     <label for="member-abbr">略称</label>
                     <input type="text" id="member-abbr" placeholder="例: たなか（座席表等で使用）" maxlength="8">
@@ -883,11 +890,11 @@
 
     <!-- 共通モジュール -->
     <script src="../js/common/global.js?v=20260224a"></script>
-    <script src="../js/common/utils.js?v=20261017a"></script>
+    <script src="../js/common/utils.js?v=20261017b"></script>
     <script src="../js/common/storage.js?v=20261016d"></script>
     <script src="../js/common/ui.js?v=20261016d"></script>
     <script src="../js/common/auth.js?v=20261016g"></script>
-    <script src="../js/common/db.js?v=20261016i"></script>
+    <script src="../js/common/db.js?v=20261017b"></script>
     <script src="../js/common/weather.js?v=20261016b"></script>
     <script src="../js/common/checklist.js?v=20261016c"></script>
     <script src="../js/common/eventfiles.js?v=20261016h"></script>
@@ -895,7 +902,7 @@
     <!-- HUBページ用モジュール -->
     <script src="../js/hub/main.js?v=20261016g"></script>
     <script src="../js/hub/calendar.js?v=20261017a"></script>
-    <script src="../js/hub/members.js?v=20261017a"></script>
+    <script src="../js/hub/members.js?v=20261017b"></script>
     <script src="../js/hub/notifications.js?v=20261016c"></script>
     <script src="../js/hub/venues.js?v=20261016g"></script>
     <script src="../js/hub/myevents.js?v=20261016h"></script>

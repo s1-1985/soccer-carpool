@@ -507,6 +507,38 @@ FCOjima.Utils = FCOjima.Utils || {};
         return m.role === 'assist' && Array.isArray(m.childrenIds) && m.childrenIds.length > 0;
     };
 
+    /**
+     * 運転者（保護者）の家庭の兄弟児を返す。家庭 = その保護者と、同じ子供に紐づいている保護者
+     * （父と母がそれぞれ登録していても、どちらに登録した兄弟児も呼び出せるように）
+     * @param {Array} members
+     * @param {string} driverName
+     * @returns {{member: Object|null, siblings: Array<{name:string, note:string, ownerId:string, raw:Object}>}}
+     */
+    Utils.findFamilySiblings = function(members, driverName) {
+        var list = members || [];
+        var key = Utils.normalizeName(driverName);
+        if (!key) return { member: null, siblings: [] };
+        var me = list.find(function(m) { return m.role !== 'player' && Utils.normalizeName(m.name) === key; });
+        if (!me) return { member: null, siblings: [] };
+        var kids = (me.childrenIds || []).map(String);
+        var family = list.filter(function(m) {
+            if (m === me) return true;
+            if (m.role === 'player' || kids.length === 0) return false;
+            return (m.childrenIds || []).some(function(c) { return kids.indexOf(String(c)) !== -1; });
+        });
+        var seen = {};
+        var siblings = [];
+        family.forEach(function(m) {
+            (m.siblings || []).forEach(function(s) {
+                var k = Utils.normalizeName(s.name);
+                if (!k || seen[k]) return;
+                seen[k] = true;
+                siblings.push({ name: s.name, note: s.note || '', ownerId: String(m.id), raw: s });
+            });
+        });
+        return { member: me, siblings: siblings };
+    };
+
     Utils.isTargetFor = function(member, event) {
         var evTargets = (event.target && event.target.length > 0) ? event.target : null;
         var extraPlayers = event.extraPlayers || [];

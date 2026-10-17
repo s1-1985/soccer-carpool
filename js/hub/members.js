@@ -95,6 +95,12 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
         var deleteBtn = document.getElementById('delete-member');
         if (deleteBtn) deleteBtn.addEventListener('click', function() { Members.openMemberSelectForDelete(); });
 
+        var addSiblingBtn = document.getElementById('add-sibling-row');
+        if (addSiblingBtn) addSiblingBtn.addEventListener('click', function() {
+            var input = Members._addSiblingRow();
+            if (input) input.focus();
+        });
+
         // 編集権限がない人には追加・編集・削除ボタンを出さない
         if (!canManage()) {
             [addBtn, editBtn, deleteBtn,
@@ -187,6 +193,70 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
                 Members.renderChildrenSelector();
             }
         }
+        // 兄弟児の欄も子供の欄と同じ役割（保護者）で出す
+        var siblingsGroup = document.getElementById('siblings-group');
+        if (siblingsGroup) siblingsGroup.style.display = Members._roleHasChildren(role) ? 'block' : 'none';
+    };
+
+    /**
+     * 兄弟児の入力行を1行追加する
+     * @param {{name:string, note:string}} [sibling]
+     * @returns {HTMLInputElement|null} 名前の入力欄
+     */
+    Members._addSiblingRow = function(sibling) {
+        var editor = document.getElementById('siblings-editor');
+        if (!editor) return null;
+        var row = document.createElement('div');
+        row.className = 'sibling-row';
+        // 1人分を枠で囲む（狭い画面で「削除」が次の段に回っても、どの兄弟児の削除か分かるように）
+        row.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;border:1px solid #e6dfcf;border-radius:8px;padding:6px;';
+        var name = document.createElement('input');
+        name.type = 'text';
+        name.className = 'sibling-name';
+        name.placeholder = '名前（例: 佐々木 さくら）';
+        name.maxLength = 30;
+        name.style.cssText = 'flex:1 1 140px;min-width:0;';
+        name.value = (sibling && sibling.name) || '';
+        var note = document.createElement('input');
+        note.type = 'text';
+        note.className = 'sibling-note';
+        note.placeholder = 'メモ（例: 3歳・チャイルドシート）';
+        note.maxLength = 40;
+        note.style.cssText = 'flex:1 1 140px;min-width:0;';
+        note.value = (sibling && sibling.note) || '';
+        var rm = document.createElement('button');
+        rm.type = 'button';
+        rm.className = 'delete-button';
+        rm.textContent = '削除';
+        rm.style.cssText = 'flex:0 0 auto;margin-left:auto;padding:4px 10px;font-size:12px;min-height:32px;';
+        rm.addEventListener('click', function() { row.remove(); });
+        row.appendChild(name);
+        row.appendChild(note);
+        row.appendChild(rm);
+        editor.appendChild(row);
+        return name;
+    };
+
+    /** 兄弟児の表示用の文字列（「兄弟児: 佐々木 さくら（3歳）、…」。いなければ空文字） */
+    Members._siblingsLabel = function(member) {
+        var list = (member && member.siblings) || [];
+        if (list.length === 0) return '';
+        return '兄弟児: ' + list.map(function(s) { return s.name + (s.note ? '（' + s.note + '）' : ''); }).join('、');
+    };
+
+    /** 兄弟児の入力欄から [{name, note}] を読み取る（名前のない行は除き、同じ名前は1つにまとめる） */
+    Members._readSiblingRows = function() {
+        var list = [];
+        var seen = {};
+        document.querySelectorAll('#siblings-editor .sibling-row').forEach(function(row) {
+            var name = (row.querySelector('.sibling-name').value || '').trim();
+            var note = (row.querySelector('.sibling-note').value || '').trim();
+            var key = Utils.normalizeName(name);
+            if (!key || seen[key]) return;
+            seen[key] = true;
+            list.push({ name: name, note: note });
+        });
+        return list;
     };
 
     /** 子供の紐づけを編集できる役割か（父・母・役員・コーチ。コーチは保護者を兼ねる場合だけ子供を選ぶ） */
@@ -405,6 +475,7 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
                 if (genderStr) parts2.push(genderStr);
                 infoHtml = '<div class="member-info-line">' + parts2.join(' | ') + '</div>';
                 if (childrenNames) infoHtml += '<div class="member-info-line" style="color:#666;font-size:0.85em;">' + UI.escapeHTML(childrenNames) + '</div>';
+                if (Members._siblingsLabel(member)) infoHtml += '<div class="member-info-line" style="color:#666;font-size:0.85em;">' + UI.escapeHTML(Members._siblingsLabel(member)) + '</div>';
             } else {
                 infoHtml = '<div class="member-info-line">' + UI.escapeHTML(roleLabels[member.role] || member.role) + '</div>';
                 // 役員として登録された保護者は子供も表示する
@@ -417,6 +488,7 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
                         infoHtml += '<div class="member-info-line" style="color:#666;font-size:0.85em;">' + UI.escapeHTML('子: ' + officerChildNames.join('、')) + '</div>';
                     }
                 }
+                if (Members._siblingsLabel(member)) infoHtml += '<div class="member-info-line" style="color:#666;font-size:0.85em;">' + UI.escapeHTML(Members._siblingsLabel(member)) + '</div>';
             }
 
             var notesHtml = member.notes ?
@@ -476,6 +548,9 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
                 html += '<tr><td style="padding:6px;font-weight:bold;">子どもの名前</td><td style="padding:6px;">' + UI.escapeHTML(childNames.join('、')) + '</td></tr>';
             }
         }
+        if (member.siblings && member.siblings.length > 0) {
+            html += '<tr><td style="padding:6px;font-weight:bold;">兄弟児</td><td style="padding:6px;">' + UI.escapeHTML(Members._siblingsLabel(member).replace(/^兄弟児: /, '')) + '</td></tr>';
+        }
         if (member.abbr) {
             html += '<tr><td style="padding:6px;font-weight:bold;">略称</td><td style="padding:6px;">' + UI.escapeHTML(member.abbr) + '</td></tr>';
         }
@@ -511,6 +586,8 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
         // hidden input リセット
         var hiddenChildren = document.getElementById('member-children-ids');
         if (hiddenChildren) hiddenChildren.value = '[]';
+        var siblingsEditor = document.getElementById('siblings-editor');
+        if (siblingsEditor) siblingsEditor.innerHTML = '';
 
         if (memberId) {
             var member = members.find(function(m) { return String(m.id) === String(memberId); });
@@ -531,6 +608,7 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
                 if (hiddenChildren && member.childrenIds) {
                     hiddenChildren.value = JSON.stringify(member.childrenIds.map(String));
                 }
+                (member.siblings || []).forEach(function(sib) { Members._addSiblingRow(sib); });
 
                 Members.onRoleChange(member.role);
             }
@@ -616,7 +694,16 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
                 var formerNames = (members[index].formerNames || []).slice();
                 if (oldName && oldName !== name && formerNames.indexOf(oldName) === -1) formerNames.push(oldName);
                 formerNames = formerNames.filter(function(n) { return n !== name; });
-                members[index] = { id: origId, name: name, kana: kana, abbr: abbr, birth: birth, gender: gender, role: role, number: number ? parseInt(number, 10) : null, grade: grade, notes: notes, childrenIds: childrenIds, formerNames: formerNames };
+                // 兄弟児: 保護者の役割なら入力欄の内容、それ以外は元の値を引き継ぐ（欄が出ない役割で消えないように）
+                var prevSiblings = members[index].siblings;
+                var updated = { id: origId, name: name, kana: kana, abbr: abbr, birth: birth, gender: gender, role: role, number: number ? parseInt(number, 10) : null, grade: grade, notes: notes, childrenIds: childrenIds, formerNames: formerNames };
+                if (Members._roleHasChildren(role)) {
+                    var sibs = Members._readSiblingRows();
+                    if (sibs.length > 0 || Array.isArray(prevSiblings)) updated.siblings = sibs;
+                } else if (Array.isArray(prevSiblings)) {
+                    updated.siblings = prevSiblings;
+                }
+                members[index] = updated;
                 app.Hub.logs = Storage.addLog('members', 'メンバー更新', '「' + name + '」', logs);
                 if (oldName && oldName !== name) renamedFrom = oldName;
             }
@@ -624,7 +711,12 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
             // タイムスタンプIDで採番（parseInt(最大値)+1 方式はFirestoreの英数字IDが
             // 0扱いになり既存IDと衝突するため廃止）
             var newId = Date.now();
-            members.push({ id: newId, name: name, kana: kana, abbr: abbr, birth: birth, gender: gender, role: role, number: number ? parseInt(number, 10) : null, grade: grade, notes: notes, childrenIds: childrenIds });
+            var created = { id: newId, name: name, kana: kana, abbr: abbr, birth: birth, gender: gender, role: role, number: number ? parseInt(number, 10) : null, grade: grade, notes: notes, childrenIds: childrenIds };
+            if (Members._roleHasChildren(role)) {
+                var newSibs = Members._readSiblingRows();
+                if (newSibs.length > 0) created.siblings = newSibs;
+            }
+            members.push(created);
             app.Hub.logs = Storage.addLog('members', 'メンバー追加', '「' + name + '」', logs);
         }
 

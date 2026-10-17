@@ -42,6 +42,7 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         this.updateEventInfo();
         this.updateCarRegistrations();
         this.initExtraPassengerUI();
+        this.initSiblingUI();
         console.log('車提供機能の初期化が完了しました');
     };
 
@@ -78,8 +79,13 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
             return;
         }
 
-        // メンバー外乗員を収集
+        // メンバー外乗員を収集（チェックした兄弟児も含める）
         var extraPassengers = [];
+        document.querySelectorAll('#sibling-options .sibling-check:checked').forEach(function(cb) {
+            if (cb.value && !extraPassengers.some(function(ep) { return ep.name === cb.value; })) {
+                extraPassengers.push({ name: cb.value });
+            }
+        });
         var epInputs = document.querySelectorAll('.ep-confirmed-name');
         epInputs.forEach(function(el) {
             var name = el.dataset.name;
@@ -112,6 +118,8 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         document.getElementById('backSeat').value    = '0';
         document.getElementById('carNotes').value    = '';
         CarProvision.resetExtraPassengerInputs();
+        CarProvision._siblingChecked = new Set();
+        CarProvision.refreshSiblings();
         const carDetails = document.getElementById('carDetails');
         if (carDetails) carDetails.style.display = 'block';
 
@@ -243,6 +251,7 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
             item.addEventListener('click', function() {
                 document.getElementById('parentName').value = member.name;
                 UI.closeModal('driver-select-modal');
+                CarProvision.refreshSiblings();
             });
             list.appendChild(item);
         });
@@ -665,6 +674,147 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         row.appendChild(input);
         row.appendChild(btn);
         container.appendChild(row);
+    };
+
+    // =============================================
+    // 兄弟児（保護者のメンバー情報に登録した、チームに所属していない子）
+    // =============================================
+
+    CarProvision._siblingChecked = new Set();
+
+    CarProvision.initSiblingUI = function() {
+        var nameInput = document.getElementById('parentName');
+        if (nameInput) nameInput.addEventListener('input', function() { CarProvision.refreshSiblings(); });
+        var toggle = document.getElementById('sibling-add-toggle');
+        var form = document.getElementById('sibling-add-form');
+        if (toggle && form) toggle.addEventListener('click', function() {
+            var open = form.style.display === 'none';
+            form.style.display = open ? 'flex' : 'none';
+            if (open) document.getElementById('sibling-add-name').focus();
+        });
+        var save = document.getElementById('sibling-add-save');
+        if (save) save.addEventListener('click', function() { CarProvision.addSibling(); });
+        this.refreshSiblings();
+    };
+
+    /** 運転者の家庭の兄弟児を、チェックで選べるように表示する（運転者が保護者のメンバーでなければ出さない） */
+    CarProvision.refreshSiblings = function() {
+        var group = document.getElementById('sibling-group');
+        var box = document.getElementById('sibling-options');
+        if (!group || !box) return;
+        var driver = (document.getElementById('parentName') || {}).value || '';
+        var res = FCOjima.Utils.findFamilySiblings(FCOjima.Carpool.members || [], driver);
+        // 別の家庭の運転者に変えたら、書きかけの兄弟児の登録欄は閉じて空にする
+        var prevId = CarProvision._siblingFamily && CarProvision._siblingFamily.member ? String(CarProvision._siblingFamily.member.id) : null;
+        var nextId = res.member ? String(res.member.id) : null;
+        if (prevId !== nextId) {
+            var addForm = document.getElementById('sibling-add-form');
+            if (addForm) addForm.style.display = 'none';
+            ['sibling-add-name', 'sibling-add-note'].forEach(function(id) { var el = document.getElementById(id); if (el) el.value = ''; });
+        }
+        CarProvision._siblingFamily = res;
+        if (!res.member) {
+            group.style.display = 'none';
+            return;
+        }
+        group.style.display = '';
+        box.innerHTML = '';
+        if (res.siblings.length === 0) {
+            var p = document.createElement('p');
+            p.style.cssText = 'margin:0;font-size:12px;color:#888;';
+            p.textContent = '登録されている兄弟児はいません。よく一緒に乗る兄弟児は下から登録すると、次回からチェックで選べます。';
+            box.appendChild(p);
+            return;
+        }
+        res.siblings.forEach(function(sib) {
+            var row = document.createElement('div');
+            row.style.cssText = 'display:flex;align-items:center;gap:8px;';
+            var label = document.createElement('label');
+            label.style.cssText = 'display:flex;align-items:center;gap:6px;flex:1;min-width:0;cursor:pointer;font-size:14px;';
+            var cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.className = 'sibling-check';
+            cb.value = sib.name;
+            cb.checked = CarProvision._siblingChecked.has(sib.name);
+            cb.addEventListener('change', function() {
+                if (cb.checked) CarProvision._siblingChecked.add(sib.name);
+                else CarProvision._siblingChecked.delete(sib.name);
+            });
+            // 名前の下にメモを小さく（狭い画面で名前とメモが何行にも折り返さないように）
+            var text = document.createElement('span');
+            text.style.cssText = 'display:flex;flex-direction:column;min-width:0;word-break:keep-all;overflow-wrap:anywhere;';
+            var nameSpan = document.createElement('span');
+            nameSpan.textContent = sib.name;
+            text.appendChild(nameSpan);
+            if (sib.note) {
+                var noteSpan = document.createElement('span');
+                noteSpan.style.cssText = 'font-size:11px;color:#888;';
+                noteSpan.textContent = sib.note;
+                text.appendChild(noteSpan);
+            }
+            label.appendChild(cb);
+            label.appendChild(text);
+            var rm = document.createElement('button');
+            rm.type = 'button';
+            rm.className = 'sibling-remove';
+            rm.textContent = '削除';
+            rm.title = sib.name + 'を兄弟児の登録から削除';
+            rm.style.cssText = 'flex:0 0 auto;background:transparent;border:1px solid #dc3545;color:#dc3545;border-radius:4px;padding:2px 8px;font-size:11px;min-height:28px;';
+            rm.addEventListener('click', function() { CarProvision.removeSibling(sib); });
+            row.appendChild(label);
+            row.appendChild(rm);
+            box.appendChild(row);
+        });
+    };
+
+    /** 運転者の家庭に兄弟児を登録する（保護者のメンバー情報の兄弟児に追加） */
+    CarProvision.addSibling = async function() {
+        var res = CarProvision._siblingFamily;
+        var nameEl = document.getElementById('sibling-add-name');
+        var noteEl = document.getElementById('sibling-add-note');
+        var name = (nameEl.value || '').trim();
+        var note = (noteEl.value || '').trim();
+        if (!res || !res.member) return;
+        if (!name) { UI.showAlert('兄弟児の名前を入力してください', 'warning'); return; }
+        if (res.siblings.some(function(s) { return FCOjima.Utils.normalizeName(s.name) === FCOjima.Utils.normalizeName(name); })) {
+            UI.showAlert(name + 'はすでに登録されています', 'info');
+            return;
+        }
+        var sib = { name: name, note: note };
+        try {
+            await FCOjima.DB.addMemberSibling(res.member.id, sib);
+        } catch (e) {
+            console.warn('兄弟児の登録に失敗:', e);
+            UI.showAlert(e && e.code === 'permission-denied'
+                ? '兄弟児を登録できませんでした。ご自分の家庭以外の兄弟児は、管理者・指導者・役員がメンバー画面で登録してください'
+                : '兄弟児を登録できませんでした。通信環境を確認してください', 'error', 7000);
+            return;
+        }
+        res.member.siblings = (res.member.siblings || []).concat([sib]);
+        CarProvision._siblingChecked.add(name);
+        nameEl.value = '';
+        noteEl.value = '';
+        document.getElementById('sibling-add-form').style.display = 'none';
+        CarProvision.refreshSiblings();
+        UI.showAlert(name + 'を兄弟児として登録しました（次回からチェックで選べます）', 'success');
+    };
+
+    /** 登録した兄弟児を削除する（その兄弟児を登録した保護者のメンバー情報から外す） */
+    CarProvision.removeSibling = async function(sib) {
+        if (!UI.showConfirm(sib.name + 'を兄弟児の登録から削除しますか？\n（すでに登録した車の同乗者からは消えません）')) return;
+        try {
+            await FCOjima.DB.removeMemberSibling(sib.ownerId, sib.raw);
+        } catch (e) {
+            console.warn('兄弟児の削除に失敗:', e);
+            UI.showAlert(e && e.code === 'permission-denied'
+                ? '削除できませんでした。ご自分の家庭以外の兄弟児は、管理者・指導者・役員がメンバー画面で削除してください'
+                : '削除できませんでした。通信環境を確認してください', 'error', 7000);
+            return;
+        }
+        var owner = (FCOjima.Carpool.members || []).find(function(m) { return String(m.id) === sib.ownerId; });
+        if (owner) owner.siblings = (owner.siblings || []).filter(function(s) { return s !== sib.raw; });
+        CarProvision._siblingChecked.delete(sib.name);
+        CarProvision.refreshSiblings();
     };
 
     /** フォームリセット時にメンバー外乗員もリセット */

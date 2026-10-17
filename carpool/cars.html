@@ -90,6 +90,17 @@
                             </select>
                         </div>
                     </div>
+                    <!-- 運転者の家庭の兄弟児（保護者のメンバー情報に登録）。チェックすると「メンバー外乗員」として登録される -->
+                    <div class="form-group" id="sibling-group" style="display:none;">
+                        <label>同乗する兄弟児:</label>
+                        <div id="sibling-options" style="display:flex;flex-direction:column;gap:6px;margin-top:4px;"></div>
+                        <button type="button" id="sibling-add-toggle" class="secondary-button" style="margin-top:6px;font-size:13px;padding:6px 12px;">＋ 兄弟児を登録</button>
+                        <div id="sibling-add-form" style="display:none;flex-wrap:wrap;gap:6px;margin-top:6px;">
+                            <input type="text" id="sibling-add-name" placeholder="名前（例: 佐々木 さくら）" maxlength="30" style="flex:1 1 140px;min-width:0;">
+                            <input type="text" id="sibling-add-note" placeholder="メモ（例: 3歳・チャイルドシート）" maxlength="40" style="flex:1 1 140px;min-width:0;">
+                            <button type="button" id="sibling-add-save" style="flex:0 0 auto;">登録</button>
+                        </div>
+                    </div>
                     <div class="form-group" id="extra-passenger-group" style="display:none;">
                         <label>メンバー外乗員:</label>
                         <div id="extra-passenger-inputs" style="display:flex;flex-direction:column;gap:6px;margin-top:4px;"></div>
@@ -162,15 +173,15 @@
 
     <!-- 共通モジュール -->
     <script src="../js/common/global.js?v=20260219"></script>
-    <script src="../js/common/utils.js?v=20261017a"></script>
+    <script src="../js/common/utils.js?v=20261017b"></script>
     <script src="../js/common/storage.js?v=20261016d"></script>
     <script src="../js/common/ui.js?v=20261016d"></script>
     <script src="../js/common/auth.js?v=20261016g"></script>
-    <script src="../js/common/db.js?v=20261016i"></script>
+    <script src="../js/common/db.js?v=20261017b"></script>
 
     <!-- 配車管理用モジュール -->
     <script src="../js/carpool/overview.js?v=20261016h"></script>
-    <script src="../js/carpool/carprovision.js?v=20261016e"></script>
+    <script src="../js/carpool/carprovision.js?v=20261017b"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', async function() {

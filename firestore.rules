@@ -36,6 +36,17 @@ service cloud.firestore {
       return isApproved(teamId) && userRole(teamId) == 'admin';
     }
 
+    // メンバー m が自分の家庭の保護者か（氏名が自分のプロフィールと同じ、または同じ子供に紐づいている）
+    function isOwnFamilyMember(teamId, m) {
+      return m.role != 'player' && (
+        (m.get('name', '') != '' && m.get('name', '') == userData(teamId).get('name', null))
+        || (m.get('childrenIds', []) is list
+            && userData(teamId).get('childrenIds', []) is list
+            && userData(teamId).get('childrenIds', []).size() > 0
+            && m.get('childrenIds', []).hasAny(userData(teamId).get('childrenIds', [])))
+      );
+    }
+
     // ========== チームデータ ==========
 
     match /teams/{teamId} {
@@ -89,6 +100,13 @@ service cloud.firestore {
         // TODO: 将来的にその選手の保護者も編集可にする
         allow create, update: if isAuth() && isManager(teamId);
         allow delete: if isAuth() && isManager(teamId);
+
+        // 兄弟児（siblings）だけは保護者本人も変更できる（車提供の画面から自分の家庭の兄弟児を登録・削除）。
+        // 対象は自分の家庭の保護者のメンバー（氏名が自分のプロフィールと同じ、または同じ子供に紐づいている）。
+        // 兄弟児以外の項目が変わる書き込みは不可
+        allow update: if isAuth() && isApproved(teamId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['siblings'])
+          && isOwnFamilyMember(teamId, resource.data);
       }
 
       // ----- イベント（予定）-----
