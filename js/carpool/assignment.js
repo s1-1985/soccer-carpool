@@ -23,6 +23,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         // 残したままだと、空いた座席をタップしても配置画面ではなくメンバー外乗員の
         // 編集画面が開き、その座席にメンバーを置けなくなっていた
         delete seat.dataset.isExtraPassenger;
+        seat.classList.remove('seat-extra');
         seat.style.background = '';
 
         // 追加した要素をすべて削除
@@ -653,10 +654,23 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         // ── Step2b: 車提供で登録したメンバー外乗員（兄弟など）はその車に先に座らせる ──
         // 以前は選手で座席を埋めてしまい、メンバー外乗員が車から押し出されて
         // （画面にも割り当てにも出ず）乗れないことになっていた。配置順は画面の自動配置と同じ後列→中列→助手席
+        // 車提供で席を決めた人はその席に（決めていない人・その席がない人は空いている席）
+        var POOL_OF = { '助手席': 'front', '中列': 'middle', '後列': 'back' };
         drivers.forEach(function(driver, ci) {
+            var rest = [];
             (driver.extraPassengers || []).forEach(function(ep) {
-                if (ep && ep.name) assignOneSeat(ep.name, ci, ['back', 'middle', 'front']);
+                if (!ep || !ep.name) return;
+                var pool = ep.seatType && carSeatPools[ci][POOL_OF[ep.seatType]];
+                var idx = parseInt(ep.seatIndex, 10) || 0;
+                var at = pool ? pool.findIndex(function(slot) { return slot.index === idx; }) : -1;
+                if (at >= 0) {
+                    pool.splice(at, 1);
+                    carSeatsAssigned[ci][ep.seatType][idx] = ep.name;
+                } else {
+                    rest.push(ep);
+                }
             });
+            rest.forEach(function(ep) { assignOneSeat(ep.name, ci, ['back', 'middle', 'front']); });
         });
 
         // ── Step3: スタッフを各車1名まで助手席優先で配置 ──
@@ -1102,6 +1116,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             _td = { el: null, ghost: null, data: null, x: 0, y: 0, on: false };
             if (dropSeat && d) {
                 if (d.type === 'member') {
+                    if (Assignment._blockedByExtraPassenger(dropSeat, d.name)) return;
                     Assignment.setSeatOccupant(dropSeat, d.name);
                     Assignment.saveAssignments();
                     Assignment.updateMembersList();
@@ -2023,11 +2038,25 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             });
         }
 
-        // メンバー外乗員をまだ未配置なら自動配置（後列→中列→助手席の順）
+        // メンバー外乗員（兄弟児など）がまだ未配置なら、車提供で決めた席に座らせる。
+        // 席が決まっていない（以前の登録）・その席がない・埋まっているときは空いている席（後列→中列→助手席）
         if (car.extraPassengers && car.extraPassengers.length > 0) {
             var alreadyInSeats = new Set();
             carLayout.querySelectorAll('.seat.filled[data-person]').forEach(function(s) {
                 if (s.dataset.person) alreadyInSeats.add(s.dataset.person);
+            });
+            var self = this;
+            var pending = car.extraPassengers.filter(function(ep) { return ep && ep.name && !alreadyInSeats.has(ep.name); });
+            var placeAt = function(seat, ep) {
+                seat.dataset.isExtraPassenger = 'true';
+                self.setSeatOccupant(seat, ep.name);
+            };
+            pending = pending.filter(function(ep) {
+                if (!ep.seatType) return true;
+                var seat = carLayout.querySelector('.seat[data-seat-type="' + ep.seatType + '"][data-seat-index="' + (parseInt(ep.seatIndex, 10) || 0) + '"]:not(.filled)');
+                if (!seat) return true;
+                placeAt(seat, ep);
+                return false;
             });
             // 空き座席を後→中→前の順で収集
             var emptySeats = [];
@@ -2036,13 +2065,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                     emptySeats.push(s);
                 });
             });
-            var self = this;
-            car.extraPassengers.forEach(function(ep) {
-                if (!alreadyInSeats.has(ep.name) && emptySeats.length > 0) {
-                    var seat = emptySeats.shift();
-                    seat.dataset.isExtraPassenger = 'true';
-                    self.setSeatOccupant(seat, ep.name);
-                }
+            pending.forEach(function(ep) {
+                if (emptySeats.length > 0) placeAt(emptySeats.shift(), ep);
             });
         }
 
@@ -2123,6 +2147,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             var c = Assignment._canvas;
             if (c && c.active && c.selected) {
                 var name = c.selected;
+                if (Assignment._blockedByExtraPassenger(seat, name)) return;
                 Assignment._clearCanvasSelection();
                 delete seat.dataset.isExtraPassenger;
                 Assignment.setSeatOccupant(seat, name);
@@ -2190,11 +2215,13 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         var displayName = member ? ((member.abbr != null && member.abbr !== '') ? member.abbr : member.name) : (personName.length > 4 ? personName.substring(0, 4) : personName);
         var gc = (member && member.role === 'player') ? Assignment.getGradeColor(member.grade) : null;
 
-        // 学年色で座席背景を薄く色づけ（メンバー外乗員はグレー）
+        // 学年色で座席背景を薄く色づけ（メンバー外乗員＝兄弟児などは車提供で決めた席なので紫の印）
         var isEP = seat.dataset.isExtraPassenger === 'true';
-        seat.style.background = isEP ? '#f0f0f0' : (gc ? Assignment._hexToRgba(gc, 0.12) : '');
+        seat.style.background = isEP ? '' : (gc ? Assignment._hexToRgba(gc, 0.12) : '');
+        seat.classList.toggle('seat-extra', isEP);
 
-        // × 解除ボタン（座席左上）
+        // × 解除ボタン（座席左上）。兄弟児などは外すとどの席にも出なくなるため付けない
+        // （名前の変更・取り消しは席をタップした画面で行う）
         var clearBtn = document.createElement('button');
         clearBtn.className = 'seat-clear-btn';
         clearBtn.textContent = '×';
@@ -2205,6 +2232,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             Assignment.saveAssignments();
             Assignment.updateMembersList();
         });
+        if (isEP) clearBtn.style.display = 'none';
         seat.insertBefore(clearBtn, seat.firstChild);
 
         // 名前タグ（丸なし、abbr優先）
@@ -2289,6 +2317,19 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
      * @param {string} name
      * @returns {boolean}
      */
+    /**
+     * 兄弟児など（車提供で登録したメンバー外乗員）が座っている席に、ほかの人を置こうとしていれば知らせて true。
+     * その席は車提供で決めた席なので、選手などは割り当てない
+     */
+    Assignment._blockedByExtraPassenger = function(seat, personName) {
+        var occupant = seat && seat.dataset.person;
+        if (!occupant || occupant === personName || seat.dataset.isExtraPassenger !== 'true') return false;
+        if (UI && UI.showAlert) {
+            UI.showAlert(occupant + 'さん（兄弟児など）の席です。ほかの空いている席に入れてください', 'warning');
+        }
+        return true;
+    };
+
     Assignment._isExtraPassengerName = function(name) {
         if (!name) return false;
         if ((app.Carpool.members || []).some(function(m) { return m.name === name; })) return false;
@@ -2673,7 +2714,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                         // 座席移動後はメンバーリストを再描画（空席になった座席の人が一覧に戻る場合がある）
                         Assignment.updateMembersList();
                     } else {
-                        // 新規配置
+                        // 新規配置（兄弟児などの席には置かない）
+                        if (Assignment._blockedByExtraPassenger(this, memberName)) return;
                         Assignment.setSeatOccupant(this, memberName);
                         
                         // 配置データを保存
@@ -2686,6 +2728,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                     console.error('ドロップデータの解析に失敗しました', e);
                     
                     // 単純に配置
+                    if (Assignment._blockedByExtraPassenger(this, memberName)) return;
                     Assignment.setSeatOccupant(this, memberName);
                     
                     // 配置データを保存
@@ -2724,6 +2767,17 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         // 交換データの一時保存
         const fromPerson = fromSeat.dataset.person;
         const toPerson = toSeat.dataset.person;
+
+        // 兄弟児など（車提供で登録したメンバー外乗員）は、登録した車から別の車へは移さない
+        if (String(fromCarIndex) !== String(toCarIndex)) {
+            var epMoving = [[fromSeat, fromPerson], [toSeat, toPerson]].filter(function(x) {
+                return x[1] && x[0].dataset.isExtraPassenger === 'true';
+            })[0];
+            if (epMoving) {
+                UI.showAlert(epMoving[1] + 'さん（兄弟児など）は車提供で登録した車に乗ります。ほかの車には移せません', 'warning');
+                return;
+            }
+        }
         
         // 先に両方の座席を空けてから置き直す（埋まっている座席へ直接 setSeatOccupant すると
         // 「○○さんをこの座席から外し…」という上書き用の通知が出て、入れ替えなのに

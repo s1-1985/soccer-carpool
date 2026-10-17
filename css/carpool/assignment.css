@@ -1778,3 +1778,11 @@ body.canvas-select-active #canvas-mode .seat:not(.driver-seat):not(.filled) {
         flex-wrap: wrap;
     }
 }
+
+/* 兄弟児など（車提供で登録したメンバー外乗員）の席: 車提供で決めた席。選手は割り当てない */
+.seat.seat-extra,
+.seat.filled.seat-extra {
+    background: #f4ebfb;
+    border-color: #9b59b6;
+}
+.seat.seat-extra .seat-name-tag { color: #6c3483; }

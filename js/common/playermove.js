@@ -8,7 +8,8 @@
  *  - 連絡事項に変更のお知らせ（type:'move'）→ 保護者には HUB の変更ダイアログ・参加予定のバッジ
  *  - 元に戻す: 出欠・学年外追加・お知らせを移動前の状態に戻す
  * 対象: 試合・練習（ナイター練習・行事は除く）
- * 使う画面: HUB の予定の詳細・出欠状況の表（管理タブ）、配車管理の出欠ページ（管理者・指導者・役員のみ）
+ * 使う画面: HUB の予定の詳細・出欠状況の表（管理タブ）、配車管理の出欠ページの「参加者を追加」
+ *          （管理者・指導者・役員のみ。出欠ページの参加者の追加はこの画面に統合した）
  */
 
 window.FCOjima = window.FCOjima || {};
@@ -239,7 +240,7 @@ FCOjima.PlayerMove = FCOjima.PlayerMove || {};
     };
 
     // =============================================
-    // 「選手を入れる」画面
+    // 「参加者を追加」画面（同じ日の他の予定・その日に予定のない選手から選ぶ）
     // =============================================
 
     function ensureModal() {
@@ -252,8 +253,11 @@ FCOjima.PlayerMove = FCOjima.PlayerMove || {};
         modal.innerHTML =
             '<div class="modal-content">' +
                 '<span class="close" aria-label="閉じる">&times;</span>' +
-                '<h2 style="font-size:18px;">選手を入れる</h2>' +
+                '<h2 style="font-size:18px;">参加者を追加</h2>' +
                 '<div class="pm-head"></div>' +
+                '<p class="pm-hint" style="margin:0 0 10px;font-size:12px;color:#6b6450;line-height:1.5;">' +
+                    '入れた選手はすぐ「参加」になり、保護者にお知らせが届きます。同じ日の他の試合・練習の選手は、' +
+                    'その予定を「不参加」にして入れます。</p>' +
                 '<div class="pm-moved"></div>' +
                 '<div class="pm-list"></div>' +
             '</div>';
