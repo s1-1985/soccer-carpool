@@ -206,6 +206,10 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         document.getElementById('add-event').addEventListener('click', function() {
             Calendar.openAddEventModal();
         });
+
+        // 日付を選ぶと、その日の監督・コーチの都合を出す（マネージャーのみ）
+        var eventDateInput = document.getElementById('event-date');
+        if (eventDateInput) eventDateInput.addEventListener('change', function() { Calendar._coachHint(); });
         
         // ログ表示ボタン
         document.getElementById('view-logs').addEventListener('click', function() {
@@ -654,6 +658,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         
         const content = document.getElementById('event-details-content');
         const esc = UI.escapeHTML;
+        // 指導者の担当（読み込めなくても詳細は表示する）
+        if (app.Hub.Coaching) await app.Hub.Coaching.ensureLoaded();
 
         // ---- 見出し: 種類・対象学年・タイトル・日付（あと何日） ----
         const typeKey = { game: 'game', practice: 'practice', nighter: 'nighter', event: 'event' }[event.type] || 'event';
@@ -684,6 +690,12 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         if (app.Hub.dutyEnabled) {
             const duty = app.Hub.getDutyAssignment ? app.Hub.getDutyAssignment(event.id) : null;
             if (duty) facts += fact('🔔', '当番', esc(duty.groupName));
+        }
+        // 指導（付く監督・コーチ）。担当を決めたら全員に表示、マネージャーには未定でも出して「担当」ボタン
+        if (app.Hub.Coaching && event.type !== 'nighter') {
+            const coachVal = app.Hub.Coaching.detailValue(event);
+            const canAssign = app.Auth && app.Auth.isManager && app.Auth.isManager();
+            if (coachVal) facts += fact('🧢', '指導', coachVal, canAssign ? '<button type="button" id="event-coach-btn" class="ed-map ed-coach">担当</button>' : '', 'ed-wide');
         }
 
         // 出欠一覧（イベントの対象学年メンバー）
@@ -855,6 +867,14 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             ${eventLogDisplay}
         `;
 
+        // 指導者の担当を決める（監督・コーチの都合の良い順に出る）
+        var coachBtn = document.getElementById('event-coach-btn');
+        if (coachBtn) {
+            coachBtn.addEventListener('click', function() {
+                app.Hub.Coaching.openAssign(event, function() { Calendar.showEventDetails(event.id); });
+            });
+        }
+
         // 参加者を追加（同じ日の別の予定・その日に予定のない選手をこの予定に入れる。管理者・指導者・役員）
         var moveBtn = document.getElementById('event-player-move-btn');
         if (moveBtn) {
@@ -973,8 +993,17 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         // 荷物をリセット
         Calendar._setLuggageValue([]);
 
+        // その日の監督・コーチの都合
+        Calendar._coachHint();
+
         // モーダルを表示
         UI.openModal('event-modal');
+    };
+
+    /** 予定の追加・編集フォーム: 選んだ日の監督・コーチの都合（js/hub/coaching.js） */
+    Calendar._coachHint = function() {
+        if (!app.Hub.Coaching) return;
+        app.Hub.Coaching.renderFormHint(document.getElementById('event-coach-hint'), document.getElementById('event-date').value);
     };
 
     /**
@@ -1297,6 +1326,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         
         // フォームに値を設定
         document.getElementById('event-date').value = event.date;
+        Calendar._coachHint();
         document.getElementById('event-type').value = event.type;
         document.getElementById('event-title').value = event.title;
         document.getElementById('event-target-notes').value = event.targetNotes || '';

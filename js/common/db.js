@@ -601,6 +601,51 @@ FCOjima.DB = FCOjima.DB || {};
         }, { merge: true });
     };
 
+    // ========== 指導者（監督・コーチ）の都合と担当 ==========
+    // coachAvailability/{メンバーID}: { name, answers: { 'YYYY-MM-DD': { s: 'ok'|'am'|'pm'|'ng', note } } }
+    // coachAssignments/{予定ID}: { memberIds: [メンバーID] }
+    // 新しいコレクションのルールは main へのマージ時にデプロイされるため、読み込みは呼び出し側で失敗しても
+    // 他の画面に影響しないようにする（loadAllData の Promise.all には入れない）
+    function coachAvailabilityCol() { return Collections.members().parent.collection('coachAvailability'); }
+    function coachAssignmentsCol() { return Collections.members().parent.collection('coachAssignments'); }
+
+    DB.loadCoachAvailability = async function() {
+        const snapshot = await coachAvailabilityCol().get();
+        ensureFromServer(snapshot);
+        const map = {};
+        snapshot.docs.forEach(doc => {
+            const d = doc.data() || {};
+            map[doc.id] = { name: d.name || '', answers: (d.answers && typeof d.answers === 'object') ? d.answers : {} };
+        });
+        return map;
+    };
+
+    /**
+     * 指導者のある日の都合を保存する（その日の分だけ。他の日の回答には触れない）
+     * @param {Object|null} value - { s, note }。null なら回答を取り消す
+     */
+    DB.setCoachAvailability = async function(memberId, name, date, value) {
+        const answers = {};
+        answers[String(date)] = value ? { s: String(value.s), note: String(value.note || '') } : firebase.firestore.FieldValue.delete();
+        await coachAvailabilityCol().doc(String(memberId)).set({ name: String(name || ''), answers: answers }, { merge: true });
+    };
+
+    DB.loadCoachAssignments = async function() {
+        const snapshot = await coachAssignmentsCol().get();
+        const map = {};
+        snapshot.docs.forEach(doc => {
+            const ids = (doc.data() || {}).memberIds;
+            map[doc.id] = Array.isArray(ids) ? ids.map(String) : [];
+        });
+        return map;
+    };
+
+    /** 予定に指導者を付ける／外す（その1人だけ。同時に他の人が付けた分は消えない） */
+    DB.setCoachAssigned = async function(eventId, memberId, on) {
+        const op = on ? firebase.firestore.FieldValue.arrayUnion(String(memberId)) : firebase.firestore.FieldValue.arrayRemove(String(memberId));
+        await coachAssignmentsCol().doc(String(eventId)).set({ memberIds: op }, { merge: true });
+    };
+
     // ========== 当番割り当て（イベント×グループ）==========
 
     DB.loadDutyAssignments = async function() {

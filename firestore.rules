@@ -165,6 +165,20 @@ service cloud.firestore {
         allow read:  if isAuth() && isApproved(teamId);
         allow write: if isAuth() && isManager(teamId);
       }
+
+      // ----- 指導者（監督・コーチ）の都合（日付ごとの ○/午前/午後/×）-----
+      // 回答するのは監督・コーチ、見て担当を決めるのは監督・コーチ・役員・管理者（どれもマネージャー）。
+      // コーチ本人がアプリを使っていなくても代わりに入れられるよう、マネージャーなら誰の分でも書ける
+      match /coachAvailability/{memberId} {
+        allow read, write: if isAuth() && isManager(teamId);
+      }
+
+      // ----- 指導者の担当（予定ごとに付く監督・コーチ）-----
+      // 予定の詳細に表示するため閲覧は承認済み全員、変更はマネージャーのみ
+      match /coachAssignments/{eventId} {
+        allow read:  if isAuth() && isApproved(teamId);
+        allow write: if isAuth() && isManager(teamId);
+      }
     }
   }
 }

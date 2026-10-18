@@ -33,19 +33,29 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
 
     /**
      * 初期化（hub/index.html の DOMContentLoaded から呼ばれる）
-     * 子供が未登録のユーザーでは何もしない
+     * 子供が登録されているユーザー（保護者）と、監督・コーチにタブを出す。どちらでもなければ何もしない
+     *  - 監督・コーチ: 上に「指導の予定」（土日の都合の回答と担当。js/hub/coaching.js）
+     *  - 保護者: お子さんの参加予定（監督・コーチが保護者を兼ねる場合は両方）
      */
     MyEvents.init = async function(profile) {
         _profile = profile;
-        if (!profile || !profile.childrenIds || profile.childrenIds.length === 0) return;
+        var hasKids = !!(profile && profile.childrenIds && profile.childrenIds.length > 0);
+        var Coaching = app.Hub.Coaching;
+        var coach = Coaching ? Coaching.myCoach(profile) : null;
+        var showCoach = !!Coaching && (!!coach || !!(profile && (profile.role === 'coach' || profile.role === 'assist')));
+        if (!hasKids && !showCoach) return;
 
+        var kidsEl = document.getElementById('my-events-kids');
+        if (kidsEl && !hasKids) kidsEl.style.display = 'none';
         var tabBtn = document.getElementById('my-events-tab');
         if (tabBtn) {
             tabBtn.style.display = '';
             tabBtn.addEventListener('click', function() {
-                MyEvents.renderList(true);
+                if (showCoach) Coaching.renderMine(document.getElementById('my-coaching'), Coaching.myCoach(_profile));
+                if (hasKids) MyEvents.renderList(true);
             });
         }
+        if (!hasKids) return;
 
         var okBtn = document.getElementById('move-notice-ok');
         if (okBtn) {
