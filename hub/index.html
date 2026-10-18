@@ -10,6 +10,7 @@
     <link rel="apple-touch-icon" href="/img/icon-192.png">
     <link rel="stylesheet" href="../css/common.css?v=20261017a">
     <link rel="stylesheet" href="../css/hub/calendar.css?v=20261017e">
+    <link rel="stylesheet" href="../css/hub/coaching.css?v=20261018a">
     <link rel="stylesheet" href="../css/hub/members.css?v=20260719">
     <link rel="stylesheet" href="../css/hub/notifications.css?v=20260224a">
     <link rel="stylesheet" href="../css/hub/venues.css?v=20260224a">
@@ -348,10 +349,15 @@
         <!-- 参加予定タブ（子供が登録されている保護者・指導者のみ表示） -->
         <div id="my-events" class="tabcontent">
             <h2>参加予定</h2>
-            <p style="font-size:12px;color:#888;margin-bottom:12px;">お子さん（兄弟姉妹含む）が参加対象のイベント一覧です。前回見たときから変わった点は🔔付きで表示されます。</p>
-            <div id="my-events-changes"></div>
-            <div id="my-events-list">
-                <p class="loading">読み込み中...</p>
+            <!-- 監督・コーチ: 土日の都合の回答と担当（js/hub/coaching.js） -->
+            <div id="my-coaching"></div>
+            <!-- 保護者: お子さんの参加予定 -->
+            <div id="my-events-kids">
+                <p style="font-size:12px;color:#888;margin-bottom:12px;">お子さん（兄弟姉妹含む）が参加対象のイベント一覧です。前回見たときから変わった点は🔔付きで表示されます。</p>
+                <div id="my-events-changes"></div>
+                <div id="my-events-list">
+                    <p class="loading">読み込み中...</p>
+                </div>
             </div>
         </div>
 
@@ -453,6 +459,11 @@
 
             <section style="margin-top:12px;">
                 <button id="btn-attendance-matrix" class="primary-button" style="width:100%;max-width:320px;">出欠状況</button>
+            </section>
+
+            <section style="margin-top:12px;">
+                <!-- 監督・コーチの土日の都合を見ながら、予定ごとに付くコーチを決める（js/hub/coaching.js） -->
+                <button id="btn-coach-planner" class="primary-button" style="width:100%;max-width:320px;" onclick="FCOjima.Hub.Coaching.openPlanner()">🧢 指導者の予定・担当</button>
             </section>
 
             <section style="margin-top:12px;">
@@ -645,6 +656,8 @@
                 <div class="form-group">
                     <label for="event-date">日付</label>
                     <input type="date" id="event-date" required>
+                    <!-- 選んだ日の監督・コーチの都合（マネージャーのみ。js/hub/coaching.js） -->
+                    <div id="event-coach-hint" class="co-form-hint" style="display:none;"></div>
                 </div>
                 <div class="form-group">
                     <label for="event-type">種類</label>
@@ -914,7 +927,7 @@
     <script src="../js/common/storage.js?v=20261016d"></script>
     <script src="../js/common/ui.js?v=20261016d"></script>
     <script src="../js/common/auth.js?v=20261016g"></script>
-    <script src="../js/common/db.js?v=20261017c"></script>
+    <script src="../js/common/db.js?v=20261018a"></script>
     <script src="../js/common/weather.js?v=20261017d"></script>
     <script src="../js/common/checklist.js?v=20261016c"></script>
     <script src="../js/common/playermove.js?v=20261017e"></script>
@@ -922,11 +935,12 @@
 
     <!-- HUBページ用モジュール -->
     <script src="../js/hub/main.js?v=20261016g"></script>
-    <script src="../js/hub/calendar.js?v=20261017e"></script>
+    <script src="../js/hub/calendar.js?v=20261018a"></script>
     <script src="../js/hub/members.js?v=20261017b"></script>
     <script src="../js/hub/notifications.js?v=20261016c"></script>
     <script src="../js/hub/venues.js?v=20261016g"></script>
-    <script src="../js/hub/myevents.js?v=20261017c"></script>
+    <script src="../js/hub/coaching.js?v=20261018a"></script>
+    <script src="../js/hub/myevents.js?v=20261018a"></script>
     <script src="../js/hub/admin.js?v=20261017d"></script>
 
     <script>
