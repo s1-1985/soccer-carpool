@@ -1,100 +1,237 @@
 /* FC尾島ジュニア - 指導者（監督・コーチ）の都合と担当 */
 
-/* 都合の色: ○ 緑 / 午前・午後 黄 / × 赤 / 未回答 灰 */
-.co-s-ok   { --co-c: #1f7a45; --co-bg: #e7f5ec; --co-bd: #a9dbbb; }
+/* 都合の色: 行ける 緑 / 午前だけ・午後だけ 黄 / 行けない 赤 / 未回答 灰 */
+.co-s-ok   { --co-c: #1f7a45; --co-fill: #2e9e5b; --co-bg: #e7f5ec; --co-bd: #a9dbbb; }
 .co-s-am,
-.co-s-pm   { --co-c: #8a5a00; --co-bg: #fdf4de; --co-bd: #f1d28a; }
-.co-s-ng   { --co-c: #b23a3a; --co-bg: #fcecec; --co-bd: #f0c4c4; }
-.co-s-none { --co-c: #7d7663; --co-bg: #f4f2ec; --co-bd: #e2dccb; }
+.co-s-pm   { --co-c: #8a5a00; --co-fill: #d9930b; --co-bg: #fdf4de; --co-bd: #f1d28a; }
+.co-s-ng   { --co-c: #b23a3a; --co-fill: #d24b4b; --co-bg: #fcecec; --co-bd: #f0c4c4; }
+.co-s-none { --co-c: #7d7663; --co-fill: #9a937f; --co-bg: #f4f2ec; --co-bd: #e2dccb; }
 
 .co-card {
     margin-bottom: 16px;
-    padding: 14px 14px 10px;
+    padding: 14px;
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--r);
     box-shadow: var(--sh-sm);
 }
-.co-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.co-title { margin: 0; font-size: 16px; }
-.co-pill { padding: 1px 10px; border-radius: var(--r-pill); font-size: 12px; font-weight: 700; }
-.co-pill-warn { background: var(--warn-bg); color: var(--brand-deep); }
-.co-pill-ok { background: var(--ok-bg); color: #1f7a45; }
-.co-hint { margin: 6px 0 10px; font-size: 12px; line-height: 1.5; color: var(--text-2); }
-.co-error { margin: 6px 0 10px; font-size: 12px; color: var(--danger); }
+.co-title { margin: 0 0 10px; font-size: 17px; }
+.co-sub-title { font-size: 13px; font-weight: 700; color: var(--text-2); }
+.co-hint { margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-2); }
+.co-error { margin: 6px 0; font-size: 12px; color: var(--danger); }
 .co-muted { color: #a39c88; }
+.co-empty { margin: 6px 0 0; font-size: 13px; color: #a39c88; }
 .co-sat { color: #2f6db5; }
 .co-sun { color: #c62828; }
 
-/* 自分の都合の一覧 */
-.co-row { padding: 10px 0; border-top: 1px solid var(--line); }
-.co-row-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; min-width: 0; }
-.co-date { flex: 0 0 auto; font-weight: 700; font-size: 15px; }
-.co-evs { min-width: 0; font-size: 12px; color: var(--text-2); overflow-wrap: anywhere; }
-.co-seg { display: flex; gap: 6px; }
-.co-seg button.co-seg-btn {
-    flex: 1 1 0;
-    min-width: 0;
-    min-height: 40px;
-    padding: 6px 4px;
+/* ---------- コーチ: あなたの担当 ---------- */
+.co-duty {
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    background: #fff8e6;
+    border: 1px solid #f1d28a;
+    border-radius: var(--r-sm);
+}
+.co-duty button.co-duty-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+    padding: 8px 10px;
     background: var(--surface);
-    border: 1.5px solid var(--line-strong);
+    border: 1px solid #f1d28a;
     border-radius: var(--r-sm);
     box-shadow: none;
-    color: var(--text-2);
-    font-size: 14px;
+    color: var(--text);
+    font-weight: 400;
+    text-align: left;
+}
+.co-duty button.co-duty-item:hover { background: #fffdf6; box-shadow: none; }
+.co-duty-date { flex: 0 0 auto; font-weight: 700; font-size: 14px; }
+.co-duty-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.co-duty-title { font-weight: 700; font-size: 14px; overflow-wrap: anywhere; }
+.co-duty-meta { font-size: 12px; color: var(--text-2); overflow-wrap: anywhere; }
+.co-duty-arrow { flex: 0 0 auto; font-size: 18px; color: var(--brand-deep); }
+
+/* ---------- コーチ: 回答の進み具合 ---------- */
+.co-progress { margin-bottom: 12px; }
+.co-progress-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.co-progress-num { font-size: 12px; color: var(--text-2); }
+.co-progress-num b { font-size: 15px; color: var(--text); }
+.co-progress-bar { height: 6px; margin: 6px 0 10px; background: #ece8dd; border-radius: var(--r-pill); overflow: hidden; }
+.co-progress-bar span { display: block; height: 100%; background: #2e9e5b; border-radius: var(--r-pill); }
+.co-progress button.co-bulk { width: 100%; font-size: 13px; }
+
+/* ---------- コーチ: 週末ごとのカード ---------- */
+.co-week {
+    margin-top: 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    overflow: hidden;
+}
+.co-week-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--line);
+}
+.co-week-label { font-weight: 700; font-size: 14px; }
+.co-tag { padding: 1px 9px; border-radius: var(--r-pill); font-size: 11px; font-weight: 700; white-space: nowrap; }
+.co-tag-warn { background: var(--warn-bg); color: var(--brand-deep); }
+.co-tag-ok { background: var(--ok-bg); color: #1f7a45; }
+.co-day-row { padding: 10px 12px 8px; border-left: 4px solid transparent; }
+.co-day-row + .co-day-row { border-top: 1px solid var(--line); }
+.co-day-row.is-unanswered { border-left-color: #f1c453; background: #fffdf5; }
+.co-day-top { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; min-width: 0; }
+.co-dow {
+    flex: 0 0 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--surface-2);
+    font-size: 13px;
     font-weight: 700;
 }
-.co-seg button.co-seg-btn:hover { background: var(--surface-2); box-shadow: none; }
-.co-seg button.co-seg-btn.is-on { background: var(--co-bg); border-color: var(--co-c); color: var(--co-c); }
-.co-seg button.co-note-btn {
-    flex: 0 0 42px;
-    min-height: 40px;
-    padding: 0;
+.co-dow.co-sat { background: #e8f0fb; }
+.co-dow.co-sun { background: #fdeaea; }
+.co-day-date { flex: 0 0 auto; font-weight: 700; font-size: 16px; }
+.co-day-evs { flex: 1; min-width: 0; font-size: 12px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.co-state {
+    flex: 0 0 auto;
+    padding: 1px 9px;
+    border-radius: var(--r-pill);
+    background: var(--co-bg);
+    color: var(--co-c);
+    font-size: 11px;
+    font-weight: 700;
+}
+.co-day-row.is-unanswered .co-state { background: #fdf0c8; color: var(--brand-deep); }
+
+/* 都合のボタン（記号＋ことば。選ぶと色で塗る） */
+.co-answer { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.co-answer button.co-ans {
+    min-width: 0;
+    min-height: 52px;
+    padding: 4px 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
     background: var(--surface);
-    border: 1.5px solid var(--line-strong);
+    border: 1.5px solid var(--co-bd);
     border-radius: var(--r-sm);
     box-shadow: none;
-    font-size: 16px;
-    opacity: .55;
+    color: var(--co-c);
+    font-weight: 700;
+    letter-spacing: 0;
 }
-.co-seg button.co-note-btn.has-note { opacity: 1; border-color: var(--brand); }
-.co-note { margin-top: 6px; font-size: 12px; color: var(--text-2); overflow-wrap: anywhere; }
-.co-note::before { content: '📝 '; }
+.co-answer button.co-ans:hover { background: var(--co-bg); box-shadow: none; }
+.co-answer button.co-ans.is-on { background: var(--co-fill); border-color: var(--co-fill); color: #fff; box-shadow: 0 2px 6px -2px rgba(0, 0, 0, .25); }
+.co-ans-mark { font-size: 18px; line-height: 1.1; }
+.co-ans-label { font-size: 11px; line-height: 1.2; white-space: nowrap; }
+.co-answer-lg button.co-ans { min-height: 64px; }
+.co-answer-lg .co-ans-mark { font-size: 22px; }
+.co-answer-lg .co-ans-label { font-size: 12px; }
+
 .co-mine {
-    display: inline-block;
-    margin-top: 6px;
-    padding: 2px 10px;
-    border-radius: var(--r-pill);
+    margin-top: 8px;
+    padding: 4px 10px;
+    border-radius: var(--r-sm);
     background: #fff3d6;
     color: var(--brand-deep);
     font-size: 12px;
     font-weight: 700;
 }
+.co-day-row button.co-memo {
+    min-height: 0;
+    margin-top: 6px;
+    padding: 2px 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+    color: #a39c88;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: left;
+}
+.co-day-row button.co-memo:hover { background: none; box-shadow: none; color: var(--text-2); }
+.co-day-row button.co-memo.has-note { color: var(--text-2); overflow-wrap: anywhere; }
+.co-memo-edit { margin-left: 4px; color: #2f6db5; text-decoration: underline; }
+.co-my button.co-more { width: 100%; margin-top: 12px; font-size: 13px; }
 
-/* 監督の画面 */
+/* ---------- 監督: 週末の切り替え ---------- */
 .co-modal .modal-content { max-width: 640px; }
-.co-modal-title { margin: 0 34px 4px 0; font-size: 18px; }
-.co-toolbar { margin-bottom: 10px; }
-.co-toolbar button { font-size: 13px; padding: 8px 12px; }
-.co-day {
-    margin-bottom: 12px;
-    padding: 12px;
+.co-modal-title { margin: 0 34px 10px 0; font-size: 18px; }
+.co-weeks {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    gap: 6px;
+    margin: 0 -4px 6px;
+    padding: 6px 4px 8px;
+    overflow-x: auto;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    scrollbar-width: thin;
+}
+.co-weeks button.co-wk {
+    flex: 0 0 auto;
+    min-height: 0;
+    padding: 6px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    background: var(--surface);
+    border: 1.5px solid var(--line-strong);
+    border-radius: var(--r-sm);
+    box-shadow: none;
+    color: var(--text);
+    font-weight: 700;
+}
+.co-weeks button.co-wk:hover { background: var(--surface-2); box-shadow: none; }
+.co-weeks button.co-wk.is-on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.co-wk-date { font-size: 14px; white-space: nowrap; }
+.co-wk-badge { font-size: 10px; font-weight: 700; white-space: nowrap; }
+.co-wk-warn { color: #c0392b; }
+.co-wk-wait { color: var(--brand-deep); }
+.co-wk-ok { color: #1f7a45; }
+.co-wk.is-on .co-wk-warn { color: #ffb3a7; }
+.co-wk.is-on .co-wk-wait { color: #ffd77a; }
+.co-wk.is-on .co-wk-ok { color: #9be3b5; }
+
+/* ---------- 監督: 日ごと ---------- */
+.co-pday { margin-top: 14px; }
+.co-pday-head { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 17px; }
+.co-avail {
+    padding: 8px 10px;
+    margin-bottom: 8px;
     background: var(--surface-2);
     border: 1px solid var(--line);
-    border-radius: var(--r);
+    border-radius: var(--r-sm);
 }
-.co-day-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-bottom: 8px; }
-.co-counts { display: flex; flex-wrap: wrap; gap: 4px; }
-.co-cnt { padding: 0 7px; border-radius: var(--r-pill); background: var(--co-bg); color: var(--co-c); font-size: 11px; font-weight: 700; }
-.co-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-.co-chips button.co-chip {
-    min-height: 32px;
-    padding: 3px 10px 3px 6px;
+.co-line { display: flex; align-items: flex-start; gap: 8px; padding: 3px 0; }
+.co-line-label { flex: 0 0 4.2em; padding-top: 5px; font-size: 12px; font-weight: 700; }
+.co-line-ok .co-line-label { color: #1f7a45; }
+.co-line-ng .co-line-label { color: #b23a3a; }
+.co-line-none .co-line-label { color: #7d7663; }
+.co-line-people { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.co-none { padding-top: 5px; font-size: 12px; color: #a39c88; }
+.co-avail button.co-person {
+    min-height: 30px;
+    padding: 2px 10px;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    background: var(--co-bg);
+    gap: 3px;
+    background: var(--surface);
     border: 1px solid var(--co-bd);
     border-radius: var(--r-pill);
     box-shadow: none;
@@ -102,36 +239,82 @@
     font-size: 13px;
     font-weight: 500;
 }
-.co-chips button.co-chip:hover { box-shadow: none; filter: brightness(.97); background: var(--co-bg); }
-.co-chip-mark {
-    min-width: 22px;
-    padding: 0 4px;
-    border-radius: var(--r-pill);
-    background: var(--surface);
-    color: var(--co-c);
-    font-size: 11px;
-    font-weight: 700;
-    text-align: center;
-}
-.co-chip-note { font-size: 11px; }
-.co-evlist { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
-.co-ev {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 10px;
+.co-avail button.co-person:hover { background: var(--co-bg); box-shadow: none; }
+.co-person small { font-size: 10px; color: var(--co-c); font-weight: 700; }
+.co-person small.co-person-note { color: var(--text-2); font-weight: 400; max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.co-pev {
+    margin-bottom: 8px;
+    padding: 10px;
     background: var(--surface);
     border: 1px solid var(--line);
+    border-left: 4px solid #2e9e5b;
     border-radius: var(--r-sm);
 }
-.co-ev-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.co-ev-title { font-weight: 700; font-size: 14px; overflow-wrap: anywhere; }
-.co-ev-meta { font-size: 11px; color: var(--ink-soft); }
-.co-ev-coaches { margin-top: 2px; font-size: 13px; color: var(--text); overflow-wrap: anywhere; }
-.co-ev-coaches.co-unset { color: var(--brand-deep); font-weight: 700; }
-.co-ev button.co-assign-btn { flex: 0 0 auto; min-height: 36px; padding: 6px 14px; font-size: 13px; }
+.co-pev.is-empty { border-left-color: #e0a020; background: #fffdf6; }
+.co-pev-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; margin-bottom: 6px; }
+.co-pev-title { font-weight: 700; font-size: 15px; overflow-wrap: anywhere; }
+.co-pev-meta { font-size: 11px; color: var(--ink-soft); }
+.co-pev-row { display: flex; align-items: flex-start; gap: 8px; padding: 3px 0; }
+.co-pev-label { flex: 0 0 2.6em; padding-top: 6px; font-size: 11px; font-weight: 700; color: var(--ink-soft); }
+.co-pev-chips { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 5px; }
+.co-unset { padding-top: 5px; font-size: 13px; font-weight: 700; color: #b8790b; }
+.co-pev button.co-assigned {
+    min-height: 32px;
+    padding: 3px 6px 3px 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--ink);
+    border: none;
+    border-radius: var(--r-pill);
+    box-shadow: none;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+}
+.co-pev button.co-assigned:hover { background: var(--ink-3); box-shadow: none; }
+.co-x {
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .2);
+    font-size: 10px;
+}
+.co-pev button.co-cand {
+    min-height: 32px;
+    padding: 3px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: var(--co-bg);
+    border: 1px dashed var(--co-c);
+    border-radius: var(--r-pill);
+    box-shadow: none;
+    color: var(--co-c);
+    font-size: 13px;
+    font-weight: 700;
+}
+.co-pev button.co-cand:hover { filter: brightness(.96); box-shadow: none; background: var(--co-bg); }
+.co-cand small { font-size: 10px; }
+.co-cand small.co-busy { color: #b8790b; font-weight: 700; }
+.co-pev button.co-more-pick {
+    min-height: 32px;
+    padding: 3px 10px;
+    background: none;
+    border: none;
+    box-shadow: none;
+    color: #2f6db5;
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: underline;
+}
+.co-pev button.co-more-pick:hover { background: none; box-shadow: none; }
 .co-noev { margin: 0 0 8px; font-size: 12px; color: #a39c88; }
-.co-day button.co-add-ev {
+.co-pday button.co-add-ev {
     width: 100%;
     min-height: 36px;
     padding: 6px 10px;
@@ -141,13 +324,16 @@
     color: var(--text-2);
     font-size: 13px;
 }
-.co-day button.co-add-ev:hover { background: var(--surface); border-color: var(--brand); box-shadow: none; }
+.co-pday button.co-add-ev:hover { background: var(--surface-2); border-color: var(--brand); box-shadow: none; }
+.co-footer { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line); }
+.co-footer button { width: 100%; font-size: 13px; }
 
-/* 都合を代わりに入れる・担当を選ぶ */
-.co-seg-lg button.co-seg-btn { min-height: 48px; font-size: 16px; }
+/* ---------- 都合を代わりに入れる・担当を選ぶ ---------- */
 .co-label { margin-top: 12px; }
 .co-sheet-actions { margin-top: 12px; }
 .co-sheet-actions button { width: 100%; }
+.co-pick-group { margin-bottom: 10px; }
+.co-pick-group .co-sub-title { margin-bottom: 6px; }
 .co-modal-body button.co-pick {
     width: 100%;
     display: flex;
@@ -165,7 +351,6 @@
 }
 .co-modal-body button.co-pick:hover { background: var(--surface-2); box-shadow: none; }
 .co-modal-body button.co-pick.is-on { border-color: var(--brand); background: #fff8e6; }
-.co-modal-body button.co-pick.is-ng:not(.is-on) { opacity: .6; }
 .co-pick-check {
     flex: 0 0 24px;
     height: 24px;
@@ -179,8 +364,7 @@
 }
 .co-pick.is-on .co-pick-check { background: var(--brand); border-color: var(--brand); }
 .co-pick-name { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 14px; overflow-wrap: anywhere; }
-.co-pick-role { font-size: 11px; color: var(--ink-soft); font-weight: 400; }
-.co-pick-note { font-size: 11px; color: var(--text-2); font-weight: 400; }
+.co-pick-sub { font-size: 11px; color: var(--text-2); font-weight: 400; }
 .co-pick-warn { font-size: 11px; color: var(--brand-deep); font-weight: 700; }
 .co-badge {
     flex: 0 0 auto;
@@ -188,16 +372,12 @@
     border-radius: var(--r-pill);
     background: var(--co-bg);
     color: var(--co-c);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
 }
 
-/* 予定の追加フォーム: 選んだ日の指導者の都合 */
+/* ---------- 予定の追加フォーム: 選んだ日の指導者の都合 ---------- */
 .co-form-hint {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 8px;
     margin-top: 6px;
     padding: 8px 10px;
     background: var(--surface-2);
@@ -206,9 +386,11 @@
     font-size: 12px;
     color: var(--text-2);
 }
-.co-hint-label { font-weight: 700; }
-.co-hint-grp { display: inline-flex; align-items: center; gap: 4px; }
+.co-hint-label { margin-bottom: 4px; font-weight: 700; color: var(--text); }
+.co-hint-line { display: flex; align-items: center; gap: 6px; padding: 2px 0; overflow-wrap: anywhere; }
 
 /* 予定の詳細の「担当」ボタン（地図ボタンと同じ形・山吹色） */
 #event-details-content button.ed-coach { border-color: #f1d28a; color: var(--brand-deep); }
 #event-details-content button.ed-coach:hover { background: #fff6e0; }
+.co-ans-mark.co-ans-word { font-size: 15px; }
+.co-answer-lg .co-ans-mark.co-ans-word { font-size: 18px; }
