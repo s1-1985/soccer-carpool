@@ -630,6 +630,16 @@ FCOjima.DB = FCOjima.DB || {};
         await coachAvailabilityCol().doc(String(memberId)).set({ name: String(name || ''), answers: answers }, { merge: true });
     };
 
+    /** 複数の日の都合をまとめて保存する（「未回答をまとめて『行ける』に」）。{ 日付: { s, note } } */
+    DB.setCoachAvailabilityMany = async function(memberId, name, byDate) {
+        const answers = {};
+        Object.keys(byDate || {}).forEach(function(date) {
+            const v = byDate[date];
+            answers[String(date)] = { s: String(v.s), note: String(v.note || '') };
+        });
+        await coachAvailabilityCol().doc(String(memberId)).set({ name: String(name || ''), answers: answers }, { merge: true });
+    };
+
     DB.loadCoachAssignments = async function() {
         const snapshot = await coachAssignmentsCol().get();
         const map = {};
