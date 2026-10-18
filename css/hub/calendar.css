@@ -561,3 +561,10 @@
     #event-details-content .ed-title { font-size: 20px; }
     #event-details-modal .ed-actions { padding-left: 14px; padding-right: 14px; }
 }
+
+/* 祝日（振替休日を含む）: 日曜と同じ赤 */
+.calendar-day.holiday { background-color: #fff8f8; }
+.holiday .date { color: #dc3545; }
+#day-events-list .day-events-holiday { margin-bottom: 6px; color: #dc3545; font-size: 13px; font-weight: 700; }
+/* 指導者に都合を聞く日として追加した日の印（マネージャーのみ） */
+.cal-coach-mark { margin-right: 2px; font-size: 9px; vertical-align: 1px; }

@@ -2,13 +2,16 @@
  * FC尾島ジュニア - 指導者（監督・コーチ）の都合と担当
  *
  * 流れ:
- *  1. 監督・コーチは「参加予定」タブの「指導の予定」で、今後の土日の都合を回答しておく
+ *  1. 監督・コーチは「参加予定」タブの「指導の予定」で、今後の土日・祝日などの都合を回答しておく
  *     （行ける／午前だけ／午後だけ／行けない。メモも書ける）。予定がまだなくても回答できる。
  *     いちばん上に自分が担当する予定が出る
  *  2. 監督などマネージャーは管理タブ「🧢 指導者の予定・担当」で、週末を1つずつ切り替えて見る。
  *     日ごとに「行ける／行けない／未回答」の人と、その日の予定。予定の下に出る行ける人を押すと担当になる
  *  3. 担当は予定の詳細（全員が見られる）と、コーチ本人の「指導の予定」に出る
- * データ: coachAvailability/{メンバーID}（マネージャーのみ読み書き）、coachAssignments/{予定ID}（閲覧は全員）
+ * 聞く日: 8週間の土日・祝日は自動。お盆・年末年始などは監督が期間で追加（管理タブの画面・カレンダーの日付）、
+ *        活動のない土日は「この日は聞かない」で外す
+ * データ: coachAvailability/{メンバーID}（マネージャーのみ読み書き）、coachAssignments/{予定ID}（閲覧は全員）、
+ *        coachDates/plan（聞く日の追加・外した日。閲覧は全員、変更はマネージャー）
  */
 
 window.FCOjima = window.FCOjima || {};
@@ -31,6 +34,7 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
 
     C._avail = null;   // { メンバーID: { name, answers: { 日付: { s, note } } } }
     C._assign = null;  // { 予定ID: [メンバーID] }
+    C._dates = null;   // 都合を聞く日の追加・外した日 { add: { 日付: true }, skip: { 日付: true } }
     C._showAllMine = false;
     C._weekKey = null; // 監督の画面で開いている週末
 
@@ -42,7 +46,8 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
     function fmt(date) { var d = dateOf(date); return (d.getMonth() + 1) + '/' + d.getDate() + '(' + DOW[d.getDay()] + ')'; }
     function md(date) { var d = dateOf(date); return (d.getMonth() + 1) + '/' + d.getDate(); }
     function dow(date) { return DOW[dateOf(date).getDay()]; }
-    function dayCls(date) { var w = dateOf(date).getDay(); return w === 6 ? ' co-sat' : w === 0 ? ' co-sun' : ''; }
+    function holName(date) { return (app.Holidays && app.Holidays.nameOf) ? app.Holidays.nameOf(date) : ''; }
+    function dayCls(date) { var w = dateOf(date).getDay(); return (w === 0 || holName(date)) ? ' co-sun' : w === 6 ? ' co-sat' : ''; }
     function isManager() { return !!(app.Auth && app.Auth.isManager && app.Auth.isManager()); }
     function shortName(m) { return (m && m.abbr) ? m.abbr : (m ? m.name : ''); }
     function evTime(ev) { return ev.startTime ? ev.startTime + '〜' : (ev.departureTime ? ev.departureTime + '出発' : ''); }
@@ -74,35 +79,94 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
         return C.coaches().filter(function(m) { return Utils().normalizeName(m.name) === key; })[0] || null;
     };
 
-    /** 回答してもらう日: 今日から8週間の土日と、その間に予定（ナイター練習を除く）がある日 */
-    C.planDates = function() {
-        var set = {};
+    /**
+     * 自動で聞く期間（今日から8週間）{ from, to }（to は含まない）。
+     * 最後の週末（月曜の祝日まで）が途中で切れないよう、終わりは週末の区切り（火曜）まで延ばす
+     */
+    function autoRange() {
         var today = new Date();
         today.setHours(0, 0, 0, 0);
         var end = new Date(today.getTime());
         end.setDate(end.getDate() + WEEKS * 7);
-        for (var d = new Date(today.getTime()); d < end; d.setDate(d.getDate() + 1)) {
-            if (d.getDay() === 0 || d.getDay() === 6) set[iso(d)] = true;
+        end.setDate(end.getDate() + ((2 - end.getDay() + 7) % 7));
+        return { from: iso(today), to: iso(end) };
+    }
+    /** 何もしなくても聞く日（今日から8週間の土日・祝日） */
+    function isAutoDate(date, r) {
+        r = r || autoRange();
+        if (date < r.from || date >= r.to) return false;
+        var w = dateOf(date).getDay();
+        return w === 0 || w === 6 || !!holName(date);
+    }
+    function datesOf(kind) { return (C._dates && C._dates[kind]) || {}; }
+
+    /** 監督が「聞かない」にした日（土日・祝日のうち予定のない日だけ。予定がある日は必ず聞く） */
+    C.isSkipped = function(date, r) {
+        return !!datesOf('skip')[date] && isAutoDate(date, r) && C.eventsOn(date).length === 0;
+    };
+
+    /**
+     * 都合を聞く日
+     *  - 今日から8週間の土日・祝日（監督が「聞かない」にした日を除く）
+     *  - その間に予定（ナイター練習を除く）がある日
+     *  - 監督が追加した日（お盆・年末年始など。8週間より先でも）
+     * @param {boolean} [includeSkipped] - 「聞かない」にした日も入れる（監督の画面で「戻す」を出すため）
+     */
+    C.planDates = function(includeSkipped) {
+        var r = autoRange();
+        var set = {};
+        for (var d = dateOf(r.from); iso(d) < r.to; d.setDate(d.getDate() + 1)) {
+            var k = iso(d);
+            if (isAutoDate(k, r) && (includeSkipped || !C.isSkipped(k, r))) set[k] = true;
         }
-        var from = iso(today), to = iso(end);
         (app.Hub.events || []).forEach(function(ev) {
-            if (ev && ev.type !== 'nighter' && ev.date && ev.date >= from && ev.date < to) set[ev.date] = true;
+            var date = ev && ev.date ? String(ev.date) : '';
+            if (date && ev.type !== 'nighter' && date >= r.from && date < r.to) set[date] = true;
         });
+        Object.keys(datesOf('add')).forEach(function(k) { if (k >= r.from) set[k] = true; });
         return Object.keys(set).sort();
+    };
+
+    C.isAsked = function(date) { return C.planDates().indexOf(String(date)) !== -1; };
+
+    /** その日が入る週末の区切り（火曜〜月曜）の火曜日 */
+    function weekKeyOf(date) {
+        var d = dateOf(date);
+        d.setDate(d.getDate() - ((d.getDay() - 2 + 7) % 7));
+        return iso(d);
+    }
+
+    /**
+     * 聞く日にする／聞かない日にする
+     * 土日・祝日（自動で聞く日）は「聞かない」の印を付け外し、それ以外の日は「追加」の印を付け外す
+     */
+    C.setAsked = async function(dates, on) {
+        var r = autoRange();
+        var byDate = {};
+        dates.forEach(function(d) {
+            var auto = isAutoDate(d, r);
+            byDate[d] = on ? (auto ? 'reset' : 'add') : (auto ? 'skip' : 'reset');
+        });
+        await app.DB.setCoachDates(byDate);
+        C._dates = C._dates || { add: {}, skip: {} };
+        Object.keys(byDate).forEach(function(d) {
+            delete C._dates.add[d];
+            delete C._dates.skip[d];
+            if (byDate[d] !== 'reset') C._dates[byDate[d]][d] = true;
+        });
     };
 
     /**
      * 回答する日を週末ごとにまとめる。火曜〜月曜を1つの区切りにして、金曜・月曜の祝日の予定も
      * その週末（3連休など）と一緒に出す
+     * @param {boolean} [includeSkipped] - 「聞かない」にした日も入れる
      * @returns {Array<{key:string, dates:string[], label:string}>}
      */
-    C.weekends = function() {
+    C.weekends = function(includeSkipped) {
         var groups = [];
         var byKey = {};
-        C.planDates().forEach(function(date) {
-            var d = dateOf(date);
-            d.setDate(d.getDate() - ((d.getDay() - 2 + 7) % 7));
-            var key = iso(d);
+        C.planDates(includeSkipped).forEach(function(date) {
+            var key = weekKeyOf(date);
             if (!byKey[key]) { byKey[key] = { key: key, dates: [] }; groups.push(byKey[key]); }
             byKey[key].dates.push(date);
         });
@@ -130,6 +194,7 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
             console.warn('指導者の担当を読み込めませんでした:', e);
             if (!C._assign) C._assign = {};
         })];
+        tasks.push(C.loadDates());
         if (isManager()) {
             tasks.push(app.DB.loadCoachAvailability().then(function(m) { C._avail = m; C._availFailed = false; }).catch(function(e) {
                 console.warn('指導者の都合を読み込めませんでした:', e);
@@ -140,7 +205,18 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
         await Promise.all(tasks);
     };
     C.ensureLoaded = async function() {
-        if (C._assign === null || (isManager() && C._avail === null)) await C.load();
+        if (C._assign === null || C._dates === null || (isManager() && C._avail === null)) await C.load();
+    };
+
+    /** 都合を聞く日の追加・外した日を読み込む（読み込めなければ土日・祝日だけ） */
+    C.loadDates = function() {
+        return app.DB.loadCoachDates().then(function(x) {
+            var set = function(list) { var m = {}; list.forEach(function(d) { m[d] = true; }); return m; };
+            C._dates = { add: set(x.add), skip: set(x.skip) };
+        }).catch(function(e) {
+            console.warn('都合を聞く日を読み込めませんでした:', e);
+            if (!C._dates) C._dates = { add: {}, skip: {} };
+        });
     };
 
     C.answerOf = function(memberId, date) {
@@ -216,7 +292,7 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
         if (!container) return;
         if (!member) {
             container.innerHTML = '<section class="co-card co-my"><h3 class="co-title">🧢 指導の予定</h3>' +
-                '<p class="co-hint">メンバーに監督・コーチとして登録されている名前と、ログインの名前が同じときに、土日の都合を回答できます。名前が違う場合は管理者に連絡してください。</p></section>';
+                '<p class="co-hint">メンバーに監督・コーチとして登録されている名前と、ログインの名前が同じときに、土日・祝日などの都合を回答できます。名前が違う場合は管理者に連絡してください。</p></section>';
             return;
         }
         if (!container.querySelector('.co-my')) container.innerHTML = '<section class="co-card co-my"><p class="loading">読み込み中...</p></section>';
@@ -247,7 +323,7 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
             '</div>';
 
         html += '<div class="co-progress">' +
-            '<div class="co-progress-head"><span class="co-sub-title">土日の都合</span>' +
+            '<div class="co-progress-head"><span class="co-sub-title">都合の回答</span>' +
             '<span class="co-progress-num">回答済み <b>' + answered + '</b> / ' + allDates.length + '日</span></div>' +
             '<div class="co-progress-bar"><span style="width:' + (allDates.length ? Math.round(answered * 100 / allDates.length) : 0) + '%"></span></div>' +
             (C._availFailed ? '<p class="co-error">回答を読み込めませんでした。通信環境を確認して開き直してください。</p>' : '') +
@@ -265,10 +341,12 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
                 var evs = C.eventsOn(date);
                 var a = C.answerOf(member.id, date);
                 var myEvs = evs.filter(function(ev) { return C.assignedIds(ev.id).indexOf(me) !== -1; });
+                var hol = holName(date);
                 html += '<div class="co-day-row' + (a ? '' : ' is-unanswered') + '" data-date="' + date + '">' +
                     '<div class="co-day-top"><span class="co-dow' + dayCls(date) + '">' + dow(date) + '</span>' +
                     '<span class="co-day-date">' + md(date) + '</span>' +
-                    '<span class="co-day-evs">' + (evs.length ? esc(evs.map(function(e) { return e.title; }).join('・')) : '予定なし') + '</span>' +
+                    '<span class="co-day-evs">' + (hol ? '<b class="co-hol">' + esc(hol) + '</b>' : '') +
+                    (evs.length ? esc(evs.map(function(e) { return e.title; }).join('・')) : '予定なし') + '</span>' +
                     '<span class="co-state co-s-' + (a ? a.s : 'none') + '">' + (a ? ANS[a.s].text : '未回答') + '</span></div>' +
                     '<div class="co-answer" role="group" aria-label="' + fmt(date) + 'の都合">' +
                     ORDER.map(function(s) {
@@ -365,14 +443,17 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
         return modal;
     }
 
-    /** 週末の状態: 担当のいない予定の数・まだ回答していない指導者の数 */
+    /** 週末の状態: 担当のいない予定の数・まだ回答していない指導者の数（「聞かない」にした日は数えない） */
     function weekStatus(w) {
+        var r = autoRange();
+        var dates = w.dates.filter(function(d) { return !C.isSkipped(d, r); });
+        if (dates.length === 0) return { off: true, noCoach: 0, notAnswered: 0 };
         var noCoach = 0;
-        w.dates.forEach(function(d) {
+        dates.forEach(function(d) {
             C.eventsOn(d).forEach(function(ev) { if (C.assignedIds(ev.id).length === 0) noCoach++; });
         });
         var notAnswered = C.coaches().filter(function(m) {
-            return w.dates.some(function(d) { return !C.answerOf(m.id, d); });
+            return dates.some(function(d) { return !C.answerOf(m.id, d); });
         }).length;
         return { noCoach: noCoach, notAnswered: notAnswered };
     }
@@ -398,15 +479,17 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
             body.innerHTML = '<p class="co-hint">メンバーに監督・コーチが登録されていません。メンバータブで役割を「監督」「コーチ」にしてください。</p>';
             return;
         }
-        var weekends = C.weekends();
+        var weekends = C.weekends(true);
+        var r = autoRange();
         // 開く週末: 前に開いていた週末、なければいちばん近い週末
         var cur = weekends.filter(function(w) { return w.key === C._weekKey; })[0] || weekends[0];
-        C._weekKey = cur.key;
+        C._weekKey = cur ? cur.key : null;
 
         // 週末の切り替え（担当のいない予定があれば ⚠、まだ回答していない人がいれば「未回答」）
         tabs.innerHTML = weekends.map(function(w) {
             var st = weekStatus(w);
-            var badge = st.noCoach ? '<span class="co-wk-badge co-wk-warn">⚠ 担当なし' + st.noCoach + '</span>'
+            var badge = st.off ? '<span class="co-wk-badge co-wk-off">聞かない</span>'
+                : st.noCoach ? '<span class="co-wk-badge co-wk-warn">⚠ 担当なし' + st.noCoach + '</span>'
                 : st.notAnswered ? '<span class="co-wk-badge co-wk-wait">未回答' + st.notAnswered + '人</span>'
                 : '<span class="co-wk-badge co-wk-ok">✓</span>';
             return '<button type="button" class="co-wk' + (w.key === cur.key ? ' is-on' : '') + '" data-week="' + w.key + '" role="tab" aria-selected="' + (w.key === cur.key) + '">' +
@@ -414,8 +497,18 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
         }).join('');
 
         var html = C._availFailed ? '<p class="co-error">都合を読み込めませんでした。通信環境を確認して開き直してください。</p>' : '';
+        html += '<div class="co-plan-tools"><button type="button" class="secondary-button co-add-dates">＋ 都合を聞く日を追加（お盆・年末年始など）</button></div>';
         html += '<p class="co-hint">行ける人を押すと、その予定の担当になります。名前の一覧の人を押すと、本人の代わりに都合を入れられます。</p>';
-        cur.dates.forEach(function(date) {
+        (cur ? cur.dates : []).forEach(function(date) {
+            var hol = holName(date);
+            var head = '<span class="co-dow' + dayCls(date) + '">' + dow(date) + '</span>' + md(date) +
+                (hol ? '<span class="co-hol">' + esc(hol) + '</span>' : '');
+            if (C.isSkipped(date, r)) {
+                html += '<section class="co-pday is-skipped" data-date="' + date + '"><h3 class="co-pday-head">' + head +
+                    '<span class="co-skip-tag">聞かない日</span>' +
+                    '<button type="button" class="co-unskip">聞く日に戻す</button></h3></section>';
+                return;
+            }
             var g = groupsOn(date);
             var people = function(list, s) {
                 return list.map(function(x) {
@@ -429,14 +522,16 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
                 return '<div class="co-line ' + cls + '"><span class="co-line-label">' + label + '</span><div class="co-line-people">' +
                     (list.length ? list : '<span class="co-none">なし</span>') + '</div></div>';
             };
+            var evs = C.eventsOn(date);
             html += '<section class="co-pday" data-date="' + date + '">' +
-                '<h3 class="co-pday-head"><span class="co-dow' + dayCls(date) + '">' + dow(date) + '</span>' + md(date) + '</h3>' +
+                '<h3 class="co-pday-head">' + head +
+                // 予定のある日は必ず聞くので、外せるのは予定のない日だけ
+                (evs.length ? '' : '<button type="button" class="co-skip">この日は聞かない</button>') + '</h3>' +
                 '<div class="co-avail">' +
                 line('行ける', 'co-line-ok', people(g.ok, 'ok') + people(g.am, 'am') + people(g.pm, 'pm')) +
                 line('行けない', 'co-line-ng', people(g.ng, 'ng')) +
                 (g.none.length ? line('未回答', 'co-line-none', people(g.none, 'none')) : '') +
                 '</div>';
-            var evs = C.eventsOn(date);
             if (evs.length === 0) html += '<p class="co-noev">この日の予定はまだありません</p>';
             evs.forEach(function(ev) {
                 var assigned = C.assignedMembers(ev.id);
@@ -478,8 +573,31 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
             });
         });
         var memberById = function(id) { return coaches.filter(function(m) { return String(m.id) === id; })[0]; };
+        var setAsked = async function(btn, date, on) {
+            btn.disabled = true;
+            try {
+                await C.setAsked([date], on);
+            } catch (e) {
+                btn.disabled = false;
+                UI().showAlert('保存できませんでした。通信環境を確認してください', 'error', 6000);
+                return;
+            }
+            C.markCalendar();
+            rerender();
+        };
+        body.querySelector('.co-add-dates').addEventListener('click', function() { C.openAddDates(rerender); });
         body.querySelectorAll('.co-pday').forEach(function(day) {
             var date = day.dataset.date;
+            var unskip = day.querySelector('.co-unskip');
+            if (unskip) {
+                unskip.addEventListener('click', function() { setAsked(unskip, date, true); });
+                return;
+            }
+            var skip = day.querySelector('.co-skip');
+            if (skip) skip.addEventListener('click', function() {
+                if (!UI().showConfirm(fmt(date) + ' は指導者に都合を聞かない日にしますか？\n（活動がない日など。回答済みの都合は残ります）')) return;
+                setAsked(skip, date, false);
+            });
             day.querySelectorAll('.co-person').forEach(function(p) {
                 p.addEventListener('click', function() {
                     var m = memberById(p.dataset.member);
@@ -548,6 +666,77 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
     };
 
     /**
+     * 都合を聞く日を期間で追加する（お盆・年末年始など、土日・祝日のほかに活動する日）
+     * @param {Function} [onDone] - 追加したあとに呼ぶ
+     */
+    C.openAddDates = function(onDone) {
+        if (!isManager()) return;
+        var modal = ensureModal('coach-dates-modal', 1030, '<h2 class="co-modal-title">都合を聞く日を追加</h2>' +
+            '<p class="co-hint">お盆・年末年始など、土日・祝日のほかに活動する日を追加します（土日・祝日は自動で聞きます）。追加した日はコーチの「指導の予定」に出ます。</p>');
+        var today = iso(new Date());
+        var body = modal.querySelector('.co-modal-body');
+        body.innerHTML = '<label class="co-label" for="co-dates-from">はじめの日</label>' +
+            '<input type="date" id="co-dates-from" min="' + today + '">' +
+            '<label class="co-label" for="co-dates-to">おわりの日（1日だけなら空のまま）</label>' +
+            '<input type="date" id="co-dates-to" min="' + today + '">' +
+            '<p class="co-dates-preview" aria-live="polite"></p>' +
+            '<div class="co-sheet-actions"><button type="button" class="primary-button co-dates-save" disabled>追加する</button></div>';
+        modal._onClose = null;
+        var from = body.querySelector('#co-dates-from');
+        var to = body.querySelector('#co-dates-to');
+        var preview = body.querySelector('.co-dates-preview');
+        var save = body.querySelector('.co-dates-save');
+        var picked = [];
+        var fresh = [];
+        var update = function() {
+            picked = [];
+            fresh = [];
+            var a = from.value, b = to.value || from.value;
+            to.min = a || today;
+            var msg = '';
+            if (!a) msg = '';
+            else if (a < today) msg = '今日より前の日は追加できません';
+            else if (b < a) msg = 'おわりの日は、はじめの日と同じか後の日にしてください';
+            else {
+                for (var d = dateOf(a); iso(d) <= b; d.setDate(d.getDate() + 1)) picked.push(iso(d));
+                if (picked.length > 31) { msg = '一度に追加できるのは31日までです'; picked = []; }
+            }
+            if (picked.length) {
+                var asked = {};
+                C.planDates().forEach(function(x) { asked[x] = true; });
+                fresh = picked.filter(function(x) { return !asked[x]; });
+                msg = fresh.length
+                    ? '新しく聞く日: ' + fresh.slice(0, 10).map(fmt).join('・') + (fresh.length > 10 ? ' ほか' + (fresh.length - 10) + '日' : '')
+                    : 'この期間は、もう全部が聞く日になっています';
+            }
+            preview.textContent = msg;
+            preview.classList.toggle('is-error', !!msg && !fresh.length);
+            save.disabled = fresh.length === 0;
+        };
+        from.addEventListener('input', update);
+        from.addEventListener('change', update);
+        to.addEventListener('input', update);
+        to.addEventListener('change', update);
+        save.addEventListener('click', async function() {
+            if (!fresh.length) return;
+            save.disabled = true;
+            try {
+                await C.setAsked(picked, true);
+            } catch (e) {
+                save.disabled = false;
+                UI().showAlert('保存できませんでした。通信環境を確認してください', 'error', 6000);
+                return;
+            }
+            C._weekKey = weekKeyOf(fresh[0]);
+            modal._close();
+            UI().showAlert(fresh.length + '日を都合を聞く日にしました', 'success');
+            C.markCalendar();
+            if (onDone) onDone();
+        });
+        UI().openModal('coach-dates-modal');
+    };
+
+    /**
      * 予定に付く指導者を選ぶ（予定の詳細の「担当」・監督の画面の「ほかの人から選ぶ」）
      * 行ける人・未回答・行けない人に分けて出す。同じ日の他の予定の担当なら「〇〇も担当」
      */
@@ -613,7 +802,7 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
             return;
         }
         var url = location.origin + '/hub/index.html';
-        var text = '【指導者の都合のお願い】\nアプリの「参加予定」タブで、土日の都合（行ける・午前だけ・午後だけ・行けない）を押してください。\n' +
+        var text = '【指導者の都合のお願い】\nアプリの「参加予定」タブの「指導の予定」で、各日の都合（行ける・午前だけ・午後だけ・行けない）を押してください。\n' +
             lines.join('\n') + '\n' + url;
         if (Utils().copyToClipboard(text)) UI().showAlert('回答のお願いの文面をコピーしました。LINEに貼り付けてください', 'success', 5000);
         else UI().showAlert('コピーできませんでした', 'error');
@@ -636,10 +825,32 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
         if (!isManager() || !date || C.coaches().length === 0) { el.innerHTML = ''; el.style.display = 'none'; return; }
         el.style.display = '';
         el.dataset.date = date;
-        if (C._avail === null) {
+        if (C._avail === null || C._dates === null) {
             el.innerHTML = '<span class="co-muted">指導者の都合を読み込み中...</span>';
             await C.load();
             if (el.dataset.date !== date) return;
+        }
+        // まだ聞いていない日（土日・祝日以外など）: 予定を登録すれば聞く日になる。8週間より先なら今すぐ聞ける
+        if (date >= iso(new Date()) && !C.isAsked(date)) {
+            var r = autoRange();
+            var later = date >= r.to;
+            el.innerHTML = '<div class="co-hint-label">🧢 この日の指導者</div>' +
+                '<div class="co-hint-line co-muted">' + (later ? 'まだ指導者に都合を聞いていない日です' : '予定（ナイター練習以外）を登録すると、この日も指導者に都合を聞きます') + '</div>' +
+                (later ? '<button type="button" class="co-hint-ask">この日も都合を聞く</button>' : '');
+            var ask = el.querySelector('.co-hint-ask');
+            if (ask) ask.addEventListener('click', async function() {
+                ask.disabled = true;
+                try {
+                    await C.setAsked([date], true);
+                } catch (e) {
+                    ask.disabled = false;
+                    UI().showAlert('保存できませんでした。通信環境を確認してください', 'error', 6000);
+                    return;
+                }
+                C.markCalendar();
+                C.renderFormHint(el, date);
+            });
+            return;
         }
         var g = groupsOn(date);
         var names = function(list) { return list.map(function(x) { return esc(shortName(x.m)) + (x.a && x.a.s !== 'ok' ? '（' + ANS[x.a.s].mark + '）' : ''); }).join('・'); };
@@ -648,6 +859,95 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
             '<div class="co-hint-line"><span class="co-badge co-s-ok">行ける</span>' + (canCome.length ? names(canCome) : '<span class="co-muted">なし</span>') + '</div>' +
             (g.ng.length ? '<div class="co-hint-line"><span class="co-badge co-s-ng">行けない</span>' + names(g.ng) + '</div>' : '') +
             (g.none.length ? '<div class="co-hint-line"><span class="co-badge co-s-none">未回答</span>' + g.none.length + '人</div>' : '');
+    };
+
+    // =============================================
+    // カレンダー
+    // =============================================
+
+    /**
+     * 「その日の予定」の下: 指導者に都合を聞く日かどうかと、聞く日にする・外すボタン（マネージャーのみ・今日以降）
+     * @param {HTMLElement} el
+     * @param {string} date - YYYY-MM-DD
+     */
+    C.renderDayAsk = async function(el, date) {
+        if (!el) return;
+        date = String(date);
+        if (!isManager() || C.coaches().length === 0 || date < iso(new Date())) { el.innerHTML = ''; el.style.display = 'none'; return; }
+        el.style.display = '';
+        el.dataset.date = date;
+        if (C._dates === null || C._avail === null) {
+            el.innerHTML = '<span class="co-muted">読み込み中...</span>';
+            await C.ensureLoaded();
+            if (el.dataset.date !== date) return;
+        }
+        var html;
+        if (C.isSkipped(date)) {
+            html = '<div class="co-dayask-text">🧢 指導者に都合を<b>聞かない日</b>にしています</div>' +
+                '<div class="co-dayask-actions"><button type="button" class="secondary-button co-dayask-on">聞く日に戻す</button></div>';
+        } else if (C.isAsked(date)) {
+            var g = groupsOn(date);
+            var total = C.coaches().length;
+            html = '<div class="co-dayask-text">🧢 指導者に都合を聞く日です（回答 ' + (total - g.none.length) + ' / ' + total + '人）</div>' +
+                '<div class="co-dayask-actions"><button type="button" class="secondary-button co-dayask-open">都合・担当を見る</button>' +
+                (C.eventsOn(date).length ? '' : '<button type="button" class="secondary-button co-dayask-off">この日は聞かない</button>') + '</div>';
+        } else {
+            html = '<div class="co-dayask-text">🧢 指導者にはまだ都合を聞いていない日です</div>' +
+                '<div class="co-dayask-actions"><button type="button" class="secondary-button co-dayask-on">この日も指導者に都合を聞く</button></div>';
+        }
+        el.innerHTML = html;
+        var change = async function(btn, on) {
+            btn.disabled = true;
+            try {
+                await C.setAsked([date], on);
+            } catch (e) {
+                btn.disabled = false;
+                UI().showAlert('保存できませんでした。通信環境を確認してください', 'error', 6000);
+                return;
+            }
+            C.markCalendar();
+            C.renderDayAsk(el, date);
+        };
+        var on = el.querySelector('.co-dayask-on');
+        if (on) on.addEventListener('click', function() { change(on, true); });
+        var off = el.querySelector('.co-dayask-off');
+        if (off) off.addEventListener('click', function() { change(off, false); });
+        var open = el.querySelector('.co-dayask-open');
+        if (open) open.addEventListener('click', function() {
+            UI().closeModal('day-events-modal');
+            C.openPlanner(weekKeyOf(date));
+        });
+    };
+
+    /**
+     * カレンダーの日付に、土日・祝日のほかに都合を聞く日として追加した日の印（🧢）を付ける（マネージャーのみ）
+     */
+    C.markCalendar = function() {
+        if (!isManager()) return;
+        if (C._dates === null) {
+            if (!C._datesLoading) {
+                C._datesLoading = true;
+                C.loadDates().then(function() { C._datesLoading = false; C.markCalendar(); });
+            }
+            return;
+        }
+        var today = iso(new Date());
+        var add = datesOf('add');
+        document.querySelectorAll('#calendar-grid .calendar-day').forEach(function(day) {
+            var dateEl = day.querySelector('.date');
+            if (!dateEl) return;
+            var old = dateEl.querySelector('.cal-coach-mark');
+            var on = !!add[day.dataset.date] && day.dataset.date >= today;
+            if (on && !old) {
+                var mark = document.createElement('span');
+                mark.className = 'cal-coach-mark';
+                mark.title = '指導者に都合を聞く日';
+                mark.textContent = '🧢';
+                dateEl.insertBefore(mark, dateEl.firstChild);
+            } else if (!on && old) {
+                old.remove();
+            }
+        });
     };
 
 })(window.FCOjima);

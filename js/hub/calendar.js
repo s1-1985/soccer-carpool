@@ -422,7 +422,13 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         } else if (dayOfWeek === 6) {
             day.classList.add('saturday');
         }
-        
+        // 祝日（振替休日を含む）は日付を赤く
+        const holiday = app.Holidays ? app.Holidays.nameOf(Utils.formatDate(date)) : '';
+        if (holiday) {
+            day.classList.add('holiday');
+            day.title = holiday;
+        }
+
         // 日付の表示部分
         const dateDiv = document.createElement('div');
         dateDiv.className = 'date';
@@ -478,6 +484,9 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             dayElement.appendChild(eventElement);
         });
 
+        // 指導者に都合を聞く日として追加した日の印（マネージャーのみ）
+        if (app.Hub.Coaching && app.Hub.Coaching.markCalendar) app.Hub.Coaching.markCalendar();
+
         // その日の予定一覧を開いたまま予定が追加・変更・削除されたら一覧も最新にする
         const dayModal = document.getElementById('day-events-modal');
         if (dayModal && dayModal.style.display === 'flex' && Calendar._dayModalDate) {
@@ -511,10 +520,17 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         if (!list || !dateStr) return;
         // 年は月の見出しにあるので省く（スマホで見出しが2行に折り返さないように）
         const dd = new Date(dateStr + 'T00:00:00');
-        title.textContent = (dd.getMonth() + 1) + '月' + dd.getDate() + '日(' + ['日', '月', '火', '水', '木', '金', '土'][dd.getDay()] + ') の予定';
+        const holiday = app.Holidays ? app.Holidays.nameOf(dateStr) : '';
+        title.textContent = (dd.getMonth() + 1) + '月' + dd.getDate() + '日(' + ['日', '月', '火', '水', '木', '金', '土'][dd.getDay()] + (holiday ? '・祝' : '') + ') の予定';
         const all = (app.Hub.events || []).filter(function(ev) { return String(ev.date) === dateStr; });
         const shown = Calendar.applyMyChildFilter(all).slice().sort(Utils.compareEvents);
         list.innerHTML = '';
+        if (holiday) {
+            const hol = document.createElement('div');
+            hol.className = 'day-events-holiday';
+            hol.textContent = holiday;
+            list.appendChild(hol);
+        }
         if (shown.length === 0) {
             const empty = document.createElement('div');
             empty.className = 'day-events-empty';
@@ -530,6 +546,15 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             note.textContent = '「自分の子供のみ」の絞り込みで ' + hidden + '件 を表示していません';
             list.appendChild(note);
         }
+        // 指導者に都合を聞く日か（マネージャーのみ）。聞く日にする・外すボタン
+        let coach = document.getElementById('day-events-coach');
+        if (!coach) {
+            coach = document.createElement('div');
+            coach.id = 'day-events-coach';
+            list.parentNode.insertBefore(coach, list.nextSibling);
+        }
+        if (app.Hub.Coaching && app.Hub.Coaching.renderDayAsk) app.Hub.Coaching.renderDayAsk(coach, dateStr);
+        else coach.style.display = 'none';
     };
     
     /**

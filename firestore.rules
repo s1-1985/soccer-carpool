@@ -179,6 +179,13 @@ service cloud.firestore {
         allow read:  if isAuth() && isApproved(teamId);
         allow write: if isAuth() && isManager(teamId);
       }
+
+      // ----- 指導者に都合を聞く日（土日・祝日のほかに足した日・外した日）-----
+      // 聞く日はコーチの「指導の予定」に出すため閲覧は承認済み全員、変更はマネージャーのみ
+      match /coachDates/{docId} {
+        allow read:  if isAuth() && isApproved(teamId);
+        allow write: if isAuth() && isManager(teamId);
+      }
     }
   }
 }
