@@ -604,10 +604,12 @@ FCOjima.DB = FCOjima.DB || {};
     // ========== 指導者（監督・コーチ）の都合と担当 ==========
     // coachAvailability/{メンバーID}: { name, answers: { 'YYYY-MM-DD': { s: 'ok'|'am'|'pm'|'ng', note } } }
     // coachAssignments/{予定ID}: { memberIds: [メンバーID] }
+    // coachDates/plan: { add: { 'YYYY-MM-DD': true }, skip: { 'YYYY-MM-DD': true } }（都合を聞く日の追加・外した日）
     // 新しいコレクションのルールは main へのマージ時にデプロイされるため、読み込みは呼び出し側で失敗しても
     // 他の画面に影響しないようにする（loadAllData の Promise.all には入れない）
     function coachAvailabilityCol() { return Collections.members().parent.collection('coachAvailability'); }
     function coachAssignmentsCol() { return Collections.members().parent.collection('coachAssignments'); }
+    function coachDatesDoc() { return Collections.members().parent.collection('coachDates').doc('plan'); }
 
     DB.loadCoachAvailability = async function() {
         const snapshot = await coachAvailabilityCol().get();
@@ -654,6 +656,32 @@ FCOjima.DB = FCOjima.DB || {};
     DB.setCoachAssigned = async function(eventId, memberId, on) {
         const op = on ? firebase.firestore.FieldValue.arrayUnion(String(memberId)) : firebase.firestore.FieldValue.arrayRemove(String(memberId));
         await coachAssignmentsCol().doc(String(eventId)).set({ memberIds: op }, { merge: true });
+    };
+
+    /** 都合を聞く日の追加・外した日。{ add: [日付], skip: [日付] } */
+    DB.loadCoachDates = async function() {
+        const doc = await coachDatesDoc().get();
+        ensureFromServer(doc);
+        const d = doc.exists ? (doc.data() || {}) : {};
+        const keys = function(m) {
+            return (m && typeof m === 'object') ? Object.keys(m).filter(function(k) { return m[k] === true; }).sort() : [];
+        };
+        return { add: keys(d.add), skip: keys(d.skip) };
+    };
+
+    /**
+     * 都合を聞く日を変える（指定した日だけ。他の日には触れない）
+     * @param {Object} byDate - { 日付: 'add'（聞く日に追加）| 'skip'（聞かない）| 'reset'（土日・祝日の自動に戻す） }
+     */
+    DB.setCoachDates = async function(byDate) {
+        const del = firebase.firestore.FieldValue.delete();
+        const add = {}, skip = {};
+        Object.keys(byDate || {}).forEach(function(date) {
+            const mode = byDate[date];
+            add[String(date)] = mode === 'add' ? true : del;
+            skip[String(date)] = mode === 'skip' ? true : del;
+        });
+        await coachDatesDoc().set({ add: add, skip: skip }, { merge: true });
     };
 
     // ========== 当番割り当て（イベント×グループ）==========

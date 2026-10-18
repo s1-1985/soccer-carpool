@@ -394,3 +394,46 @@
 #event-details-content button.ed-coach:hover { background: #fff6e0; }
 .co-ans-mark.co-ans-word { font-size: 15px; }
 .co-answer-lg .co-ans-mark.co-ans-word { font-size: 18px; }
+
+/* ---------- 都合を聞く日（祝日・追加した日・聞かない日） ---------- */
+.co-hol { margin: 0 5px 0 0; color: #c62828; font-size: 11px; font-weight: 700; }
+.co-pday-head .co-hol { margin: 0; font-size: 12px; }
+.co-wk-off { color: #9a937f; }
+.co-wk.is-on .co-wk-off { color: #d8d2c2; }
+.co-plan-tools { margin: 6px 0 2px; }
+.co-plan-tools button.co-add-dates { width: 100%; min-height: 40px; font-size: 13px; }
+.co-pday-head button.co-skip,
+.co-pday-head button.co-unskip {
+    margin-left: auto;
+    min-height: 30px;
+    padding: 2px 10px;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-pill);
+    box-shadow: none;
+    color: var(--text-2);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+.co-pday-head button.co-skip:hover,
+.co-pday-head button.co-unskip:hover { background: var(--surface-2); box-shadow: none; }
+.co-pday-head button.co-unskip { border-color: #a9dbbb; color: #1f7a45; font-weight: 700; }
+.co-pday.is-skipped .co-pday-head { margin: 0; padding: 8px 10px; background: #f4f2ec; border-radius: var(--r-sm); color: #9a937f; font-size: 15px; }
+.co-skip-tag { padding: 1px 8px; border-radius: var(--r-pill); background: #e9e5da; color: #7d7663; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.co-dates-preview { min-height: 1.5em; margin: 10px 0 0; font-size: 13px; font-weight: 700; color: #1f7a45; overflow-wrap: anywhere; }
+.co-dates-preview.is-error { color: #b23a3a; }
+.co-form-hint button.co-hint-ask,
+#day-events-coach .co-dayask-actions button { min-height: 34px; padding: 4px 12px; font-size: 12px; }
+.co-form-hint button.co-hint-ask { margin-top: 4px; }
+
+/* カレンダーの「その日の予定」: 指導者に都合を聞く日か */
+#day-events-coach {
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: #fff8e6;
+    border: 1px solid #f1d28a;
+    border-radius: var(--r-sm);
+    font-size: 13px;
+}
+.co-dayask-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
