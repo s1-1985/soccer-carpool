@@ -374,15 +374,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                 });
             });
         });
-        var needSeat = [];
-        attendance.forEach(function(a) {
-            if (a.status === 'present' && !driverNames.has(a.name) && needSeat.indexOf(a.name) === -1) needSeat.push(a.name);
-        });
-        // HUBで監督が決めた帯同指導者も座席が要る（運転する人・出欠で「不参加」の人を除く）
-        var absentNames = attendance.filter(function(a) { return a.status === 'absent'; }).map(function(a) { return a.name; });
-        (app.Carpool.eventCoaches ? app.Carpool.eventCoaches() : []).forEach(function(m) {
-            if (!driverNames.has(m.name) && absentNames.indexOf(m.name) === -1 && needSeat.indexOf(m.name) === -1) needSeat.push(m.name);
-        });
+        var needSeat = app.Carpool.seatNeeders();
         var needSeatCount = needSeat.length;
         var assignedMembers = needSeat.filter(function(n) { return seatedNames.has(n); }).length;
         
@@ -587,7 +579,9 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         comments:          { mode: 'prepend' },
         manualDriverNames: { mode: 'list' },
         // 出欠表から手動で外した人（対象学年の選手でも自動で戻さないための記録）
-        attendanceRemoved: { mode: 'list' }
+        attendanceRemoved: { mode: 'list' },
+        // 座席の割り当てで運転手になった人（運転席から外しても配置待ちに出す。Carpool.driverPool）
+        driverPeople:      { mode: 'list' }
     };
 
     function emptyOf(field) {
@@ -1095,6 +1089,54 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         }).filter(Boolean).sort(function(a, b) {
             return ((rank[a.role] !== undefined ? rank[a.role] : 2) - (rank[b.role] !== undefined ? rank[b.role] : 2));
         });
+    };
+
+    /** 車の持ち主（車提供で登録した人）。座席の割り当てで運転手を替えても変わらない */
+    app.Carpool.carOwner = function(car) {
+        return car ? String(car.owner || car.parent || '').trim() : '';
+    };
+
+    /**
+     * 運転手としてこの予定に加わる人（提供できる車の持ち主・いま運転席にいる人・座席の割り当てで運転手になった人）。
+     * 運転席から外した人も配置待ちに出す。メンバーでない人（車提供で名前を直接入力した人）も、
+     * この予定の中だけの参加者として扱う
+     */
+    app.Carpool.driverPool = function() {
+        var names = [];
+        var add = function(n) {
+            n = String(n || '').trim();
+            if (n && names.indexOf(n) === -1) names.push(n);
+        };
+        (this.appData.carRegistrations || []).forEach(function(c) {
+            if (!c || c.canDrive === 'no') return;
+            add(app.Carpool.carOwner(c));
+            add(c.parent);
+        });
+        (this.appData.driverPeople || []).forEach(add);
+        return names;
+    };
+
+    /**
+     * 座席が要る人（運転する人を除く）: 出欠で「参加」の人・帯同指導者（不参加を除く）・運転手として加わった人。
+     * 配車の概要の「割り当て」と車提供の「必要 N席」で同じ数え方にする
+     */
+    app.Carpool.seatNeeders = function() {
+        var attendance = this.appData.attendance || [];
+        var driverNames = new Set((this.appData.carRegistrations || []).filter(function(c) { return c && c.canDrive !== 'no'; })
+            .map(function(c) { return c.parent; }));
+        var absentNames = attendance.filter(function(a) { return a && a.status === 'absent'; }).map(function(a) { return a.name; });
+        var need = [];
+        var add = function(n) { if (n && !driverNames.has(n) && need.indexOf(n) === -1) need.push(n); };
+        attendance.forEach(function(a) { if (a && a.status === 'present') add(a.name); });
+        this.eventCoaches().forEach(function(m) { if (absentNames.indexOf(m.name) === -1) add(m.name); });
+        this.driverPool().forEach(add);
+        return need;
+    };
+
+    /** 提供できる車の持ち主（配置待ちから外せない人） */
+    app.Carpool.carOwners = function() {
+        return (this.appData.carRegistrations || []).filter(function(c) { return c && c.canDrive !== 'no'; })
+            .map(function(c) { return app.Carpool.carOwner(c); }).filter(Boolean);
     };
 
     /** 帯同指導者が決まっているか（決まっていなければ配車では監督・コーチを全員出す） */

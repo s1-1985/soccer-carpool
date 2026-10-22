@@ -169,7 +169,7 @@ FCOjima.DB = FCOjima.DB || {};
         if (Array.isArray(data.attendance)) {
             data.attendance = data.attendance.filter(function(a) { return typeof a.name === 'string' && a.name !== ''; });
         }
-        ['attendanceRemoved', 'manualDriverNames'].forEach(function(k) {
+        ['attendanceRemoved', 'manualDriverNames', 'driverPeople'].forEach(function(k) {
             if (data[k] !== undefined) data[k] = toArray(data[k]).filter(function(x) { return typeof x === 'string'; });
         });
         return data;
