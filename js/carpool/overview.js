@@ -61,6 +61,9 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
 
             // イベントデータをロード（Firestore優先 → localStorageフォールバック）
             await app.Carpool.loadEventDataForSelected();
+            // 帯同指導者（HUBで監督が決めた担当）
+            await app.Carpool.loadEventCoaches();
+            this.renderEventCoaches();
 
             console.log('イベントデータを読み込みました: ID=' + event.id + ', タイトル=' + event.title);
             
@@ -262,6 +265,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
                     ${deadlineInfo}
                     ${dateTimeInfo}
                     ${locationInfo}
+                    <div id="overview-coaches"></div>
                     ${targetDisplay}
                     ${checklistSection}
                     ${notesSection}
@@ -374,6 +378,11 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         attendance.forEach(function(a) {
             if (a.status === 'present' && !driverNames.has(a.name) && needSeat.indexOf(a.name) === -1) needSeat.push(a.name);
         });
+        // HUBで監督が決めた帯同指導者も座席が要る（運転する人・出欠で「不参加」の人を除く）
+        var absentNames = attendance.filter(function(a) { return a.status === 'absent'; }).map(function(a) { return a.name; });
+        (app.Carpool.eventCoaches ? app.Carpool.eventCoaches() : []).forEach(function(m) {
+            if (!driverNames.has(m.name) && absentNames.indexOf(m.name) === -1 && needSeat.indexOf(m.name) === -1) needSeat.push(m.name);
+        });
         var needSeatCount = needSeat.length;
         var assignedMembers = needSeat.filter(function(n) { return seatedNames.has(n); }).length;
         
@@ -480,7 +489,12 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         if (event.startTime) {
             message += '時間: ' + event.startTime + (event.endTime ? ' - ' + event.endTime : '') + '\n';
         }
-        
+
+        var coaches = app.Carpool.eventCoaches ? app.Carpool.eventCoaches() : [];
+        if (coaches.length) {
+            message += '帯同指導者: ' + coaches.map(function(m) { return m.name; }).join('、') + '\n';
+        }
+
         if (event.notes) {
             message += '\n備考:\n' + event.notes + '\n';
         }
@@ -527,7 +541,22 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         }
         container.className = 'event-summary ' + (event.type || 'other');
         container.innerHTML = '<strong>' + UI.escapeHTML(event.title) + '</strong>' +
-            ' (' + Utils.formatDateForDisplay(event.date) + ' ' + UI.escapeHTML(event.startTime || '') + ')';
+            ' (' + Utils.formatDateForDisplay(event.date) + ' ' + UI.escapeHTML(event.startTime || '') + ')' +
+            Overview.coachesLine('ev-coaches-line');
+    };
+
+    /** 帯同指導者の1行（「🧢 帯同指導者: 鈴木 コーチ・佐藤 監督」）。まだ決まっていなければ空 */
+    Overview.coachesLine = function(cls) {
+        var coaches = app.Carpool.eventCoaches ? app.Carpool.eventCoaches() : [];
+        if (!coaches.length) return '';
+        return '<div class="' + cls + '"><span class="ev-coaches-label">🧢 帯同指導者</span>' +
+            coaches.map(function(m) { return '<span class="ev-coach">' + UI.escapeHTML(m.name) + '</span>'; }).join('') + '</div>';
+    };
+
+    /** 概要の「帯同指導者」（予定の詳細の下。HUBで監督が担当を決めたら出る） */
+    Overview.renderEventCoaches = function() {
+        var slot = document.getElementById('overview-coaches');
+        if (slot) slot.innerHTML = Overview.coachesLine('ev-coaches-line ov-coaches');
     };
 
     // =============================================
@@ -1033,6 +1062,44 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
     app.Carpool.loadMembers = function() {
         this.members = Storage.loadMembers();
         console.log('メンバーをロードしました: ' + this.members.length + '人');
+    };
+
+    /**
+     * 選択中の予定に監督が決めた帯同指導者（HUBの「指導者の予定・担当」）を読み込む。
+     * app.Carpool.coachIds: メンバーIDの配列（まだ決まっていなければ空）。読めなければ null
+     * 名前を引くためメンバーがまだ無ければサーバーから読む（共有リンクから直接開いた端末など）
+     */
+    app.Carpool.loadEventCoaches = async function() {
+        var self = this;
+        var event = Storage.getSelectedEvent();
+        self.coachIds = null;
+        if (!event || !(FCOjima.DB && FCOjima.DB.loadCoachAssignment)) return null;
+        try {
+            self.coachIds = await FCOjima.DB.loadCoachAssignment(event.id);
+        } catch (e) {
+            console.warn('帯同指導者を読み込めませんでした:', e);
+            return null;
+        }
+        if (self.coachIds.length && !(self.members && self.members.length) && FCOjima.DB.loadMembers) {
+            try { self.members = await FCOjima.DB.loadMembers(); } catch (e) { self.loadMembers(); }
+        }
+        return self.coachIds;
+    };
+
+    /** 帯同指導者のメンバー（監督→コーチの順）。まだ決まっていない・読めなければ空 */
+    app.Carpool.eventCoaches = function() {
+        var members = this.members || [];
+        var rank = { coach: 0, assist: 1 };
+        return (this.coachIds || []).map(function(id) {
+            return members.find(function(m) { return String(m.id) === String(id); });
+        }).filter(Boolean).sort(function(a, b) {
+            return ((rank[a.role] !== undefined ? rank[a.role] : 2) - (rank[b.role] !== undefined ? rank[b.role] : 2));
+        });
+    };
+
+    /** 帯同指導者が決まっているか（決まっていなければ配車では監督・コーチを全員出す） */
+    app.Carpool.hasEventCoaches = function() {
+        return this.eventCoaches().length > 0;
     };
 
 })(window.FCOjima);

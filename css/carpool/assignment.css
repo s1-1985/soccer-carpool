@@ -1786,3 +1786,27 @@ body.canvas-select-active #canvas-mode .seat:not(.driver-seat):not(.filled) {
     border-color: #9b59b6;
 }
 .seat.seat-extra .seat-name-tag { color: #6c3483; }
+
+/* 帯同指導者（HUBで監督が決めた担当の監督・コーチ）: メンバー帯と座席に🧢 */
+.member-item .coach-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    background: #e7f5ec;
+    font-size: 12px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.seat.seat-coach { border-color: #2e9e5b; }
+.seat.seat-coach::before {
+    content: '🧢';
+    position: absolute;
+    top: 2px;
+    left: 3px;
+    font-size: 10px;
+    line-height: 1;
+    pointer-events: none;
+}

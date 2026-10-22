@@ -716,11 +716,12 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             const duty = app.Hub.getDutyAssignment ? app.Hub.getDutyAssignment(event.id) : null;
             if (duty) facts += fact('🔔', '当番', esc(duty.groupName));
         }
-        // 指導（付く監督・コーチ）。担当を決めたら全員に表示、マネージャーには未定でも出して「担当」ボタン
+        // 帯同指導者（監督が決めた担当の監督・コーチ。配車の割り当てにも🧢で出る）。担当を決めたら全員に表示、
+        // マネージャーには未定でも出して「担当」ボタン
         if (app.Hub.Coaching && event.type !== 'nighter') {
             const coachVal = app.Hub.Coaching.detailValue(event);
             const canAssign = app.Auth && app.Auth.isManager && app.Auth.isManager();
-            if (coachVal) facts += fact('🧢', '指導', coachVal, canAssign ? '<button type="button" id="event-coach-btn" class="ed-map ed-coach">担当</button>' : '', 'ed-wide');
+            if (coachVal) facts += fact('🧢', '帯同指導者', coachVal, canAssign ? '<button type="button" id="event-coach-btn" class="ed-map ed-coach">担当</button>' : '', 'ed-wide');
         }
 
         // 出欠一覧（イベントの対象学年メンバー）
