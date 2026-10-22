@@ -225,3 +225,24 @@ header {
     .carpool-nav { padding: 8px 8px; gap: 3px; }
     .carpool-nav a { padding: 6px 7px; font-size: 13px; }
 }
+
+/* 帯同指導者（HUBで監督が決めた担当）: 予定の概要・各ページ上部の予定の欄 */
+.ev-coaches-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+    margin-top: 6px;
+    font-size: 13px;
+}
+.ev-coaches-label { font-weight: 700; color: #1f7a45; margin-right: 2px; }
+.ev-coach {
+    padding: 1px 9px;
+    border-radius: 999px;
+    background: #e7f5ec;
+    border: 1px solid #a9dbbb;
+    color: #1c1600;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+.ev-coaches-line.ov-coaches { margin: 12px 0; padding: 10px 12px; background: #f6fbf8; border: 1px solid #cfe9d8; border-radius: 8px; }

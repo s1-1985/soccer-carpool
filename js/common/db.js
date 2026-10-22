@@ -652,6 +652,14 @@ FCOjima.DB = FCOjima.DB || {};
         return map;
     };
 
+    /** 1つの予定の担当の指導者（メンバーID）。まだ決まっていなければ空（配車の画面で使う） */
+    DB.loadCoachAssignment = async function(eventId) {
+        const doc = await coachAssignmentsCol().doc(String(eventId)).get();
+        ensureFromServer(doc);
+        const ids = doc.exists ? (doc.data() || {}).memberIds : null;
+        return Array.isArray(ids) ? ids.map(String) : [];
+    };
+
     /** 予定に指導者を付ける／外す（その1人だけ。同時に他の人が付けた分は消えない） */
     DB.setCoachAssigned = async function(eventId, memberId, on) {
         const op = on ? firebase.firestore.FieldValue.arrayUnion(String(memberId)) : firebase.firestore.FieldValue.arrayRemove(String(memberId));

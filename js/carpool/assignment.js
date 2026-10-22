@@ -24,6 +24,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         // 編集画面が開き、その座席にメンバーを置けなくなっていた
         delete seat.dataset.isExtraPassenger;
         seat.classList.remove('seat-extra');
+        seat.classList.remove('seat-coach');
         seat.style.background = '';
 
         // 追加した要素をすべて削除
@@ -108,7 +109,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                     }
 
                     var nameSpan = document.createElement('span');
-                    nameSpan.textContent = (member.abbr != null && member.abbr !== '') ? member.abbr : member.name;
+                    nameSpan.textContent = (Assignment._isEventCoach(member) ? '🧢 ' : '') +
+                        ((member.abbr != null && member.abbr !== '') ? member.abbr : member.name);
                     nameSpan.style.fontSize = '14px';
                     item.appendChild(nameSpan);
 
@@ -218,7 +220,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
      * この関数の結果を加工するだけにする。
      *
      * 対象の定義:
-     *  - 監督・コーチ: 常に対象。ただし本人が「欠席」登録していれば除外
+     *  - 監督・コーチ: HUBの「指導者の予定・担当」で帯同指導者を決めていればその人だけ（まだ決めていなければ全員）。
+     *    担当でなくても本人が出欠で「参加」なら対象、本人が「欠席」登録していれば除外
+     *    （保護者を兼ねる監督・コーチは、子供が参加なら下の保護者として対象）
      *  - 選手: 対象学年（event.target）または学年外追加選手（event.extraPlayers）のうち、
      *    出欠で「参加」と回答済みの選手のみ（2026-07-20ユーザー指示:
      *    「出欠の確認がとれた選手しか割り当てには表示されない」。未回答・欠席は出さない）
@@ -240,9 +244,10 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             attendance.filter(function(a) { return a.status === 'present'; }).map(function(a) { return a.name; })
         );
 
-        // スタッフ（監督・コーチ）：本人が欠席登録していれば除外
+        // スタッフ（監督・コーチ）：帯同指導者が決まっていればその人（と出欠で「参加」の人）だけ。欠席登録していれば除外
         var filtered = members.filter(function(m) {
-            return (m.role === 'coach' || m.role === 'assist') && !absentNames.has(m.name);
+            if (!Assignment._isCoachRole(m.role) || absentNames.has(m.name)) return false;
+            return Assignment._isEventCoach(m) || presentNames.has(m.name);
         });
 
         // 対象学年の選手
@@ -284,7 +289,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         );
         var existingNames2 = new Set(filtered.map(function(m) { return m.name; }));
         filtered = filtered.concat(members.filter(function(m) {
-            if (!Assignment._isGuardianRole(m.role)) return false;
+            // 帯同指導者でない監督・コーチも、保護者を兼ねていれば（子供が参加なら）保護者として出す
+            var coachParent = Assignment._isCoachRole(m.role) && m.childrenIds && m.childrenIds.length > 0;
+            if (!Assignment._isGuardianRole(m.role) && !coachParent) return false;
             if (existingNames2.has(m.name)) return false;
             if (absentNames.has(m.name)) return false;
             // 自分自身が参加表明している
@@ -309,6 +316,20 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
     /** 保護者として扱う役割か（選手・監督・コーチ以外。父・母・役員など） */
     Assignment._isGuardianRole = function(role) {
         return role !== 'player' && role !== 'coach' && role !== 'assist';
+    };
+
+    Assignment._isCoachRole = function(role) {
+        return role === 'coach' || role === 'assist';
+    };
+
+    /**
+     * この予定に指導者として付く監督・コーチか（🧢の印・「帯同指導者」の欄）。
+     * 帯同指導者が決まっていれば担当の人だけ、まだ決まっていなければ監督・コーチ全員
+     */
+    Assignment._isEventCoach = function(member) {
+        if (!member || !Assignment._isCoachRole(member.role)) return false;
+        if (!(app.Carpool.hasEventCoaches && app.Carpool.hasEventCoaches())) return true;
+        return app.Carpool.coachIds.some(function(id) { return String(id) === String(member.id); });
     };
 
     /**
@@ -544,6 +565,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             var nameTag = driverSeat.querySelector('.seat-name-tag');
             if (nameTag) { nameTag.textContent = driverDisplayUpd2; nameTag.title = newDriver; nameTag.style.color = gcUpd2 || ''; }
             driverSeat.style.background = gcUpd2 ? Assignment._hexToRgba(gcUpd2, 0.12) : '';
+            driverSeat.classList.toggle('seat-coach', Assignment._isEventCoach(driverMemberUpd2));
         }
         // カーヘッダーも更新
         var carLayout = document.querySelector('.car-layout[data-car-index="' + carIndex + '"]');
@@ -599,7 +621,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         // 非ドライバーのスタッフ（重複排除）
         var seenStaff = new Set();
         var uniqueStaff = eligibleForRandom
-            .filter(function(m) { return (m.role === 'coach' || m.role === 'assist') && !driverNameSet.has(m.name); })
+            .filter(function(m) { return Assignment._isEventCoach(m) && !driverNameSet.has(m.name); })
             .map(function(m) { return m.name; })
             .filter(function(n) { if (seenStaff.has(n)) return false; seenStaff.add(n); return true; });
         console.log(`非ドライバーのスタッフ: ${uniqueStaff.length}人`);
@@ -607,7 +629,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         // 非ドライバーの参加確定保護者（役員など父・母以外の保護者も含む）
         var seenParent = new Set();
         var uniqueParents = eligibleForRandom
-            .filter(function(m) { return Assignment._isGuardianRole(m.role) && !driverNameSet.has(m.name); })
+            .filter(function(m) { return !Assignment._isEventCoach(m) && m.role !== 'player' && !driverNameSet.has(m.name); })
             .map(function(m) { return m.name; })
             .filter(function(n) { if (seenParent.has(n)) return false; seenParent.add(n); return true; });
         console.log(`非ドライバーの参加確定保護者: ${uniqueParents.length}人`);
@@ -1195,6 +1217,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                 }
             }
         }
+
+        // 帯同指導者（HUBで監督が決めた担当）。決まっていれば、監督・コーチはその人だけを座席の候補に出す
+        await app.Carpool.loadEventCoaches();
 
         // イベント情報を表示
         this.updateEventInfo();
@@ -2092,6 +2117,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         var displayName = member ? ((member.abbr != null && member.abbr !== '') ? member.abbr : member.name) : (driverName.length > 4 ? driverName.substring(0, 4) : driverName);
         var gc = (member && member.role === 'player') ? Assignment.getGradeColor(member.grade) : null;
         if (gc) driverSeat.style.background = Assignment._hexToRgba(gc, 0.12);
+        driverSeat.classList.toggle('seat-coach', Assignment._isEventCoach(member));
 
         const nameTag = document.createElement('div');
         nameTag.className = 'seat-name-tag';
@@ -2219,6 +2245,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         var isEP = seat.dataset.isExtraPassenger === 'true';
         seat.style.background = isEP ? '' : (gc ? Assignment._hexToRgba(gc, 0.12) : '');
         seat.classList.toggle('seat-extra', isEP);
+        // 帯同指導者は名前の前に🧢
+        seat.classList.toggle('seat-coach', !isEP && Assignment._isEventCoach(member));
 
         // × 解除ボタン（座席左上）。兄弟児などは外すとどの席にも出なくなるため付けない
         // （名前の変更・取り消しは席をタップした画面で行う）
@@ -2455,17 +2483,21 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             return;
         }
         
-        // 役割ごとに分類
+        // 役割ごとに分類（帯同指導者が決まっていれば担当の人だけを「帯同指導者」に。
+        // 担当でない監督・コーチ（子供が参加する保護者として乗る人）は保護者に入れる）
+        const hasCoaches = app.Carpool.hasEventCoaches && app.Carpool.hasEventCoaches();
         const roleGroups = {
-            coach: { title: '監督・コーチ', members: [] },
+            coach: { title: hasCoaches ? '🧢 帯同指導者' : '監督・コーチ（帯同指導者が未定のため全員）', members: [] },
             player: { title: '選手', members: [] },
             parent: { title: '保護者', members: [] },
             other: { title: 'その他', members: [] }
         };
 
         filteredMembers.forEach(member => {
-            if (member.role === 'coach' || member.role === 'assist') {
+            if (Assignment._isEventCoach(member)) {
                 roleGroups.coach.members.push(member);
+            } else if (Assignment._isCoachRole(member.role)) {
+                roleGroups.parent.members.push(member);
             } else if (member.role === 'player') {
                 roleGroups.player.members.push(member);
             } else if (member.role !== 'other' && Assignment._isGuardianRole(member.role)) {
@@ -2602,6 +2634,16 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             badge.style.background = gc;
             badge.textContent = ['年少', '年中', '年長'].includes(member.grade) ? member.grade : member.grade + '年';
             memberItem.appendChild(badge);
+        }
+
+        // 帯同指導者の印
+        if (Assignment._isEventCoach(member)) {
+            memberItem.classList.add('event-coach');
+            var coachIcon = document.createElement('span');
+            coachIcon.className = 'coach-icon';
+            coachIcon.textContent = '🧢';
+            coachIcon.title = '帯同指導者';
+            memberItem.appendChild(coachIcon);
         }
 
         // 名前（略称優先、丸なし）
@@ -2865,9 +2907,9 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
                 { label: '会場', value: event.venue || '未設定' }
             ];
 
-            // 当日参加する指導者（ドライバーまたは座席に配置されたコーチ/アシスト）
-            var coachNames = [];
-            document.querySelectorAll('.seat.driver-seat, .seat.filled').forEach(function(s) {
+            // 当日参加する指導者: HUBで決めた帯同指導者。まだ決まっていなければ、運転手・座席にいる監督・コーチ
+            var coachNames = (app.Carpool.eventCoaches ? app.Carpool.eventCoaches() : []).map(function(m) { return m.name; });
+            if (coachNames.length === 0) document.querySelectorAll('.seat.driver-seat, .seat.filled').forEach(function(s) {
                 if (!s.dataset.person) return;
                 var m = (app.Carpool.members || []).find(function(x) { return x.name === s.dataset.person; });
                 if (m && (m.role === 'coach' || m.role === 'assist') && !coachNames.includes(m.name)) {

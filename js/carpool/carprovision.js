@@ -37,6 +37,8 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         const event = FCOjima.Storage.getSelectedEvent();
         if (event) {
             await FCOjima.Carpool.loadEventDataForSelected();
+            // 帯同指導者（HUBで監督が決めた担当）。運転者を選ぶ一覧で先に出す
+            await FCOjima.Carpool.loadEventCoaches();
         }
 
         this.updateEventInfo();
@@ -215,7 +217,10 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         const staff = members.filter(function(m) {
             return m.role === 'coach' || m.role === 'assist';
         }).sort(function(a, b) { return (a.name || '').localeCompare(b.name || '', 'ja'); });
-        const candidates = parents.concat(staff);
+        // この予定の帯同指導者（HUBで監督が決めた担当）は車を出すことが多いので、いちばん上に🧢付きで出す
+        const coaches = FCOjima.Carpool.eventCoaches ? FCOjima.Carpool.eventCoaches() : [];
+        const coachIds = coaches.map(function(m) { return String(m.id); });
+        const candidates = coaches.concat(parents, staff.filter(function(m) { return coachIds.indexOf(String(m.id)) === -1; }));
 
         if (candidates.length === 0) {
             list.innerHTML = UI.createAlert('info', '選択できるメンバーがいません。先にHUBでメンバーを登録してください。');
@@ -227,7 +232,8 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         candidates.forEach(function(member) {
             const item = document.createElement('div');
             item.className = 'list-item';
-            item.textContent = member.name;
+            item.textContent = (coachIds.indexOf(String(member.id)) !== -1 ? '🧢 ' : '') + member.name;
+            if (coachIds.indexOf(String(member.id)) !== -1) item.title = '帯同指導者';
             item.addEventListener('click', function() {
                 document.getElementById('parentName').value = member.name;
                 UI.closeModal('driver-select-modal');
