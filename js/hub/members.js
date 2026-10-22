@@ -799,14 +799,19 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
             });
             patch.attendance = list;
         }
-        ['attendanceRemoved', 'manualDriverNames'].forEach(function(f) {
+        ['attendanceRemoved', 'manualDriverNames', 'driverPeople'].forEach(function(f) {
             if (Array.isArray(data[f]) && data[f].indexOf(oldName) !== -1) {
                 patch[f] = data[f].map(rn).filter(function(n, i, arr) { return arr.indexOf(n) === i; });
             }
         });
-        if (Array.isArray(data.carRegistrations) && data.carRegistrations.some(function(c) { return c && c.parent === oldName; })) {
+        // 運転手（parent）と、座席の割り当てで運転を替わったときの車の持ち主（owner）
+        if (Array.isArray(data.carRegistrations) && data.carRegistrations.some(function(c) { return c && (c.parent === oldName || c.owner === oldName); })) {
             patch.carRegistrations = data.carRegistrations.map(function(c) {
-                return (c && c.parent === oldName) ? Object.assign({}, c, { parent: newName }) : c;
+                if (!c || (c.parent !== oldName && c.owner !== oldName)) return c;
+                var copy = Object.assign({}, c);
+                if (copy.parent === oldName) copy.parent = newName;
+                if (copy.owner === oldName) copy.owner = newName;
+                return copy;
             });
         }
         if (Array.isArray(data.assignments)) {

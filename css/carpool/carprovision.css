@@ -474,3 +474,7 @@ button.cp-seat-clear { width: 100%; margin-top: 14px; }
     .cp-row { gap: 5px; min-height: 48px; }
     .cp-car .cp-seat { width: 48px; height: 48px; }
 }
+
+/* 座席の割り当てで運転手を替えた車: 運転手未定・持ち主 */
+.car-no-driver { color: #c0392b; font-weight: 700; }
+.car-owner-note { margin-left: 4px; font-size: 12px; font-weight: 400; color: #6c757d; }

@@ -1810,3 +1810,46 @@ body.canvas-select-active #canvas-mode .seat:not(.driver-seat):not(.filled) {
     line-height: 1;
     pointer-events: none;
 }
+
+/* 運転手が決まっていない運転席・車（運転手をほかの席・配置待ちへ移したとき） */
+.driver-seat.driver-empty,
+#canvas-mode .driver-seat.driver-empty {
+    background-color: #fff5f5;
+    border: 2px dashed #e0a0a0;
+}
+.driver-seat.driver-empty .seat-name-tag { color: #c0392b; }
+.car-header-name.is-empty { color: #c0392b; }
+body.canvas-select-active #canvas-mode .driver-seat.driver-empty {
+    border-color: #E8A200;
+    animation: canvas-seat-pulse 1.2s ease-in-out infinite;
+}
+.driver-seat.dragover { box-shadow: 0 0 0 3px rgba(232, 162, 0, 0.6); }
+.driver-empty-warning { background: #fff4e5; border-color: #f5d29a; color: #8a5a00; }
+#driver-modal-list .driver-clear-btn { width: 100%; margin: 4px 0 8px; font-size: 13px; }
+/* 運転手にしたことだけで加わっている人を配置待ちから外すボタン */
+.member-item { position: relative; }
+.member-item .member-remove-btn {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 20px;
+    height: 20px;
+    min-height: 0;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: rgba(108, 117, 125, 0.15);
+    box-shadow: none;
+    color: #6c757d;
+    font-size: 12px;
+    line-height: 20px;
+}
+/* 割り当てた後にこの予定の対象でなくなったメンバー（帯同指導者から外れた監督・コーチなど） */
+.seat.seat-outside { border-color: #e0a020; border-style: dashed; }
+.seat-outside-label {
+    font-size: 9px;
+    font-weight: bold;
+    color: #b8790b;
+    line-height: 1.2;
+}
+.seat-outside-warning { background: #fff8e6; border-color: #f1d28a; color: #7a5200; }

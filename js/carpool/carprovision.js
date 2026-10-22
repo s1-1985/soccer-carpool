@@ -80,6 +80,12 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
             UI.showAlert('運転者名を入力してください');
             return;
         }
+        // 運転できるのは監督・コーチ・保護者（役員を含む）と、メンバーでない大人（名前を直接入力）。選手・兄弟児は運転者にしない
+        var cannot = CarProvision._cannotDriveReason(parentName);
+        if (cannot) {
+            UI.showAlert(cannot, 'warning');
+            return;
+        }
 
         // メンバー外乗員（兄弟児など）とその席。座席割り当てではこの席に座り、選手は割り当てない
         var extraPassengers = CarProvision._passengers.map(function(p) {
@@ -89,7 +95,7 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         const carRegistrations = FCOjima.Carpool.appData.carRegistrations || [];
         // 同じ運転者の登録がすでにあれば確認する（ボタンの二度押しや登録し直しで同じ車が
         // 2台になり、座席割り当てに同じ車が重複して出ていた）
-        if (carRegistrations.some(function(c) { return (c.parent || '').trim() === parentName; }) &&
+        if (carRegistrations.some(function(c) { return (c.parent || '').trim() === parentName || FCOjima.Carpool.carOwner(c) === parentName; }) &&
             !UI.showConfirm(parentName + 'さんの車はすでに登録されています。もう1台追加しますか？\n（内容を変えたい場合は、登録済みの車を削除してから登録し直してください）')) {
             return;
         }
@@ -112,6 +118,34 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
     };
 
     /**
+     * 運転者にできない名前なら理由を返す（できるなら空）
+     * 選手・兄弟児（メンバーの兄弟児・この車に乗せる兄弟児など）は運転者にしない
+     */
+    CarProvision._cannotDriveReason = function(name) {
+        const members = FCOjima.Carpool.members || [];
+        const m = members.find(function(x) { return x.name === name; });
+        if (m) return m.role === 'player' ? name + 'さんは選手なので運転者にできません' : '';
+        const isSibling = members.some(function(x) {
+            return (x.siblings || []).some(function(sib) { return sib && String(sib.name || '').trim() === name; });
+        }) || CarProvision._passengers.some(function(p) { return p.name === name; });
+        return isSibling ? name + 'さんは兄弟児なので運転者にできません' : '';
+    };
+
+    /** 車の名前（いま運転する人。座席の割り当てでほかの人に替えたときは持ち主も添える） */
+    CarProvision._carNameText = function(car) {
+        const driver = String(car.parent || '').trim();
+        const owner = FCOjima.Carpool.carOwner(car);
+        if (!driver) return '運転手未定（' + owner + 'さんの車）';
+        return driver + 'さん' + (owner && owner !== driver ? '（' + owner + 'さんの車）' : '');
+    };
+    CarProvision._carNameHtml = function(car) {
+        const driver = String(car.parent || '').trim();
+        const owner = FCOjima.Carpool.carOwner(car);
+        return (driver ? UI.escapeHTML(driver) : '<span class="car-no-driver">運転手未定</span>') +
+            (owner && owner !== driver ? '<span class="car-owner-note">（' + UI.escapeHTML(owner) + 'さんの車）</span>' : '');
+    };
+
+    /**
      * 登録済み車両一覧を更新
      */
     CarProvision.updateCarRegistrations = function() {
@@ -131,7 +165,7 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
                     const total = FCOjima.Utils.carOpenSeats(car);
                     const row = document.createElement('tr');
                     row.innerHTML =
-                        '<td>' + UI.escapeHTML(car.parent) + '</td>' +
+                        '<td>' + CarProvision._carNameHtml(car) + '</td>' +
                         '<td>' + UI.escapeHTML(provideLabels[car.canDrive] || car.canDrive) + '</td>' +
                         '<td>' + (parseInt(car.frontSeat, 10)  || 0) + '</td>' +
                         '<td>' + (parseInt(car.middleSeat, 10) || 0) + '</td>' +
@@ -169,7 +203,7 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
                     card.className = 'car-card';
                     card.innerHTML =
                         '<div class="car-card-header">' +
-                            '<span class="car-card-name">' + UI.escapeHTML(car.parent) + '</span>' +
+                            '<span class="car-card-name">' + CarProvision._carNameHtml(car) + '</span>' +
                             '<span class="car-card-badge ' + cls + '">' + label + '</span>' +
                         '</div>' +
                         '<div class="car-card-seats">助手席 ' + (parseInt(car.frontSeat, 10) || 0) + ' ＋ 中列 ' + (parseInt(car.middleSeat, 10) || 0) + ' ＋ 後列 ' + (parseInt(car.backSeat, 10) || 0) +
@@ -191,8 +225,8 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
             // 乗車可能な席の数（兄弟児などが乗る席は除く）
             const totalSeats = available.reduce(function(sum, car) { return sum + FCOjima.Utils.carOpenSeats(car); }, 0);
             const extraTotal = available.reduce(function(sum, car) { return sum + FCOjima.Utils.carExtraCount(car); }, 0);
-            const presentCount = (FCOjima.Carpool.appData.attendance || [])
-                .filter(function(a) { return a.status === 'present'; }).length;
+            // 必要な席: 出欠で「参加」の人・帯同指導者・運転を替わった車の持ち主など（運転する人を除く。概要と同じ数え方）
+            const presentCount = FCOjima.Carpool.seatNeeders().length;
             const requiredSeatsLabel = presentCount > 0 ? ' / 必要 ' + presentCount + '席' : '';
             statsDiv.innerHTML =
                 '<div class="stat-item"><span class="stat-label">車両数</span><span class="stat-value">' + carRegistrations.length + '台</span></div>' +
@@ -261,7 +295,8 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
             return;
         }
         
-        if (UI.showConfirm(`${car.parent}さんの車両登録を削除してもよろしいですか？`)) {
+        const carName = CarProvision._carNameText(car);
+        if (UI.showConfirm(`${carName}の車両登録を削除してもよろしいですか？`)) {
             // 車両登録から削除
             carRegistrations.splice(index, 1);
             
@@ -272,8 +307,8 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
             // リストを更新
             this.updateCarRegistrations();
             
-            UI.showAlert(`${car.parent}さんの車両登録を削除しました`);
-            console.log(`車両情報を削除しました: ${car.parent}`);
+            UI.showAlert(`${carName}の車両登録を削除しました`);
+            console.log(`車両情報を削除しました: ${carName}`);
         }
     };
     
@@ -316,7 +351,7 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         // 車両情報の詳細
         message += '【車両一覧】\n';
         availableCars.forEach((car, index) => {
-            message += `${index + 1}. ${car.parent}さん\n`;
+            message += `${index + 1}. ${CarProvision._carNameText(car)}\n`;
             
             // 提供タイプ
             const provideLabels = {

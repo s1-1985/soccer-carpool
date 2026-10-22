@@ -322,6 +322,16 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
             }).join('') : '<p class="co-empty">まだ担当はありません。監督が都合を見て決めます。</p>') +
             '</div>';
 
+        // 都合はマネージャー（監督・コーチ・役員・管理者）しか読み書きできない。ログインの役割が保護者のままの
+        // 指導者には、押しても保存できないボタンを出さずに案内する（担当は見られる）
+        if (!isManager()) {
+            container.innerHTML = html + '<p class="co-hint co-role-hint">都合を回答するには、ログインの役割が「監督」か「コーチ」である必要があります。管理者に役割の変更を頼んでください。</p></section>';
+            container.querySelectorAll('.co-duty-item').forEach(function(b) {
+                b.addEventListener('click', function() { app.Hub.Calendar.showEventDetails(b.dataset.event); });
+            });
+            return;
+        }
+
         html += '<div class="co-progress">' +
             '<div class="co-progress-head"><span class="co-sub-title">都合の回答</span>' +
             '<span class="co-progress-num">回答済み <b>' + answered + '</b> / ' + allDates.length + '日</span></div>' +
