@@ -1,9 +1,10 @@
 /* FC尾島ジュニア - 指導者（監督・コーチ）の都合と担当 */
 
-/* 都合の色: 行ける 緑 / 午前だけ・午後だけ 黄 / 行けない 赤 / 未回答 灰 */
+/* 都合の色: ○ 行ける 緑 / △ 午前だけ・午後だけ・時間による 黄 / × 行けない 赤 / 未回答 灰 */
 .co-s-ok   { --co-c: #1f7a45; --co-fill: #2e9e5b; --co-bg: #e7f5ec; --co-bd: #a9dbbb; }
 .co-s-am,
-.co-s-pm   { --co-c: #8a5a00; --co-fill: #d9930b; --co-bg: #fdf4de; --co-bd: #f1d28a; }
+.co-s-pm,
+.co-s-part { --co-c: #8a5a00; --co-fill: #d9930b; --co-bg: #fdf4de; --co-bd: #f1d28a; }
 .co-s-ng   { --co-c: #b23a3a; --co-fill: #d24b4b; --co-bg: #fcecec; --co-bd: #f0c4c4; }
 .co-s-none { --co-c: #7d7663; --co-fill: #9a937f; --co-bg: #f4f2ec; --co-bd: #e2dccb; }
 
@@ -63,61 +64,139 @@
 .co-progress-bar span { display: block; height: 100%; background: #2e9e5b; border-radius: var(--r-pill); }
 .co-progress button.co-bulk { width: 100%; font-size: 13px; }
 
-/* ---------- コーチ: 週末ごとのカード ---------- */
-.co-week {
-    margin-top: 12px;
-    border: 1px solid var(--line);
-    border-radius: var(--r);
-    overflow: hidden;
-}
-.co-week-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 8px 12px;
-    background: var(--surface-2);
-    border-bottom: 1px solid var(--line);
-}
-.co-week-label { font-weight: 700; font-size: 14px; }
 .co-tag { padding: 1px 9px; border-radius: var(--r-pill); font-size: 11px; font-weight: 700; white-space: nowrap; }
 .co-tag-warn { background: var(--warn-bg); color: var(--brand-deep); }
 .co-tag-ok { background: var(--ok-bg); color: #1f7a45; }
-.co-day-row { padding: 10px 12px 8px; border-left: 4px solid transparent; }
-.co-day-row + .co-day-row { border-top: 1px solid var(--line); }
-.co-day-row.is-unanswered { border-left-color: #f1c453; background: #fffdf5; }
-.co-day-top { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; min-width: 0; }
-.co-dow {
-    flex: 0 0 26px;
-    height: 26px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    background: var(--surface-2);
-    font-size: 13px;
-    font-weight: 700;
-}
-.co-dow.co-sat { background: #e8f0fb; }
-.co-dow.co-sun { background: #fdeaea; }
-.co-day-date { flex: 0 0 auto; font-weight: 700; font-size: 16px; }
-.co-day-evs { flex: 1; min-width: 0; font-size: 12px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.co-state {
-    flex: 0 0 auto;
-    padding: 1px 9px;
-    border-radius: var(--r-pill);
-    background: var(--co-bg);
-    color: var(--co-c);
-    font-size: 11px;
-    font-weight: 700;
-}
-.co-day-row.is-unanswered .co-state { background: #fdf0c8; color: var(--brand-deep); }
+.co-modal .modal-content { max-width: 640px; }
+.co-modal-title { margin: 0 34px 10px 0; font-size: 18px; }
 
-/* 都合のボタン（記号＋ことば。選ぶと色で塗る） */
-.co-answer { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-.co-answer button.co-ans {
+/* ---------- 月のカレンダー（コーチの回答・監督の画面で共通） ---------- */
+.co-cal {
+    margin-top: 12px;
+    padding: 8px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+}
+.co-cal-nav { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.co-cal-nav button.co-cal-prev,
+.co-cal-nav button.co-cal-next {
+    flex: 0 0 40px;
+    min-height: 40px;
+    padding: 0;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    box-shadow: none;
+    color: var(--text);
+    font-size: 20px;
+    font-weight: 700;
+}
+.co-cal-nav button:disabled { opacity: .3; cursor: default; }
+.co-cal-month { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 8px; }
+.co-cal-ym { font-size: 16px; font-weight: 800; }
+.co-cal-dows,
+.co-cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.co-cal-dows span { padding: 2px 0; text-align: center; font-size: 11px; font-weight: 700; color: var(--text-2); }
+.co-cal-dows span.co-sat { color: #2f6db5; }
+.co-cal-dows span.co-sun { color: #c62828; }
+.co-cal-day {
+    position: relative;
     min-width: 0;
     min-height: 52px;
+    padding: 3px 1px 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    border-radius: 8px;
+    box-sizing: border-box;
+}
+.co-cal-num { font-size: 11px; font-weight: 700; line-height: 1.15; color: var(--text); }
+.co-cal-day.co-sat .co-cal-num { color: #2f6db5; }
+.co-cal-day.co-sun .co-cal-num { color: #c62828; }
+.co-cal-day.is-off .co-cal-num,
+.co-cal-day.is-past .co-cal-num { color: #c9c3b3; font-weight: 400; }
+.co-cal-grid button.co-cal-day {
+    margin: 0;
+    min-height: 52px;
+    background: var(--surface);
+    border: 1.5px solid var(--line-strong);
+    box-shadow: none;
+    color: var(--text);
+    font-weight: 400;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.co-cal-grid button.co-cal-day:hover { box-shadow: none; filter: brightness(.97); }
+.co-cal-grid button.co-cal-day.is-sel { border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink); z-index: 1; }
+
+/* コーチ: 聞かれている日（未回答は山吹色の破線・答えた日は色で塗る） */
+.co-cal-mine button.co-cal-day.is-unanswered { border-style: dashed; border-color: #e0a020; background: #fffaf0; }
+.co-cal-mine button.co-cal-day[class*="co-s-"] { background: var(--co-bg); border-color: var(--co-bd); }
+.co-cal-mine button.co-cal-day.is-sel[class*="co-s-"] { border-color: var(--ink); }
+.co-cal-mark { min-height: 22px; font-size: 21px; font-weight: 800; line-height: 1.05; color: var(--co-c); }
+.co-cal-sub { margin-top: -1px; font-size: 9px; font-weight: 700; line-height: 1; color: var(--co-c); }
+.co-cal-flag { position: absolute; right: 2px; bottom: 2px; font-size: 9px; line-height: 1; }
+.co-cal-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #e0a020; vertical-align: middle; }
+.co-cal-legend { margin: 6px 2px 0; font-size: 11px; line-height: 1.6; color: var(--text-2); }
+.co-cal-legend b { font-size: 13px; }
+.co-cal-legend-sub { display: block; }
+.co-c-ok { color: #1f7a45; }
+.co-c-pt { color: #b8790b; }
+.co-c-ng { color: #b23a3a; }
+.co-c-none { color: #9a937f; }
+
+/* 監督: ○△× の人数と担当（✓／⚠） */
+.co-cal-counts { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 3px; margin-top: 2px; font-size: 10px; font-weight: 800; line-height: 1.25; }
+.co-cal-st { position: absolute; top: 2px; right: 2px; font-size: 10px; font-weight: 800; line-height: 1; }
+.co-cal-legend .co-cal-st { position: static; display: inline; font-size: 11px; }
+.co-cal-st.is-warn { color: #d07a00; }
+.co-cal-st.is-ok { color: #1f7a45; }
+.co-cal-skip { margin-top: 4px; font-size: 9px; line-height: 1.1; color: #9a937f; }
+.co-cal-plan button.co-cal-day.is-asked { background: #fbfaf6; }
+.co-cal-plan button.co-cal-day.is-open { background: transparent; border-color: transparent; }
+.co-cal-plan button.co-cal-day.is-open .co-cal-num { font-weight: 400; color: #8f887a; }
+.co-cal-plan button.co-cal-day.is-open.co-sat .co-cal-num { color: #6f93c4; }
+.co-cal-plan button.co-cal-day.is-open.co-sun .co-cal-num { color: #d47a7a; }
+.co-cal-plan button.co-cal-day.is-skipped { background: #f1efe8; border-color: var(--line); }
+
+/* ---------- コーチ: カレンダーの下（選んだ日） ---------- */
+.co-daypanel {
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--surface);
+    border: 1.5px solid var(--ink);
+    border-radius: var(--r);
+}
+.co-dp-head { display: flex; align-items: center; gap: 8px; }
+.co-dp-head button.co-dp-prev,
+.co-dp-head button.co-dp-next {
+    flex: 0 0 36px;
+    min-height: 36px;
+    padding: 0;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    box-shadow: none;
+    color: var(--text);
+    font-size: 18px;
+    font-weight: 700;
+}
+.co-dp-head button:disabled { opacity: .3; cursor: default; }
+.co-dp-title { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.co-dp-date { font-size: 17px; font-weight: 800; }
+.co-dp-state { padding: 1px 9px; border-radius: var(--r-pill); background: var(--co-bg); color: var(--co-c); font-size: 11px; font-weight: 700; white-space: nowrap; }
+.co-dp-state.co-s-none { background: #fdf0c8; color: var(--brand-deep); }
+.co-dp-evs { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 8px 0 10px; font-size: 13px; }
+.co-dp-ev { padding: 2px 9px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-pill); font-weight: 700; overflow-wrap: anywhere; }
+.co-dp-ev small { margin-left: 4px; font-weight: 400; color: var(--text-2); }
+
+/* ○ △ × のボタン（選ぶと色で塗る）と、△のときの中身 */
+.co-answer3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.co-answer3 button.co-ans {
+    min-width: 0;
+    min-height: 58px;
     padding: 4px 2px;
     display: flex;
     flex-direction: column;
@@ -132,16 +211,29 @@
     font-weight: 700;
     letter-spacing: 0;
 }
-.co-answer button.co-ans:hover { background: var(--co-bg); box-shadow: none; }
-.co-answer button.co-ans.is-on { background: var(--co-fill); border-color: var(--co-fill); color: #fff; box-shadow: 0 2px 6px -2px rgba(0, 0, 0, .25); }
-.co-ans-mark { font-size: 18px; line-height: 1.1; }
+.co-answer3 button.co-ans:hover { background: var(--co-bg); box-shadow: none; }
+.co-answer3 button.co-ans.is-on { background: var(--co-fill); border-color: var(--co-fill); color: #fff; box-shadow: 0 2px 6px -2px rgba(0, 0, 0, .25); }
+.co-ans-mark { font-size: 22px; line-height: 1.05; }
 .co-ans-label { font-size: 11px; line-height: 1.2; white-space: nowrap; }
-.co-answer-lg button.co-ans { min-height: 64px; }
-.co-answer-lg .co-ans-mark { font-size: 22px; }
-.co-answer-lg .co-ans-label { font-size: 12px; }
-
+.co-answer-lg .co-answer3 button.co-ans { min-height: 64px; }
+.co-part { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.co-part button.co-part-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 36px;
+    padding: 4px 6px;
+    background: #fff;
+    border: 1.5px solid #f1d28a;
+    border-radius: var(--r-pill);
+    box-shadow: none;
+    color: #8a5a00;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.co-part button.co-part-btn.is-on { background: #d9930b; border-color: #d9930b; color: #fff; }
 .co-mine {
-    margin-top: 8px;
+    margin: 0 0 8px;
     padding: 4px 10px;
     border-radius: var(--r-sm);
     background: #fff3d6;
@@ -149,9 +241,9 @@
     font-size: 12px;
     font-weight: 700;
 }
-.co-day-row button.co-memo {
+.co-daypanel button.co-memo {
     min-height: 0;
-    margin-top: 6px;
+    margin-top: 8px;
     padding: 2px 0;
     background: none;
     border: none;
@@ -161,55 +253,15 @@
     font-weight: 500;
     text-align: left;
 }
-.co-day-row button.co-memo:hover { background: none; box-shadow: none; color: var(--text-2); }
-.co-day-row button.co-memo.has-note { color: var(--text-2); overflow-wrap: anywhere; }
+.co-daypanel button.co-memo:hover { background: none; box-shadow: none; color: var(--text-2); }
+.co-daypanel button.co-memo.has-note { color: var(--text-2); overflow-wrap: anywhere; }
 .co-memo-edit { margin-left: 4px; color: #2f6db5; text-decoration: underline; }
-.co-my button.co-more { width: 100%; margin-top: 12px; font-size: 13px; }
-
-/* ---------- 監督: 週末の切り替え ---------- */
-.co-modal .modal-content { max-width: 640px; }
-.co-modal-title { margin: 0 34px 10px 0; font-size: 18px; }
-.co-weeks {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    display: flex;
-    gap: 6px;
-    margin: 0 -4px 6px;
-    padding: 6px 4px 8px;
-    overflow-x: auto;
-    background: var(--surface);
-    border-bottom: 1px solid var(--line);
-    scrollbar-width: thin;
-}
-.co-weeks button.co-wk {
-    flex: 0 0 auto;
-    min-height: 0;
-    padding: 6px 10px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    background: var(--surface);
-    border: 1.5px solid var(--line-strong);
-    border-radius: var(--r-sm);
-    box-shadow: none;
-    color: var(--text);
-    font-weight: 700;
-}
-.co-weeks button.co-wk:hover { background: var(--surface-2); box-shadow: none; }
-.co-weeks button.co-wk.is-on { background: var(--ink); border-color: var(--ink); color: #fff; }
-.co-wk-date { font-size: 14px; white-space: nowrap; }
-.co-wk-badge { font-size: 10px; font-weight: 700; white-space: nowrap; }
-.co-wk-warn { color: #c0392b; }
-.co-wk-wait { color: var(--brand-deep); }
-.co-wk-ok { color: #1f7a45; }
-.co-wk.is-on .co-wk-warn { color: #ffb3a7; }
-.co-wk.is-on .co-wk-wait { color: #ffd77a; }
-.co-wk.is-on .co-wk-ok { color: #9be3b5; }
 
 /* ---------- 監督: 日ごと ---------- */
 .co-pday { margin-top: 14px; }
+.co-plan-day .co-pday { margin-top: 12px; padding: 12px; border: 1.5px solid var(--ink); border-radius: var(--r); }
+.co-pday-hint { margin: -2px 0 8px; }
+.co-pday button.co-ask-day { width: 100%; margin: 0 0 10px; font-size: 13px; }
 .co-pday-head { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 17px; }
 .co-avail {
     padding: 8px 10px;
@@ -219,8 +271,9 @@
     border-radius: var(--r-sm);
 }
 .co-line { display: flex; align-items: flex-start; gap: 8px; padding: 3px 0; }
-.co-line-label { flex: 0 0 4.2em; padding-top: 5px; font-size: 12px; font-weight: 700; }
+.co-line-label { flex: 0 0 auto; min-width: 4.8em; white-space: nowrap; padding-top: 5px; font-size: 12px; font-weight: 700; }
 .co-line-ok .co-line-label { color: #1f7a45; }
+.co-line-pt .co-line-label { color: #8a5a00; }
 .co-line-ng .co-line-label { color: #b23a3a; }
 .co-line-none .co-line-label { color: #7d7663; }
 .co-line-people { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px; }
@@ -392,14 +445,10 @@
 /* 予定の詳細の「担当」ボタン（地図ボタンと同じ形・山吹色） */
 #event-details-content button.ed-coach { border-color: #f1d28a; color: var(--brand-deep); }
 #event-details-content button.ed-coach:hover { background: #fff6e0; }
-.co-ans-mark.co-ans-word { font-size: 15px; }
-.co-answer-lg .co-ans-mark.co-ans-word { font-size: 18px; }
 
 /* ---------- 都合を聞く日（祝日・追加した日・聞かない日） ---------- */
 .co-hol { margin: 0 5px 0 0; color: #c62828; font-size: 11px; font-weight: 700; }
 .co-pday-head .co-hol { margin: 0; font-size: 12px; }
-.co-wk-off { color: #9a937f; }
-.co-wk.is-on .co-wk-off { color: #d8d2c2; }
 .co-plan-tools { margin: 6px 0 2px; }
 .co-plan-tools button.co-add-dates { width: 100%; min-height: 40px; font-size: 13px; }
 .co-pday-head button.co-skip,

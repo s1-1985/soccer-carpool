@@ -2,11 +2,11 @@
  * FC尾島ジュニア - 指導者（監督・コーチ）の都合と担当
  *
  * 流れ:
- *  1. 監督・コーチは「参加予定」タブの「指導の予定」で、今後の土日・祝日などの都合を回答しておく
- *     （行ける／午前だけ／午後だけ／行けない。メモも書ける）。予定がまだなくても回答できる。
- *     いちばん上に自分が担当する予定が出る
- *  2. 監督などマネージャーは管理タブ「🧢 指導者の予定・担当」で、週末を1つずつ切り替えて見る。
- *     日ごとに「行ける／行けない／未回答」の人と、その日の予定。予定の下に出る行ける人を押すと担当になる
+ *  1. 監督・コーチは「参加予定」タブの「指導の予定」で、月のカレンダーの聞かれている日をタップして都合を回答しておく
+ *     （タップするたびに ○ 行ける → △ 一部だけ → × 行けない → 未回答。△は午前だけ・午後だけ・時間による、メモも書ける）。
+ *     予定がまだなくても回答できる。いちばん上に自分が担当する予定が出る
+ *  2. 監督などマネージャーは管理タブ「🧢 指導者の予定・担当」で、同じ月のカレンダーに ○△× の人数と担当の ✓／⚠ を見る。
+ *     日をタップすると下にその日の「行ける／一部／行けない／未回答」の人と予定。予定の下に出る行ける人を押すと担当になる
  *  3. 担当（帯同指導者）は予定の詳細（全員が見られる）・コーチ本人の「指導の予定」・配車（概要、座席の割り当ての🧢）に出る
  * 聞く日: 8週間の土日・祝日は自動。お盆・年末年始などは監督が期間で追加（管理タブの画面・カレンダーの日付）、
  *        活動のない土日は「この日は聞かない」で外す
@@ -21,22 +21,25 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
 (function(app) {
     var C = app.Hub.Coaching;
     var WEEKS = 8;          // 回答してもらう期間（週）
-    var MINE_WEEKENDS = 4;  // 自分の回答の画面で最初に出す週末の数（残りは「さらに表示」）
     var DOW = ['日', '月', '火', '水', '木', '金', '土'];
-    // 都合: 記号（一覧・名前の横）／ボタンの文字／説明
+    // 都合: sym（カレンダーの記号）／mark（短い印）／label（ボタンの文字）／text（説明）
+    // △（一部だけ）は 午前だけ（am）・午後だけ（pm）・時間による（part）の3つ
     var ANS = {
-        ok: { mark: '○', label: '行ける', text: '行ける' },
-        am: { mark: '午前', label: '午前だけ', text: '午前だけ' },
-        pm: { mark: '午後', label: '午後だけ', text: '午後だけ' },
-        ng: { mark: '×', label: '行けない', text: '行けない' }
+        ok:   { sym: '○', mark: '○', label: '行ける', text: '○ 行ける' },
+        am:   { sym: '△', mark: '午前', label: '午前だけ', text: '△ 午前だけ' },
+        pm:   { sym: '△', mark: '午後', label: '午後だけ', text: '△ 午後だけ' },
+        part: { sym: '△', mark: '△', label: '時間による', text: '△ 時間による' },
+        ng:   { sym: '×', mark: '×', label: '行けない', text: '× 行けない' }
     };
-    var ORDER = ['ok', 'am', 'pm', 'ng'];
+    function isPartial(s) { return s === 'am' || s === 'pm' || s === 'part'; }
+    /** 名前の横などに添える短い印（○・△午前・△午後・△・×） */
+    function shortAns(s) { return s === 'am' ? '△午前' : s === 'pm' ? '△午後' : ANS[s] ? ANS[s].sym : ''; }
+    /** カレンダーをタップしたときの次の都合: 未回答 → ○ → △ → × → 未回答 */
+    function nextAnswer(s) { return !s ? 'ok' : s === 'ok' ? 'part' : isPartial(s) ? 'ng' : null; }
 
     C._avail = null;   // { メンバーID: { name, answers: { 日付: { s, note } } } }
     C._assign = null;  // { 予定ID: [メンバーID] }
     C._dates = null;   // 都合を聞く日の追加・外した日 { add: { 日付: true }, skip: { 日付: true } }
-    C._showAllMine = false;
-    C._weekKey = null; // 監督の画面で開いている週末
 
     function UI() { return app.UI; }
     function Utils() { return app.Utils; }
@@ -44,22 +47,12 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
     function iso(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
     function dateOf(s) { return new Date(s + 'T00:00:00'); }
     function fmt(date) { var d = dateOf(date); return (d.getMonth() + 1) + '/' + d.getDate() + '(' + DOW[d.getDay()] + ')'; }
-    function md(date) { var d = dateOf(date); return (d.getMonth() + 1) + '/' + d.getDate(); }
-    function dow(date) { return DOW[dateOf(date).getDay()]; }
     function holName(date) { return (app.Holidays && app.Holidays.nameOf) ? app.Holidays.nameOf(date) : ''; }
     function dayCls(date) { var w = dateOf(date).getDay(); return (w === 0 || holName(date)) ? ' co-sun' : w === 6 ? ' co-sat' : ''; }
     function isManager() { return !!(app.Auth && app.Auth.isManager && app.Auth.isManager()); }
     function shortName(m) { return (m && m.abbr) ? m.abbr : (m ? m.name : ''); }
     function evTime(ev) { return ev.startTime ? ev.startTime + '〜' : (ev.departureTime ? ev.departureTime + '出発' : ''); }
     C.ANSWERS = ANS;
-
-    /** 都合のボタンの中身: 大きい文字（○・午前・午後・×）と小さいことば（行ける・だけ・行けない） */
-    function ansButtonInner(s) {
-        var big = { ok: '○', am: '午前', pm: '午後', ng: '×' }[s];
-        var small = { ok: '行ける', am: 'だけ', pm: 'だけ', ng: '行けない' }[s];
-        return '<span class="co-ans-mark' + (s === 'am' || s === 'pm' ? ' co-ans-word' : '') + '">' + big + '</span>' +
-            '<span class="co-ans-label">' + small + '</span>';
-    }
 
     // =============================================
     // データ
@@ -129,13 +122,6 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
 
     C.isAsked = function(date) { return C.planDates().indexOf(String(date)) !== -1; };
 
-    /** その日が入る週末の区切り（火曜〜月曜）の火曜日 */
-    function weekKeyOf(date) {
-        var d = dateOf(date);
-        d.setDate(d.getDate() - ((d.getDay() - 2 + 7) % 7));
-        return iso(d);
-    }
-
     /**
      * 聞く日にする／聞かない日にする
      * 土日・祝日（自動で聞く日）は「聞かない」の印を付け外し、それ以外の日は「追加」の印を付け外す
@@ -154,28 +140,6 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
             delete C._dates.skip[d];
             if (byDate[d] !== 'reset') C._dates[byDate[d]][d] = true;
         });
-    };
-
-    /**
-     * 回答する日を週末ごとにまとめる。火曜〜月曜を1つの区切りにして、金曜・月曜の祝日の予定も
-     * その週末（3連休など）と一緒に出す
-     * @param {boolean} [includeSkipped] - 「聞かない」にした日も入れる
-     * @returns {Array<{key:string, dates:string[], label:string}>}
-     */
-    C.weekends = function(includeSkipped) {
-        var groups = [];
-        var byKey = {};
-        C.planDates(includeSkipped).forEach(function(date) {
-            var key = weekKeyOf(date);
-            if (!byKey[key]) { byKey[key] = { key: key, dates: [] }; groups.push(byKey[key]); }
-            byKey[key].dates.push(date);
-        });
-        groups.forEach(function(g) {
-            var a = g.dates[0], b = g.dates[g.dates.length - 1];
-            g.label = a === b ? fmt(a) : fmt(a) + '〜' + (dateOf(a).getMonth() === dateOf(b).getMonth() ? dateOf(b).getDate() + '(' + dow(b) + ')' : fmt(b));
-            g.short = a === b ? md(a) : md(a) + '〜' + (dateOf(a).getMonth() === dateOf(b).getMonth() ? String(dateOf(b).getDate()) : md(b));
-        });
-        return groups;
     };
 
     /** その日の予定（ナイター練習を除く） */
@@ -266,9 +230,9 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
         C._assign[String(eventId)] = ids;
     };
 
-    /** その日の都合ごとの指導者 { ok:[{m,a}], am, pm, ng, none } */
+    /** その日の都合ごとの指導者 { ok:[{m,a}], am, pm, part, ng, none } */
     function groupsOn(date) {
-        var g = { ok: [], am: [], pm: [], ng: [], none: [] };
+        var g = { ok: [], am: [], pm: [], part: [], ng: [], none: [] };
         C.coaches().forEach(function(m) {
             var a = C.answerOf(m.id, date);
             g[a ? a.s : 'none'].push({ m: m, a: a });
@@ -277,14 +241,126 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
     }
 
     // =============================================
-    // 自分の都合（「参加予定」タブ）
+    // 月のカレンダー（コーチの回答・監督の画面で共通。アプリのカレンダーと同じ月曜始まり）
     // =============================================
+
+    var MONTH_DOWS = ['月', '火', '水', '木', '金', '土', '日'];
+
+    function ymOf(date) { return String(date).slice(0, 7); }
+    function ymLabel(ym) { return ym.slice(0, 4) + '年' + parseInt(ym.slice(5, 7), 10) + '月'; }
+    /** 日付の一覧にある月（'YYYY-MM'、古い順） */
+    function monthsOf(dates) {
+        var list = [];
+        dates.forEach(function(d) { var ym = ymOf(d); if (list.indexOf(ym) === -1) list.push(ym); });
+        return list.sort();
+    }
+
+    /**
+     * 月のカレンダー
+     * @param {string} ym - 'YYYY-MM'
+     * @param {Function} cell - 日付 'YYYY-MM-DD' → マスのHTML
+     */
+    function monthGrid(ym, cell) {
+        var y = parseInt(ym.slice(0, 4), 10), mo = parseInt(ym.slice(5, 7), 10) - 1;
+        var lead = (new Date(y, mo, 1).getDay() + 6) % 7;
+        var days = new Date(y, mo + 1, 0).getDate();
+        var html = '<div class="co-cal-dows" aria-hidden="true">' + MONTH_DOWS.map(function(d, i) {
+            return '<span class="' + (i === 5 ? 'co-sat' : i === 6 ? 'co-sun' : '') + '">' + d + '</span>';
+        }).join('') + '</div><div class="co-cal-grid">';
+        for (var i = 0; i < lead; i++) html += '<span class="co-cal-pad"></span>';
+        for (var d = 1; d <= days; d++) html += cell(iso(new Date(y, mo, d)));
+        return html + '</div>';
+    }
+
+    /** 月の切り替え（‹ 2026年11月 ›） */
+    function monthNav(ym, months, extra) {
+        var i = months.indexOf(ym);
+        return '<div class="co-cal-nav">' +
+            '<button type="button" class="co-cal-prev" aria-label="前の月"' + (i <= 0 ? ' disabled' : '') + '>‹</button>' +
+            '<div class="co-cal-month"><span class="co-cal-ym">' + ymLabel(ym) + '</span>' + (extra || '') + '</div>' +
+            '<button type="button" class="co-cal-next" aria-label="次の月"' + (i < 0 || i >= months.length - 1 ? ' disabled' : '') + '>›</button></div>';
+    }
+    function bindMonthNav(root, ym, months, go) {
+        var i = months.indexOf(ym);
+        var prev = root.querySelector('.co-cal-prev'), next = root.querySelector('.co-cal-next');
+        if (prev) prev.addEventListener('click', function() { if (i > 0) go(months[i - 1]); });
+        if (next) next.addEventListener('click', function() { if (i >= 0 && i < months.length - 1) go(months[i + 1]); });
+    }
+
+    /** ○ △ × の大きいボタンと、△のときの「午前だけ・午後だけ・時間による」 */
+    function answerControls(cur) {
+        var s = cur ? cur.s : '';
+        var partial = isPartial(s);
+        var big = [
+            { s: 'ok', mark: '○', label: '行ける', on: s === 'ok' },
+            { s: 'part', mark: '△', label: partial ? ANS[s].label : '一部だけ', on: partial },
+            { s: 'ng', mark: '×', label: '行けない', on: s === 'ng' }
+        ];
+        return '<div class="co-answer3" role="group" aria-label="都合">' + big.map(function(b) {
+                return '<button type="button" class="co-ans co-s-' + b.s + (b.on ? ' is-on' : '') + '" data-s="' + b.s + '" aria-pressed="' + b.on + '">' +
+                    '<span class="co-ans-mark">' + b.mark + '</span><span class="co-ans-label">' + esc(b.label) + '</span></button>';
+            }).join('') + '</div>' +
+            (partial ? '<div class="co-part" role="group" aria-label="△のとき">' + ['am', 'pm', 'part'].map(function(p) {
+                return '<button type="button" class="co-part-btn' + (s === p ? ' is-on' : '') + '" data-s="' + p + '" aria-pressed="' + (s === p) + '">' + ANS[p].label + '</button>';
+            }).join('') + '</div>' : '');
+    }
+
+    // =============================================
+    // 自分の都合（「参加予定」タブ）: 月のカレンダーをタップするたびに ○ → △ → × → 未回答
+    // =============================================
+
+    C._mineMonth = null; // 開いている月
+    C._mineSel = null;   // 下に詳しく出している日
+    var _saveChain = Promise.resolve();
+    /** 都合の保存が終わるまで待つ（続けてタップしても順番に保存する） */
+    C.whenSaved = function() { return _saveChain; };
+
+    /** 自分の都合を手元ですぐ変え、保存は順番に（失敗したら知らせて最新の状態に戻す） */
+    function saveMine(member, date, s, note, rerender) {
+        var a = availOf(member.id);
+        a.name = member.name;
+        var value = s ? { s: s, note: note || '' } : null;
+        if (value) a.answers[date] = value; else delete a.answers[date];
+        _saveChain = _saveChain.then(function() {
+            return app.DB.setCoachAvailability(member.id, member.name, date, value);
+        }).catch(function(e) {
+            console.warn('都合を保存できませんでした:', e);
+            UI().showAlert('保存できませんでした。通信環境を確認してください（画面を最新の状態に戻します）', 'error', 6000);
+            return C.load().then(rerender);
+        });
+        return _saveChain;
+    }
+
+    /** カレンダーの下: 選んだ日の予定・担当と、○△×・△のときの中身・メモ */
+    function mineDayPanel(member, date) {
+        var me = String(member.id);
+        var a = C.answerOf(me, date);
+        var evs = C.eventsOn(date);
+        var myEvs = evs.filter(function(ev) { return C.assignedIds(ev.id).indexOf(me) !== -1; });
+        var hol = holName(date);
+        return '<div class="co-daypanel" data-date="' + date + '">' +
+            '<div class="co-dp-head">' +
+            '<button type="button" class="co-dp-prev" aria-label="前の日">‹</button>' +
+            '<div class="co-dp-title"><span class="co-dp-date' + dayCls(date) + '">' + fmt(date) + '</span>' +
+            (hol ? '<span class="co-hol">' + esc(hol) + '</span>' : '') +
+            '<span class="co-dp-state co-s-' + (a ? a.s : 'none') + '">' + (a ? ANS[a.s].text : '未回答') + '</span></div>' +
+            '<button type="button" class="co-dp-next" aria-label="次の日">›</button></div>' +
+            '<div class="co-dp-evs">' + (evs.length ? evs.map(function(ev) {
+                return '<span class="co-dp-ev">' + esc(ev.title) + (evTime(ev) ? '<small>' + esc(evTime(ev)) + '</small>' : '') + '</span>';
+            }).join('') : '<span class="co-muted">予定はまだありません（決まる前でも回答できます）</span>') + '</div>' +
+            (myEvs.length ? '<div class="co-mine">🧢 あなたの担当: ' + esc(myEvs.map(function(e) { return e.title; }).join('・')) + '</div>' : '') +
+            answerControls(a) +
+            '<button type="button" class="co-memo' + (a && a.note ? ' has-note' : '') + '">' +
+            (a && a.note ? '📝 ' + esc(a.note) + ' <span class="co-memo-edit">変更</span>' : '＋ メモ（例: 10時から・午後は別会場なら可）') + '</button>' +
+            '</div>';
+    }
 
     /**
      * 「参加予定」タブの「指導の予定」
      *  - あなたの担当（これからの担当の予定）
-     *  - 回答の進み具合と「未回答をまとめて『行ける』に」
-     *  - 週末ごとのカード: 日ごとに 行ける／午前だけ／午後だけ／行けない（もう一度押すと取り消し）とメモ
+     *  - 回答の進み具合と「未回答をまとめて ○」
+     *  - 月のカレンダー: 聞かれている日（枠のある日）をタップするたびに ○ → △ → × → 未回答
+     *  - カレンダーの下に、最後にタップした日の予定と、○△×・△のとき（午前だけ・午後だけ・時間による）・メモ
      * @param {HTMLElement} container
      * @param {Object|null} member - 自分にあたる指導者のメンバー
      */
@@ -297,16 +373,15 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
         }
         if (!container.querySelector('.co-my')) container.innerHTML = '<section class="co-card co-my"><p class="loading">読み込み中...</p></section>';
         await C.ensureLoaded();
-        var weekends = C.weekends();
-        var allDates = [].concat.apply([], weekends.map(function(w) { return w.dates; }));
-        var answered = allDates.filter(function(d) { return C.answerOf(member.id, d); }).length;
-        var unanswered = allDates.filter(function(d) { return !C.answerOf(member.id, d); });
         var me = String(member.id);
+        var dates = C.planDates();
+        var asked = {};
+        dates.forEach(function(d) { asked[d] = true; });
 
         // あなたの担当（今日以降・日付順）
         var today = iso(new Date());
         var mine = (app.Hub.events || []).filter(function(ev) {
-            return ev.date >= today && C.assignedIds(ev.id).indexOf(me) !== -1;
+            return String(ev.date) >= today && C.assignedIds(ev.id).indexOf(me) !== -1;
         }).slice().sort(Utils().compareEvents);
 
         var html = '<section class="co-card co-my">' +
@@ -322,71 +397,81 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
             }).join('') : '<p class="co-empty">まだ担当はありません。監督が都合を見て決めます。</p>') +
             '</div>';
 
+        var bindDuty = function() {
+            container.querySelectorAll('.co-duty-item').forEach(function(b) {
+                b.addEventListener('click', function() { app.Hub.Calendar.showEventDetails(b.dataset.event); });
+            });
+        };
         // 都合はマネージャー（監督・コーチ・役員・管理者）しか読み書きできない。ログインの役割が保護者のままの
         // 指導者には、押しても保存できないボタンを出さずに案内する（担当は見られる）
         if (!isManager()) {
             container.innerHTML = html + '<p class="co-hint co-role-hint">都合を回答するには、ログインの役割が「監督」か「コーチ」である必要があります。管理者に役割の変更を頼んでください。</p></section>';
-            container.querySelectorAll('.co-duty-item').forEach(function(b) {
-                b.addEventListener('click', function() { app.Hub.Calendar.showEventDetails(b.dataset.event); });
-            });
+            bindDuty();
             return;
         }
 
+        var answered = dates.filter(function(d) { return C.answerOf(me, d); }).length;
+        var unanswered = dates.filter(function(d) { return !C.answerOf(me, d); });
         html += '<div class="co-progress">' +
             '<div class="co-progress-head"><span class="co-sub-title">都合の回答</span>' +
-            '<span class="co-progress-num">回答済み <b>' + answered + '</b> / ' + allDates.length + '日</span></div>' +
-            '<div class="co-progress-bar"><span style="width:' + (allDates.length ? Math.round(answered * 100 / allDates.length) : 0) + '%"></span></div>' +
+            '<span class="co-progress-num">回答済み <b>' + answered + '</b> / ' + dates.length + '日</span></div>' +
+            '<div class="co-progress-bar"><span style="width:' + (dates.length ? Math.round(answered * 100 / dates.length) : 0) + '%"></span></div>' +
             (C._availFailed ? '<p class="co-error">回答を読み込めませんでした。通信環境を確認して開き直してください。</p>' : '') +
-            (unanswered.length ? '<button type="button" class="co-bulk secondary-button">未回答の' + unanswered.length + '日をまとめて「行ける」にする</button>' : '') +
-            '<p class="co-hint">行ける日・行けない日を押してください（もう一度押すと取り消し）。監督はこれを見て予定と担当を決めます。</p>' +
+            (unanswered.length ? '<button type="button" class="co-bulk secondary-button">未回答の' + unanswered.length + '日をまとめて「○ 行ける」にする</button>' : '') +
             '</div>';
-
-        weekends.forEach(function(w, wi) {
-            if (wi >= MINE_WEEKENDS && !C._showAllMine) return;
-            var left = w.dates.filter(function(d) { return !C.answerOf(member.id, d); }).length;
-            html += '<div class="co-week">' +
-                '<div class="co-week-head"><span class="co-week-label">' + w.label + '</span>' +
-                (left ? '<span class="co-tag co-tag-warn">未回答 ' + left + '日</span>' : '<span class="co-tag co-tag-ok">✓ 回答済み</span>') + '</div>';
-            w.dates.forEach(function(date) {
-                var evs = C.eventsOn(date);
-                var a = C.answerOf(member.id, date);
-                var myEvs = evs.filter(function(ev) { return C.assignedIds(ev.id).indexOf(me) !== -1; });
-                var hol = holName(date);
-                html += '<div class="co-day-row' + (a ? '' : ' is-unanswered') + '" data-date="' + date + '">' +
-                    '<div class="co-day-top"><span class="co-dow' + dayCls(date) + '">' + dow(date) + '</span>' +
-                    '<span class="co-day-date">' + md(date) + '</span>' +
-                    '<span class="co-day-evs">' + (hol ? '<b class="co-hol">' + esc(hol) + '</b>' : '') +
-                    (evs.length ? esc(evs.map(function(e) { return e.title; }).join('・')) : '予定なし') + '</span>' +
-                    '<span class="co-state co-s-' + (a ? a.s : 'none') + '">' + (a ? ANS[a.s].text : '未回答') + '</span></div>' +
-                    '<div class="co-answer" role="group" aria-label="' + fmt(date) + 'の都合">' +
-                    ORDER.map(function(s) {
-                        var on = a && a.s === s;
-                        return '<button type="button" class="co-ans co-s-' + s + (on ? ' is-on' : '') + '" data-s="' + s + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
-                            ansButtonInner(s) +
-                            '</button>';
-                    }).join('') + '</div>' +
-                    (myEvs.length ? '<div class="co-mine">🧢 あなたの担当: ' + esc(myEvs.map(function(e) { return e.title; }).join('・')) + '</div>' : '') +
-                    '<button type="button" class="co-memo' + (a && a.note ? ' has-note' : '') + '">' +
-                    (a && a.note ? '📝 ' + esc(a.note) + ' <span class="co-memo-edit">変更</span>' : '＋ メモ（例: 10時から）') + '</button>' +
-                    '</div>';
-            });
-            html += '</div>';
-        });
-        if (weekends.length > MINE_WEEKENDS) {
-            html += '<button type="button" class="co-more secondary-button">' + (C._showAllMine ? '近い' + MINE_WEEKENDS + '週だけ表示' : 'さらに表示（' + weekends[weekends.length - 1].label + 'まで）') + '</button>';
+        if (dates.length === 0) {
+            container.innerHTML = html + '<p class="co-empty">いま回答する日はありません</p></section>';
+            bindDuty();
+            return;
         }
-        html += '</section>';
+
+        var months = monthsOf(dates);
+        var sel = (C._mineSel && asked[C._mineSel]) ? C._mineSel : (unanswered[0] || dates[0]);
+        var ym = (C._mineMonth && months.indexOf(C._mineMonth) !== -1) ? C._mineMonth : ymOf(sel);
+        if (ymOf(sel) !== ym) {
+            var inMonth = dates.filter(function(d) { return ymOf(d) === ym; });
+            sel = inMonth.filter(function(d) { return !C.answerOf(me, d); })[0] || inMonth[0];
+        }
+        C._mineSel = sel;
+        C._mineMonth = ym;
+        var left = dates.filter(function(d) { return ymOf(d) === ym && !C.answerOf(me, d); }).length;
+        html += '<div class="co-cal co-cal-mine">' +
+            monthNav(ym, months, left ? '<span class="co-tag co-tag-warn">未回答 ' + left + '日</span>' : '<span class="co-tag co-tag-ok">✓ 回答済み</span>') +
+            monthGrid(ym, function(date) {
+                var n = parseInt(date.slice(8), 10);
+                var cls = 'co-cal-day' + dayCls(date);
+                if (!asked[date]) return '<span class="' + cls + ' is-off"><span class="co-cal-num">' + n + '</span></span>';
+                var a = C.answerOf(me, date);
+                var evs = C.eventsOn(date);
+                var duty = evs.some(function(ev) { return C.assignedIds(ev.id).indexOf(me) !== -1; });
+                return '<button type="button" class="' + cls + ' is-asked ' + (a ? 'co-s-' + a.s : 'is-unanswered') + (date === sel ? ' is-sel' : '') +
+                    '" data-date="' + date + '" aria-label="' + fmt(date) + ' ' + (a ? ANS[a.s].text : '未回答') + '">' +
+                    '<span class="co-cal-num">' + n + '</span>' +
+                    '<span class="co-cal-mark">' + (a ? ANS[a.s].sym : '') + '</span>' +
+                    (a && (a.s === 'am' || a.s === 'pm') ? '<span class="co-cal-sub">' + ANS[a.s].mark + '</span>' : '') +
+                    '<span class="co-cal-flag">' + (duty ? '🧢' : (evs.length ? '<i class="co-cal-dot"></i>' : '')) + '</span>' +
+                    '</button>';
+            }) +
+            '</div>' +
+            '<p class="co-cal-legend">枠のある日をタップするたびに <b class="co-c-ok">○</b> 行ける → <b class="co-c-pt">△</b> 一部だけ → <b class="co-c-ng">×</b> 行けない → 未回答 と変わります。' +
+            '<span class="co-cal-legend-sub"><i class="co-cal-dot"></i> 予定がある日　🧢 あなたの担当</span></p>' +
+            mineDayPanel(member, sel) +
+            '</section>';
         container.innerHTML = html;
+        bindDuty();
 
         var rerender = function() { C.renderMine(container, member); };
-        container.querySelectorAll('.co-duty-item').forEach(function(b) {
-            b.addEventListener('click', function() { app.Hub.Calendar.showEventDetails(b.dataset.event); });
-        });
+        var save = function(date, s, note) {
+            C._mineSel = date;
+            saveMine(member, date, s, note, rerender);
+            rerender();
+        };
         var bulk = container.querySelector('.co-bulk');
         if (bulk) bulk.addEventListener('click', async function() {
-            if (!UI().showConfirm('未回答の' + unanswered.length + '日をすべて「行ける」にしますか？\n（行けない日は、あとから1日ずつ変えられます）')) return;
+            if (!UI().showConfirm('未回答の' + unanswered.length + '日をすべて「○ 行ける」にしますか？\n（行けない日は、あとからカレンダーで変えられます）')) return;
             bulk.disabled = true;
             try {
+                await _saveChain;
                 await C.setAnswers(member, unanswered, 'ok');
             } catch (e) {
                 bulk.disabled = false;
@@ -395,43 +480,49 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
             }
             rerender();
         });
-        var more = container.querySelector('.co-more');
-        if (more) more.addEventListener('click', function() { C._showAllMine = !C._showAllMine; rerender(); });
-        container.querySelectorAll('.co-day-row').forEach(function(row) {
-            var date = row.dataset.date;
-            row.querySelectorAll('.co-ans').forEach(function(btn) {
-                btn.addEventListener('click', async function() {
-                    var cur = C.answerOf(member.id, date);
-                    var s = (cur && cur.s === btn.dataset.s) ? null : btn.dataset.s;
-                    row.querySelectorAll('.co-ans').forEach(function(b) { b.disabled = true; });
-                    try {
-                        await C.setAnswer(member, date, s, cur ? cur.note : '');
-                    } catch (e) {
-                        row.querySelectorAll('.co-ans').forEach(function(b) { b.disabled = false; });
-                        UI().showAlert('保存できませんでした。通信環境を確認してください', 'error', 6000);
-                        return;
-                    }
-                    rerender();
-                });
-            });
-            row.querySelector('.co-memo').addEventListener('click', async function() {
-                var cur = C.answerOf(member.id, date);
-                var note = UI().showPrompt(fmt(date) + ' のメモ（例: 10時から・午後は別会場なら可）', cur ? cur.note : '');
-                if (note === null) return;
-                try {
-                    // メモは都合の補足。まだ回答していない日にメモだけ書いたときは「行ける」として保存する
-                    await C.setAnswer(member, date, cur ? cur.s : 'ok', String(note).trim());
-                } catch (e) {
-                    UI().showAlert('保存できませんでした。通信環境を確認してください', 'error', 6000);
-                    return;
-                }
-                rerender();
+        bindMonthNav(container, ym, months, function(next) { C._mineMonth = next; C._mineSel = null; rerender(); });
+        container.querySelectorAll('.co-cal-day.is-asked').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var date = btn.dataset.date;
+                var cur = C.answerOf(me, date);
+                save(date, nextAnswer(cur && cur.s), cur ? cur.note : '');
             });
         });
+        var panel = container.querySelector('.co-daypanel');
+        var cur = C.answerOf(me, sel);
+        panel.querySelectorAll('.co-answer3 .co-ans').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                // 選んでいるものをもう一度押すと取り消し
+                var on = btn.classList.contains('is-on');
+                save(sel, on ? null : btn.dataset.s, cur ? cur.note : '');
+            });
+        });
+        panel.querySelectorAll('.co-part-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() { save(sel, btn.dataset.s, cur ? cur.note : ''); });
+        });
+        panel.querySelector('.co-memo').addEventListener('click', function() {
+            var note = UI().showPrompt(fmt(sel) + ' のメモ（例: 10時から・午後は別会場なら可）', cur ? cur.note : '');
+            if (note === null) return;
+            // メモは都合の補足。まだ回答していない日にメモだけ書いたときは「△ 時間による」として保存する
+            save(sel, cur ? cur.s : 'part', String(note).trim());
+        });
+        var step = function(delta) {
+            var i = dates.indexOf(sel) + delta;
+            if (i < 0 || i >= dates.length) return;
+            C._mineSel = dates[i];
+            C._mineMonth = ymOf(dates[i]);
+            rerender();
+        };
+        var prevDay = panel.querySelector('.co-dp-prev'), nextDay = panel.querySelector('.co-dp-next');
+        prevDay.disabled = dates.indexOf(sel) <= 0;
+        nextDay.disabled = dates.indexOf(sel) >= dates.length - 1;
+        prevDay.addEventListener('click', function() { step(-1); });
+        nextDay.addEventListener('click', function() { step(1); });
     };
 
     // =============================================
-    // 監督の画面（管理タブ「🧢 指導者の予定・担当」）
+    // 監督の画面（管理タブ「🧢 指導者の予定・担当」）: 同じ月のカレンダーに ○△× の人数と担当（✓／⚠）。
+    // 日をタップすると下にその日の都合と予定ごとの担当
     // =============================================
 
     function ensureModal(id, z, titleHtml) {
@@ -453,135 +544,174 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
         return modal;
     }
 
-    /** 週末の状態: 担当のいない予定の数・まだ回答していない指導者の数（「聞かない」にした日は数えない） */
-    function weekStatus(w) {
-        var r = autoRange();
-        var dates = w.dates.filter(function(d) { return !C.isSkipped(d, r); });
-        if (dates.length === 0) return { off: true, noCoach: 0, notAnswered: 0 };
-        var noCoach = 0;
-        dates.forEach(function(d) {
-            C.eventsOn(d).forEach(function(ev) { if (C.assignedIds(ev.id).length === 0) noCoach++; });
-        });
-        var notAnswered = C.coaches().filter(function(m) {
-            return dates.some(function(d) { return !C.answerOf(m.id, d); });
-        }).length;
-        return { noCoach: noCoach, notAnswered: notAnswered };
-    }
+    C._planMonth = null; // 開いている月
+    C._planSel = null;   // 下に出している日
 
-    C.openPlanner = async function(weekKey) {
+    /**
+     * 監督の画面を開く
+     * @param {string} [date] - 'YYYY-MM-DD' を渡すとその日を開く（カレンダーの「都合・担当を見る」など）
+     */
+    C.openPlanner = async function(date) {
         if (!isManager()) return;
-        var modal = ensureModal('coach-planner-modal', 1020, '<h2 class="co-modal-title">🧢 指導者の予定・担当</h2><div class="co-weeks" role="tablist"></div>');
-        if (weekKey) C._weekKey = weekKey;
+        var modal = ensureModal('coach-planner-modal', 1020, '<h2 class="co-modal-title">🧢 指導者の予定・担当</h2>');
+        if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            C._planSel = date;
+            C._planMonth = ymOf(date);
+        }
         modal.querySelector('.co-modal-body').innerHTML = '<p class="loading">読み込み中...</p>';
         UI().openModal('coach-planner-modal');
         await C.load();
         C.renderPlanner();
     };
 
-    C.renderPlanner = function() {
-        var modal = document.getElementById('coach-planner-modal');
-        if (!modal || modal.style.display === 'none') return;
-        var body = modal.querySelector('.co-modal-body');
-        var tabs = modal.querySelector('.co-weeks');
-        var coaches = C.coaches();
-        if (coaches.length === 0) {
-            tabs.innerHTML = '';
-            body.innerHTML = '<p class="co-hint">メンバーに監督・コーチが登録されていません。メンバータブで役割を「監督」「コーチ」にしてください。</p>';
-            return;
+    /** 日の担当の状態: 予定がなければ ''、担当のいない予定があれば 'warn'、全部決まっていれば 'ok' */
+    function dutyState(date) {
+        var evs = C.eventsOn(date);
+        if (!evs.length) return '';
+        return evs.some(function(ev) { return C.assignedIds(ev.id).length === 0; }) ? 'warn' : 'ok';
+    }
+
+    /** 監督の画面の下: 選んだ日の都合・予定ごとの担当 */
+    function plannerDayHtml(date, info) {
+        var hol = holName(date);
+        var evs = C.eventsOn(date);
+        var head = '<span class="co-dp-date' + dayCls(date) + '">' + fmt(date) + '</span>' +
+            (hol ? '<span class="co-hol">' + esc(hol) + '</span>' : '');
+        if (info.skipped) {
+            return '<section class="co-pday is-skipped" data-date="' + date + '"><h3 class="co-pday-head">' + head +
+                '<span class="co-skip-tag">聞かない日</span>' +
+                '<button type="button" class="co-unskip">聞く日に戻す</button></h3>' +
+                '<p class="co-noev">この日は指導者に都合を聞かない日にしています（活動がない日など）</p>' +
+                '<button type="button" class="co-add-ev">＋ この日に予定を追加</button></section>';
         }
-        var weekends = C.weekends(true);
-        var r = autoRange();
-        // 開く週末: 前に開いていた週末、なければいちばん近い週末
-        var cur = weekends.filter(function(w) { return w.key === C._weekKey; })[0] || weekends[0];
-        C._weekKey = cur ? cur.key : null;
-
-        // 週末の切り替え（担当のいない予定があれば ⚠、まだ回答していない人がいれば「未回答」）
-        tabs.innerHTML = weekends.map(function(w) {
-            var st = weekStatus(w);
-            var badge = st.off ? '<span class="co-wk-badge co-wk-off">聞かない</span>'
-                : st.noCoach ? '<span class="co-wk-badge co-wk-warn">⚠ 担当なし' + st.noCoach + '</span>'
-                : st.notAnswered ? '<span class="co-wk-badge co-wk-wait">未回答' + st.notAnswered + '人</span>'
-                : '<span class="co-wk-badge co-wk-ok">✓</span>';
-            return '<button type="button" class="co-wk' + (w.key === cur.key ? ' is-on' : '') + '" data-week="' + w.key + '" role="tab" aria-selected="' + (w.key === cur.key) + '">' +
-                '<span class="co-wk-date">' + w.short + '</span>' + badge + '</button>';
-        }).join('');
-
-        var html = C._availFailed ? '<p class="co-error">都合を読み込めませんでした。通信環境を確認して開き直してください。</p>' : '';
-        html += '<div class="co-plan-tools"><button type="button" class="secondary-button co-add-dates">＋ 都合を聞く日を追加（お盆・年末年始など）</button></div>';
-        html += '<p class="co-hint">行ける人を押すと、その予定の担当になります。名前の一覧の人を押すと、本人の代わりに都合を入れられます。</p>';
-        (cur ? cur.dates : []).forEach(function(date) {
-            var hol = holName(date);
-            var head = '<span class="co-dow' + dayCls(date) + '">' + dow(date) + '</span>' + md(date) +
-                (hol ? '<span class="co-hol">' + esc(hol) + '</span>' : '');
-            if (C.isSkipped(date, r)) {
-                html += '<section class="co-pday is-skipped" data-date="' + date + '"><h3 class="co-pday-head">' + head +
-                    '<span class="co-skip-tag">聞かない日</span>' +
-                    '<button type="button" class="co-unskip">聞く日に戻す</button></h3></section>';
-                return;
-            }
-            var g = groupsOn(date);
+        var g = groupsOn(date);
+        var canCome = g.ok.concat(g.am, g.pm, g.part);
+        var html = '<section class="co-pday" data-date="' + date + '">' +
+            '<h3 class="co-pday-head">' + head +
+            // 予定のある日は必ず聞くので、外せるのは予定のない聞く日だけ
+            (info.asked && !evs.length ? '<button type="button" class="co-skip">この日は聞かない</button>' : '') + '</h3>';
+        if (info.asked) {
             var people = function(list, s) {
                 return list.map(function(x) {
                     return '<button type="button" class="co-person co-s-' + s + '" data-member="' + esc(x.m.id) + '" title="' + esc(x.m.name + (x.a && x.a.note ? '（' + x.a.note + '）' : '')) + '">' +
-                        esc(shortName(x.m)) + (s === 'am' || s === 'pm' ? '<small>' + ANS[s].mark + '</small>' : '') +
+                        esc(shortName(x.m)) + (isPartial(s) ? '<small>' + shortAns(s) + '</small>' : '') +
                         (x.a && x.a.note ? '<small class="co-person-note">📝' + esc(x.a.note) + '</small>' : '') + '</button>';
                 }).join('');
             };
-            var canCome = g.ok.concat(g.am, g.pm);
             var line = function(label, cls, list) {
                 return '<div class="co-line ' + cls + '"><span class="co-line-label">' + label + '</span><div class="co-line-people">' +
                     (list.length ? list : '<span class="co-none">なし</span>') + '</div></div>';
             };
-            var evs = C.eventsOn(date);
-            html += '<section class="co-pday" data-date="' + date + '">' +
-                '<h3 class="co-pday-head">' + head +
-                // 予定のある日は必ず聞くので、外せるのは予定のない日だけ
-                (evs.length ? '' : '<button type="button" class="co-skip">この日は聞かない</button>') + '</h3>' +
-                '<div class="co-avail">' +
-                line('行ける', 'co-line-ok', people(g.ok, 'ok') + people(g.am, 'am') + people(g.pm, 'pm')) +
-                line('行けない', 'co-line-ng', people(g.ng, 'ng')) +
+            html += '<div class="co-avail">' +
+                line('○ 行ける', 'co-line-ok', people(g.ok, 'ok')) +
+                (g.am.length + g.pm.length + g.part.length ? line('△ 一部', 'co-line-pt', people(g.am, 'am') + people(g.pm, 'pm') + people(g.part, 'part')) : '') +
+                line('× 行けない', 'co-line-ng', people(g.ng, 'ng')) +
                 (g.none.length ? line('未回答', 'co-line-none', people(g.none, 'none')) : '') +
-                '</div>';
-            if (evs.length === 0) html += '<p class="co-noev">この日の予定はまだありません</p>';
-            evs.forEach(function(ev) {
-                var assigned = C.assignedMembers(ev.id);
-                var ids = assigned.map(function(m) { return String(m.id); });
-                var others = evs.filter(function(e) { return String(e.id) !== String(ev.id); });
-                var busy = function(m) { return others.filter(function(e) { return C.assignedIds(e.id).indexOf(String(m.id)) !== -1; }); };
-                var meta = [Utils().getEventTypeLabel(ev.type)];
-                if (Array.isArray(ev.target) && ev.target.length) meta.push(ev.target.map(Utils().getGradeLabel).join('・'));
-                if (evTime(ev)) meta.push(evTime(ev));
-                var cands = canCome.filter(function(x) { return ids.indexOf(String(x.m.id)) === -1; });
-                html += '<div class="co-pev' + (assigned.length ? '' : ' is-empty') + '" data-event="' + esc(ev.id) + '">' +
-                    '<div class="co-pev-head"><span class="co-pev-title">' + esc(ev.title) + '</span><span class="co-pev-meta">' + esc(meta.join('・')) + '</span></div>' +
-                    '<div class="co-pev-row"><span class="co-pev-label">担当</span><div class="co-pev-chips">' +
-                    (assigned.length ? assigned.map(function(m) {
-                        return '<button type="button" class="co-assigned" data-member="' + esc(m.id) + '" aria-label="' + esc(m.name) + 'を担当から外す">' +
-                            esc(shortName(m)) + '<span class="co-x">✕</span></button>';
-                    }).join('') : '<span class="co-unset">⚠ まだいません</span>') + '</div></div>' +
-                    '<div class="co-pev-row"><span class="co-pev-label">追加</span><div class="co-pev-chips">' +
-                    cands.map(function(x) {
-                        var b = busy(x.m);
-                        return '<button type="button" class="co-cand co-s-' + x.a.s + '" data-member="' + esc(x.m.id) + '">＋ ' + esc(shortName(x.m)) +
-                            (x.a.s !== 'ok' ? '<small>' + ANS[x.a.s].mark + '</small>' : '') +
-                            (b.length ? '<small class="co-busy">' + esc(b.map(function(e) { return e.title; }).join('・')) + 'も担当</small>' : '') + '</button>';
-                    }).join('') +
-                    '<button type="button" class="co-more-pick">ほかの人から選ぶ</button>' +
-                    '</div></div></div>';
-            });
-            html += '<button type="button" class="co-add-ev">＋ この日に予定を追加</button></section>';
+                '</div><p class="co-hint co-pday-hint">名前を押すと、本人の代わりに都合を入れられます</p>';
+        } else {
+            html += '<p class="co-noev">まだ指導者に都合を聞いていない日です</p>' +
+                '<button type="button" class="secondary-button co-ask-day">この日も指導者に都合を聞く</button>';
+        }
+        if (info.asked && evs.length === 0) html += '<p class="co-noev">この日の予定はまだありません</p>';
+        evs.forEach(function(ev) {
+            var assigned = C.assignedMembers(ev.id);
+            var ids = assigned.map(function(m) { return String(m.id); });
+            var others = evs.filter(function(e) { return String(e.id) !== String(ev.id); });
+            var busy = function(m) { return others.filter(function(e) { return C.assignedIds(e.id).indexOf(String(m.id)) !== -1; }); };
+            var meta = [Utils().getEventTypeLabel(ev.type)];
+            if (Array.isArray(ev.target) && ev.target.length) meta.push(ev.target.map(Utils().getGradeLabel).join('・'));
+            if (evTime(ev)) meta.push(evTime(ev));
+            var cands = canCome.filter(function(x) { return ids.indexOf(String(x.m.id)) === -1; });
+            html += '<div class="co-pev' + (assigned.length ? '' : ' is-empty') + '" data-event="' + esc(ev.id) + '">' +
+                '<div class="co-pev-head"><span class="co-pev-title">' + esc(ev.title) + '</span><span class="co-pev-meta">' + esc(meta.join('・')) + '</span></div>' +
+                '<div class="co-pev-row"><span class="co-pev-label">担当</span><div class="co-pev-chips">' +
+                (assigned.length ? assigned.map(function(m) {
+                    return '<button type="button" class="co-assigned" data-member="' + esc(m.id) + '" aria-label="' + esc(m.name) + 'を担当から外す">' +
+                        esc(shortName(m)) + '<span class="co-x">✕</span></button>';
+                }).join('') : '<span class="co-unset">⚠ まだいません</span>') + '</div></div>' +
+                '<div class="co-pev-row"><span class="co-pev-label">追加</span><div class="co-pev-chips">' +
+                cands.map(function(x) {
+                    var b = busy(x.m);
+                    return '<button type="button" class="co-cand co-s-' + x.a.s + '" data-member="' + esc(x.m.id) + '">＋ ' + esc(shortName(x.m)) +
+                        (x.a.s !== 'ok' ? '<small>' + shortAns(x.a.s) + '</small>' : '') +
+                        (b.length ? '<small class="co-busy">' + esc(b.map(function(e) { return e.title; }).join('・')) + 'も担当</small>' : '') + '</button>';
+                }).join('') +
+                '<button type="button" class="co-more-pick">' + (cands.length ? 'ほかの人から選ぶ' : '指導者を選ぶ') + '</button>' +
+                '</div></div></div>';
         });
+        html += '<button type="button" class="co-add-ev">＋ この日に予定を追加</button></section>';
+        return html;
+    }
+
+    C.renderPlanner = function() {
+        var modal = document.getElementById('coach-planner-modal');
+        if (!modal || modal.style.display === 'none') return;
+        var body = modal.querySelector('.co-modal-body');
+        var coaches = C.coaches();
+        if (coaches.length === 0) {
+            body.innerHTML = '<p class="co-hint">メンバーに監督・コーチが登録されていません。メンバータブで役割を「監督」「コーチ」にしてください。</p>';
+            return;
+        }
+        var r = autoRange();
+        var today = r.from;
+        var askedSet = {}, skippedSet = {};
+        C.planDates(true).forEach(function(d) { if (C.isSkipped(d, r)) skippedSet[d] = true; else askedSet[d] = true; });
+        // 開ける月: 今月から、聞く日・これからの予定（ナイター練習を除く）がある月まで
+        var evDates = (app.Hub.events || []).filter(function(ev) {
+            return ev && ev.type !== 'nighter' && String(ev.date || '') >= today;
+        }).map(function(ev) { return String(ev.date); });
+        var allDates = Object.keys(askedSet).concat(Object.keys(skippedSet), evDates);
+        var last = monthsOf(allDates.concat([today])).pop();
+        var months = [];
+        for (var ym0 = ymOf(today); ym0 <= last && months.length < 24; ) {
+            months.push(ym0);
+            var nd = new Date(parseInt(ym0.slice(0, 4), 10), parseInt(ym0.slice(5, 7), 10), 1);
+            ym0 = iso(nd).slice(0, 7);
+        }
+        var ym = (C._planMonth && months.indexOf(C._planMonth) !== -1) ? C._planMonth : months[0];
+        C._planMonth = ym;
+        var monthDates = allDates.filter(function(d) { return ymOf(d) === ym && d >= today; }).sort();
+        var sel = C._planSel;
+        if (!sel || ymOf(sel) !== ym || sel < today) {
+            sel = monthDates.filter(function(d) { return dutyState(d) === 'warn'; })[0] ||
+                monthDates.filter(function(d) { return askedSet[d]; })[0] || monthDates[0] ||
+                (ym === ymOf(today) ? today : ym + '-01');
+        }
+        C._planSel = sel;
+        var warnDays = monthDates.filter(function(d, i, arr) { return arr.indexOf(d) === i && dutyState(d) === 'warn'; }).length;
+
+        var html = C._availFailed ? '<p class="co-error">都合を読み込めませんでした。通信環境を確認して開き直してください。</p>' : '';
+        html += '<div class="co-plan-tools"><button type="button" class="secondary-button co-add-dates">＋ 都合を聞く日を追加（お盆・年末年始など）</button></div>';
+        html += '<div class="co-cal co-cal-plan">' +
+            monthNav(ym, months, warnDays ? '<span class="co-tag co-tag-warn">⚠ 担当なし ' + warnDays + '日</span>' : '') +
+            monthGrid(ym, function(date) {
+                var n = parseInt(date.slice(8), 10);
+                var cls = 'co-cal-day' + dayCls(date);
+                if (date < today) return '<span class="' + cls + ' is-past"><span class="co-cal-num">' + n + '</span></span>';
+                var st = dutyState(date);
+                var flag = st === 'warn' ? '<span class="co-cal-st is-warn" title="担当のいない予定があります">⚠</span>'
+                    : st === 'ok' ? '<span class="co-cal-st is-ok" title="担当が決まっています">✓</span>' : '';
+                var inner = '';
+                if (skippedSet[date]) inner = '<span class="co-cal-skip">聞かない</span>';
+                else if (askedSet[date]) {
+                    var g = groupsOn(date);
+                    var p = g.am.length + g.pm.length + g.part.length;
+                    inner = '<span class="co-cal-counts">' +
+                        (g.ok.length ? '<span class="co-c-ok">○' + g.ok.length + '</span>' : '') +
+                        (p ? '<span class="co-c-pt">△' + p + '</span>' : '') +
+                        (g.ng.length ? '<span class="co-c-ng">×' + g.ng.length + '</span>' : '') +
+                        (!g.ok.length && !p && !g.ng.length ? '<span class="co-c-none">未</span>' : '') + '</span>';
+                } else if (st) inner = '<span class="co-cal-skip">未質問</span>';
+                return '<button type="button" class="' + cls + (askedSet[date] ? ' is-asked' : skippedSet[date] ? ' is-skipped' : ' is-open') +
+                    (date === sel ? ' is-sel' : '') + '" data-date="' + date + '"><span class="co-cal-num">' + n + '</span>' + flag + inner + '</button>';
+            }) + '</div>' +
+            '<p class="co-cal-legend"><b class="co-c-ok">○</b> 行ける <b class="co-c-pt">△</b> 一部だけ <b class="co-c-ng">×</b> 行けない の人数。' +
+            '<span class="co-cal-st is-ok">✓</span> 担当が決まった日 <span class="co-cal-st is-warn">⚠</span> 担当のいない予定がある日。日をタップすると下に出ます</p>';
+        html += '<div class="co-plan-day">' + plannerDayHtml(sel, { asked: !!askedSet[sel], skipped: !!skippedSet[sel] }) + '</div>';
         html += '<div class="co-footer"><button type="button" class="secondary-button co-copy-request">📋 未回答の人へのお願いをコピー（LINE用）</button></div>';
         body.innerHTML = html;
 
         var rerender = function() { C.renderPlanner(); };
-        tabs.querySelectorAll('.co-wk').forEach(function(b) {
-            b.addEventListener('click', function() {
-                C._weekKey = b.dataset.week;
-                rerender();
-                modal.querySelector('.modal-content').scrollTop = 0;
-            });
-        });
         var memberById = function(id) { return coaches.filter(function(m) { return String(m.id) === id; })[0]; };
         var setAsked = async function(btn, date, on) {
             btn.disabled = true;
@@ -596,71 +726,91 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
             rerender();
         };
         body.querySelector('.co-add-dates').addEventListener('click', function() { C.openAddDates(rerender); });
-        body.querySelectorAll('.co-pday').forEach(function(day) {
-            var date = day.dataset.date;
-            var unskip = day.querySelector('.co-unskip');
-            if (unskip) {
-                unskip.addEventListener('click', function() { setAsked(unskip, date, true); });
-                return;
-            }
-            var skip = day.querySelector('.co-skip');
-            if (skip) skip.addEventListener('click', function() {
-                if (!UI().showConfirm(fmt(date) + ' は指導者に都合を聞かない日にしますか？\n（活動がない日など。回答済みの都合は残ります）')) return;
-                setAsked(skip, date, false);
+        bindMonthNav(body, ym, months, function(next) { C._planMonth = next; C._planSel = null; rerender(); });
+        body.querySelectorAll('.co-cal-grid button.co-cal-day').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                C._planSel = btn.dataset.date;
+                rerender();
+                var dayEl = body.querySelector('.co-plan-day');
+                if (dayEl && dayEl.scrollIntoView) dayEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
             });
-            day.querySelectorAll('.co-person').forEach(function(p) {
-                p.addEventListener('click', function() {
-                    var m = memberById(p.dataset.member);
-                    if (m) C.openAnswerSheet(m, date, rerender);
-                });
+        });
+        var day = body.querySelector('.co-pday');
+        var date = day.dataset.date;
+        var unskip = day.querySelector('.co-unskip');
+        if (unskip) unskip.addEventListener('click', function() { setAsked(unskip, date, true); });
+        var askDay = day.querySelector('.co-ask-day');
+        if (askDay) askDay.addEventListener('click', function() { setAsked(askDay, date, true); });
+        var skip = day.querySelector('.co-skip');
+        if (skip) skip.addEventListener('click', function() {
+            if (!UI().showConfirm(fmt(date) + ' は指導者に都合を聞かない日にしますか？\n（活動がない日など。回答済みの都合は残ります）')) return;
+            setAsked(skip, date, false);
+        });
+        day.querySelectorAll('.co-person').forEach(function(p) {
+            p.addEventListener('click', function() {
+                var m = memberById(p.dataset.member);
+                if (m) C.openAnswerSheet(m, date, rerender);
             });
-            day.querySelectorAll('.co-pev').forEach(function(row) {
-                var ev = (app.Hub.events || []).filter(function(e) { return String(e.id) === row.dataset.event; })[0];
-                if (!ev) return;
-                var toggle = async function(btn, m, on) {
-                    btn.disabled = true;
-                    try {
-                        await C.setAssigned(ev.id, m, on);
-                    } catch (e) {
-                        btn.disabled = false;
-                        UI().showAlert('保存できませんでした。通信環境を確認してください', 'error', 6000);
-                        return;
-                    }
-                    rerender();
-                };
-                row.querySelectorAll('.co-cand').forEach(function(b) {
-                    b.addEventListener('click', function() { var m = memberById(b.dataset.member); if (m) toggle(b, m, true); });
-                });
-                row.querySelectorAll('.co-assigned').forEach(function(b) {
-                    b.addEventListener('click', function() { var m = memberById(b.dataset.member); if (m) toggle(b, m, false); });
-                });
-                row.querySelector('.co-more-pick').addEventListener('click', function() { C.openAssign(ev, rerender); });
+        });
+        day.querySelectorAll('.co-pev').forEach(function(row) {
+            var ev = (app.Hub.events || []).filter(function(e) { return String(e.id) === row.dataset.event; })[0];
+            if (!ev) return;
+            var toggle = async function(btn, m, on) {
+                btn.disabled = true;
+                try {
+                    await C.setAssigned(ev.id, m, on);
+                } catch (e) {
+                    btn.disabled = false;
+                    UI().showAlert('保存できませんでした。通信環境を確認してください', 'error', 6000);
+                    return;
+                }
+                rerender();
+            };
+            row.querySelectorAll('.co-cand').forEach(function(b) {
+                b.addEventListener('click', function() { var m = memberById(b.dataset.member); if (m) toggle(b, m, true); });
             });
-            day.querySelector('.co-add-ev').addEventListener('click', function() {
-                var modal = document.getElementById('coach-planner-modal');
-                if (modal) modal.style.display = 'none';
-                app.Hub.Calendar.openAddEventModal(dateOf(date));
+            row.querySelectorAll('.co-assigned').forEach(function(b) {
+                b.addEventListener('click', function() { var m = memberById(b.dataset.member); if (m) toggle(b, m, false); });
             });
+            row.querySelector('.co-more-pick').addEventListener('click', function() { C.openAssign(ev, rerender); });
+        });
+        var addEv = day.querySelector('.co-add-ev');
+        if (addEv) addEv.addEventListener('click', function() {
+            modal.style.display = 'none';
+            app.Hub.Calendar.openAddEventModal(dateOf(date));
         });
         body.querySelector('.co-copy-request').addEventListener('click', function() { C.copyRequest(); });
     };
 
-    /** 本人の代わりに都合を入れる（監督の画面で名前をタップ） */
+    /**
+     * 本人の代わりに都合を入れる（監督の画面で名前をタップ）。
+     * ○・× は押すと保存して閉じる。△は「午前だけ・午後だけ・時間による」を選ぶ
+     */
     C.openAnswerSheet = function(member, date, onClose) {
         var modal = ensureModal('coach-answer-modal', 1035, '<h2 class="co-modal-title co-answer-title"></h2><p class="co-hint">本人の代わりに都合を入れます</p>');
         modal.querySelector('.co-answer-title').textContent = member.name + ' ' + fmt(date);
-        var cur = C.answerOf(member.id, date);
-        var body = modal.querySelector('.co-modal-body');
-        body.innerHTML = '<div class="co-answer co-answer-lg">' + ORDER.map(function(s) {
-                return '<button type="button" class="co-ans co-s-' + s + (cur && cur.s === s ? ' is-on' : '') + '" data-s="' + s + '">' +
-                    ansButtonInner(s) +
-                    '</button>';
-            }).join('') + '</div>' +
-            '<label class="co-label" for="co-answer-note">メモ</label>' +
-            '<input type="text" id="co-answer-note" maxlength="60" placeholder="例: 10時から・午後は別会場なら可" value="' + esc(cur ? cur.note : '') + '">' +
-            '<div class="co-sheet-actions"><button type="button" class="secondary-button co-answer-clear">未回答に戻す</button></div>';
         modal._onClose = onClose || null;
-        var save = async function(s) {
+        var body = modal.querySelector('.co-modal-body');
+        var cur = C.answerOf(member.id, date);
+        var draw = function(s) {
+            var note = body.querySelector('#co-answer-note') ? body.querySelector('#co-answer-note').value : (cur ? cur.note : '');
+            body.innerHTML = '<div class="co-answer-lg">' + answerControls(s ? { s: s } : null) + '</div>' +
+                '<label class="co-label" for="co-answer-note">メモ</label>' +
+                '<input type="text" id="co-answer-note" maxlength="60" placeholder="例: 10時から・午後は別会場なら可" value="' + esc(note || '') + '">' +
+                '<div class="co-sheet-actions"><button type="button" class="secondary-button co-answer-clear">未回答に戻す</button></div>';
+            body.querySelectorAll('.co-answer3 .co-ans').forEach(function(b) {
+                b.addEventListener('click', function() {
+                    // △ は中身（午前だけ・午後だけ・時間による）を選べるように開いたまま。○・× はすぐ保存して閉じる
+                    if (b.dataset.s === 'part') { save('part', false); draw('part'); return; }
+                    save(b.dataset.s, true);
+                });
+            });
+            body.querySelectorAll('.co-part-btn').forEach(function(b) {
+                b.addEventListener('click', function() { save(b.dataset.s, true); });
+            });
+            body.querySelector('.co-answer-clear').addEventListener('click', function() { save(null, true); });
+        };
+        var save = async function(s, close) {
             var note = (body.querySelector('#co-answer-note').value || '').trim();
             try {
                 await C.setAnswer(member, date, s, note);
@@ -668,10 +818,9 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
                 UI().showAlert('保存できませんでした。通信環境を確認してください', 'error', 6000);
                 return;
             }
-            modal._close();
+            if (close) modal._close();
         };
-        body.querySelectorAll('.co-ans').forEach(function(b) { b.addEventListener('click', function() { save(b.dataset.s); }); });
-        body.querySelector('.co-answer-clear').addEventListener('click', function() { save(null); });
+        draw(cur ? cur.s : null);
         UI().openModal('coach-answer-modal');
     };
 
@@ -737,7 +886,8 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
                 UI().showAlert('保存できませんでした。通信環境を確認してください', 'error', 6000);
                 return;
             }
-            C._weekKey = weekKeyOf(fresh[0]);
+            C._planSel = fresh[0];
+            C._planMonth = ymOf(fresh[0]);
             modal._close();
             UI().showAlert(fresh.length + '日を都合を聞く日にしました', 'success');
             C.markCalendar();
@@ -777,7 +927,7 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
                         '</span></button>';
                 }).join('') + '</div>';
             };
-            var html = section('行ける人', g.ok.concat(g.am, g.pm)) + section('未回答', g.none) + section('行けない人', g.ng);
+            var html = section('行ける人（○・△）', g.ok.concat(g.am, g.pm, g.part)) + section('未回答', g.none) + section('行けない人', g.ng);
             body.innerHTML = html || '<p class="co-hint">メンバーに監督・コーチが登録されていません</p>';
             body.querySelectorAll('.co-pick').forEach(function(btn) {
                 btn.addEventListener('click', async function() {
@@ -812,7 +962,7 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
             return;
         }
         var url = location.origin + '/hub/index.html';
-        var text = '【指導者の都合のお願い】\nアプリの「参加予定」タブの「指導の予定」で、各日の都合（行ける・午前だけ・午後だけ・行けない）を押してください。\n' +
+        var text = '【指導者の都合のお願い】\nアプリの「参加予定」タブの「指導の予定」のカレンダーで、枠のある日をタップして都合（○ 行ける・△ 一部だけ・× 行けない）を入れてください。\n' +
             lines.join('\n') + '\n' + url;
         if (Utils().copyToClipboard(text)) UI().showAlert('回答のお願いの文面をコピーしました。LINEに貼り付けてください', 'success', 5000);
         else UI().showAlert('コピーできませんでした', 'error');
@@ -863,8 +1013,8 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
             return;
         }
         var g = groupsOn(date);
-        var names = function(list) { return list.map(function(x) { return esc(shortName(x.m)) + (x.a && x.a.s !== 'ok' ? '（' + ANS[x.a.s].mark + '）' : ''); }).join('・'); };
-        var canCome = g.ok.concat(g.am, g.pm);
+        var names = function(list) { return list.map(function(x) { return esc(shortName(x.m)) + (x.a && x.a.s !== 'ok' ? '（' + shortAns(x.a.s) + '）' : ''); }).join('・'); };
+        var canCome = g.ok.concat(g.am, g.pm, g.part);
         el.innerHTML = '<div class="co-hint-label">🧢 この日の指導者</div>' +
             '<div class="co-hint-line"><span class="co-badge co-s-ok">行ける</span>' + (canCome.length ? names(canCome) : '<span class="co-muted">なし</span>') + '</div>' +
             (g.ng.length ? '<div class="co-hint-line"><span class="co-badge co-s-ng">行けない</span>' + names(g.ng) + '</div>' : '') +
@@ -925,7 +1075,7 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
         var open = el.querySelector('.co-dayask-open');
         if (open) open.addEventListener('click', function() {
             UI().closeModal('day-events-modal');
-            C.openPlanner(weekKeyOf(date));
+            C.openPlanner(date);
         });
     };
 
