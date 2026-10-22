@@ -602,7 +602,7 @@ FCOjima.DB = FCOjima.DB || {};
     };
 
     // ========== 指導者（監督・コーチ）の都合と担当 ==========
-    // coachAvailability/{メンバーID}: { name, answers: { 'YYYY-MM-DD': { s: 'ok'|'am'|'pm'|'ng', note } } }
+    // coachAvailability/{メンバーID}: { name, answers: { 'YYYY-MM-DD': { s: 'ok'|'am'|'pm'|'part'|'ng', note } } }
     // coachAssignments/{予定ID}: { memberIds: [メンバーID] }
     // coachDates/plan: { add: { 'YYYY-MM-DD': true }, skip: { 'YYYY-MM-DD': true } }（都合を聞く日の追加・外した日）
     // 新しいコレクションのルールは main へのマージ時にデプロイされるため、読み込みは呼び出し側で失敗しても
