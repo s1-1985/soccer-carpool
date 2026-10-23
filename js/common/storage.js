@@ -258,7 +258,7 @@ FCOjima.Storage = FCOjima.Storage || {};
 
         // Firestoreにもログを追加（非同期 fire-and-forget）
         if (window.FCOjima && FCOjima.DB && FCOjima.DB.addLog) {
-            FCOjima.DB.addLog(type, action, details, extra).catch(function(e) {
+            FCOjima.DB.addLog(type, action, details, Object.assign({}, extra, { id: logId })).catch(function(e) {
                 console.warn('Firestore addLog失敗:', e);
             });
         }
@@ -293,14 +293,13 @@ FCOjima.Storage = FCOjima.Storage || {};
     };
     
     /**
-     * 連絡事項をローカルストレージに保存
+     * 連絡事項をローカルストレージに保存（端末のキャッシュ）
      * @param {Array} notifications - 連絡事項データの配列
      */
     Storage.saveNotifications = function(notifications) {
+        // 端末に残すだけ。サーバーへは1件ずつ書く・消す（DB.putNotification / DB.deleteNotification）。
+        // 連絡事項の削除は権限のある人に限ったため、一覧ごとの保存（古い連絡の削除を含む）はしない
         safeSetItem(this.PREFIX + 'notifications', JSON.stringify(notifications));
-        if (window.FCOjima && FCOjima.DB) {
-            FCOjima.DB.saveNotifications(notifications).catch(e => reportSaveError('saveNotifications', e));
-        }
     };
     
     /**

@@ -142,7 +142,7 @@ await ctx.close();
     buttons: document.querySelectorAll('#my-coaching .co-ans').length,
     duty: [...document.querySelectorAll('#my-coaching .co-duty-item')].map(b => b.textContent)
   }));
-  chk('役割が保護者の指導者には、保存できない回答ボタンを出さずに案内し、担当は見せる', /役割が「監督」か「コーチ」/.test(v.hint) && v.buttons === 0 && v.duty.length === 1 && /練習試合/.test(v.duty[0]), JSON.stringify(v));
+  chk('役割が保護者の指導者には、保存できない回答ボタンを出さずに案内し、担当は見せる', /権限がありません/.test(v.hint) && /役割を「コーチ」/.test(v.hint) && /指導の都合を回答する/.test(v.hint) && v.buttons === 0 && v.duty.length === 1 && /練習試合/.test(v.duty[0]), JSON.stringify(v));
   const bad2 = errs2.filter(e => !ignorable(e) && !/permission/i.test(e));
   chk('ページエラーなし（保護者の役割の指導者）', bad2.length === 0, JSON.stringify(bad2.slice(0, 3)));
   await c2.close();

@@ -278,3 +278,50 @@ button.reject-btn, button.reject-btn:hover {
     font-size: 13px;
     box-shadow: none;
 }
+
+/* ===== 監督（1人だけ）の欄（登録済みユーザー） ===== */
+.kantoku-box { border: 1.5px solid #E8A200; background: #fffaf0; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; font-size: 13px; }
+.kantoku-head { font-size: 14px; margin-bottom: 6px; }
+.kantoku-warn { color: #a33; background: #fdecea; border-radius: 6px; padding: 6px 8px; margin: 6px 0; line-height: 1.5; }
+.kantoku-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.kantoku-row select { flex: 1; min-width: 160px; padding: 6px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
+.kantoku-row button { flex: 0 0 auto; padding: 6px 12px; font-size: 13px; white-space: nowrap; }
+.kantoku-note { color: #6b6450; font-size: 12px; margin: 6px 0 0; }
+
+/* ===== 操作ログの削除（管理者だけ） ===== */
+.log-item { position: relative; }
+button.log-delete { margin-left: 8px; padding: 2px 8px; min-height: 0; font-size: 11px; background: #fff; color: #c0392b; border: 1px solid #e8b4ad; box-shadow: none; }
+button.log-delete:hover { background: #fdecea; }
+.log-admin-tools { margin-top: 12px; padding-top: 10px; border-top: 1px solid #eee; }
+.log-admin-note { color: #888; font-size: 12px; margin: 6px 0 0; }
+
+/* ===== 権限の設定 ===== */
+.ps-content { max-width: 720px; }
+.ps-title { font-size: 18px; margin-bottom: 6px; }
+.ps-rules { background: #f7f4ec; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; font-size: 12px; }
+.ps-rules summary { cursor: pointer; font-weight: 700; font-size: 13px; }
+.ps-rules ul { margin: 6px 0 0; padding-left: 18px; line-height: 1.6; }
+.ps-lead, .ps-note { font-size: 12px; color: #6b6450; line-height: 1.6; margin: 6px 0; }
+.ps-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.ps-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
+.ps-table th, .ps-table td { border-bottom: 1px solid #eee; padding: 6px 2px; }
+.ps-table thead th { position: sticky; top: 0; background: #fff; z-index: 1; font-size: 11px; }
+.ps-table th.ps-feat { text-align: left; width: 38%; font-weight: 600; line-height: 1.4; word-break: keep-all; overflow-wrap: anywhere; }
+.ps-table th.ps-feat small { display: block; font-weight: 400; color: #888; font-size: 10px; }
+.ps-table th.ps-role { text-align: center; white-space: nowrap; padding: 6px 0; font-size: 11px; letter-spacing: -.02em; }
+/* 全体の th（濃い地・金色の文字）は表の見出し行だけにし、行の見出し（機能名）は白地にする */
+.ps-table tbody th.ps-feat { background: #fff; color: #1C1600; text-transform: none; letter-spacing: 0; font-size: 12px; padding: 6px 4px 6px 2px; }
+.ps-table thead th { color: #1C1600; background: #fff; text-transform: none; letter-spacing: 0; }
+.ps-table tr.ps-group th { letter-spacing: 0; text-transform: none; }
+.ps-table th.ps-role.is-me { color: #b07d00; }
+.ps-table tr.ps-group th { text-align: left; background: #f7f4ec; font-size: 12px; color: #5c4300; padding: 4px 6px; }
+.ps-cell { text-align: center; }
+.ps-cell.is-na { color: #ccc; }
+button.ps-toggle { width: 34px; height: 30px; min-height: 0; padding: 0; border-radius: 8px; border: 1.5px solid #d8cfb8; background: #fff; color: #1C1600; font-size: 15px; font-weight: 800; box-shadow: none; }
+button.ps-toggle:hover { background: #fff; border-color: #E8A200; }
+button.ps-toggle.is-on { background: #E8A200; border-color: #E8A200; color: #1C1600; }
+button.ps-toggle.is-locked, button.ps-toggle:disabled { opacity: .45; cursor: not-allowed; }
+@media (max-width: 400px) {
+    .ps-table th.ps-feat { width: 40%; }
+    button.ps-toggle { width: 28px; height: 28px; font-size: 13px; }
+}

@@ -68,6 +68,18 @@ FCOjima.Hub.init = async function() {
         FCOjima.EventFiles && FCOjima.EventFiles.cleanupOldFiles) {
         FCOjima.EventFiles.cleanupOldFiles(FCOjima.Hub.events);
     }
+    // 3か月より古い連絡事項の掃除（ほかの人の連絡を消せる人・管理者だけ。1日1回）
+    if (FCOjima.Hub._loadedFromFirestore && FCOjima.Auth && FCOjima.Auth.can && FCOjima.Auth.can('notices_delete')
+        && FCOjima.DB && FCOjima.DB.cleanupOldNotifications) {
+        var cleanKey = 'fcojima_notice_cleanup_day';
+        var today = FCOjima.Utils.formatDate(new Date());
+        var last = null;
+        try { last = localStorage.getItem(cleanKey); } catch (e) {}
+        if (last !== today) {
+            try { localStorage.setItem(cleanKey, today); } catch (e) {}
+            FCOjima.DB.cleanupOldNotifications(FCOjima.Auth.isAdmin()).catch(function(e) { console.warn('古い連絡事項の掃除に失敗:', e); });
+        }
+    }
 
     console.log('HUB 初期化完了');
 };
@@ -152,19 +164,63 @@ FCOjima.Hub.openLogsModal = function(type) {
     const logsTitle = document.querySelector('#logs-modal h2');
     if (logsTitle) logsTitle.textContent = '操作ログ';
 
+    // ログを消せるのは管理者だけ（Firestore のルール）。1件ずつの「削除」と、この種類のログをまとめて消すボタン
+    const isAdmin = !!(FCOjima.Auth && FCOjima.Auth.isAdmin && FCOjima.Auth.isAdmin());
+    const esc = function(s) { return FCOjima.UI ? FCOjima.UI.escapeHTML(s) : s; };
     if (filtered.length === 0) {
         logsContent.innerHTML = '<p>ログがありません。</p>';
     } else {
         logsContent.innerHTML = filtered.slice().reverse().slice(0, 50).map(function(log) {
             const dt = new Date(log.datetime).toLocaleString('ja-JP');
             return `<div class="log-item">
-                <span class="log-time">${dt}</span>
-                <span class="log-user">${FCOjima.UI ? FCOjima.UI.escapeHTML(log.user) : log.user}</span>
-                <span class="log-action">${FCOjima.UI ? FCOjima.UI.escapeHTML(log.action) : log.action}</span>
-                <span class="log-details">${FCOjima.UI ? FCOjima.UI.escapeHTML(log.details) : log.details}</span>
+                <span class="log-time">${esc(dt)}</span>
+                <span class="log-user">${esc(log.user)}</span>
+                <span class="log-action">${esc(log.action)}</span>
+                <span class="log-details">${esc(log.details)}</span>
+                ${isAdmin ? `<button type="button" class="log-delete" data-id="${esc(String(log.id || ''))}" aria-label="このログを削除">削除</button>` : ''}
             </div>`;
         }).join('');
     }
+    if (isAdmin) {
+        const tools = document.createElement('div');
+        tools.className = 'log-admin-tools';
+        tools.innerHTML = '<button type="button" class="delete-button log-delete-all">' +
+            (type ? 'この種類のログをすべて削除' : 'すべてのログを削除') + '</button>' +
+            '<p class="log-admin-note">ログを削除できるのは管理者だけです（3か月より前の分も消えます）</p>';
+        logsContent.appendChild(tools);
+        logsContent.querySelectorAll('.log-delete').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const id = btn.dataset.id;
+                if (!id || !FCOjima.UI.showConfirm('このログを削除しますか？')) return;
+                btn.disabled = true;
+                FCOjima.DB.deleteLogs([id]).then(function() {
+                    FCOjima.Hub._removeLogs(function(l) { return String(l.id) === id; });
+                    FCOjima.Hub.openLogsModal(type);
+                }).catch(function(e) {
+                    btn.disabled = false;
+                    FCOjima.UI.showAlert('ログを削除できませんでした: ' + e.message, 'error', 6000);
+                });
+            });
+        });
+        tools.querySelector('.log-delete-all').addEventListener('click', function() {
+            if (!FCOjima.UI.showConfirm((type ? 'この種類のログ' : 'すべてのログ') + 'を削除しますか？（元に戻せません）')) return;
+            this.disabled = true;
+            FCOjima.DB.deleteAllLogs(type || null).then(function(n) {
+                FCOjima.Hub._removeLogs(function(l) { return !type || l.type === type; });
+                FCOjima.UI.showAlert(n + '件のログを削除しました', 'success');
+                FCOjima.Hub.openLogsModal(type);
+            }).catch(function(e) {
+                FCOjima.UI.showAlert('ログを削除できませんでした: ' + e.message, 'error', 6000);
+                FCOjima.Hub.openLogsModal(type);
+            });
+        });
+    }
 
     if (FCOjima.UI && FCOjima.UI.openModal) FCOjima.UI.openModal('logs-modal');
+};
+
+/** 手元のログ（画面・端末）から消す */
+FCOjima.Hub._removeLogs = function(match) {
+    FCOjima.Hub.logs = (FCOjima.Hub.logs || []).filter(function(l) { return !match(l); });
+    if (FCOjima.Storage && FCOjima.Storage.saveLogs) FCOjima.Storage.saveLogs(FCOjima.Hub.logs);
 };

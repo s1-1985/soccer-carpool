@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="../css/common.css?v=20261017a">
     <link rel="stylesheet" href="../css/hub/calendar.css?v=20261023c">
     <link rel="stylesheet" href="../css/hub/coaching.css?v=20261022c">
-    <link rel="stylesheet" href="../css/hub/home.css?v=20261023c">
+    <link rel="stylesheet" href="../css/hub/home.css?v=20261023e">
     <link rel="stylesheet" href="../css/hub/members.css?v=20260719">
     <link rel="stylesheet" href="../css/hub/notifications.css?v=20261023c">
     <link rel="stylesheet" href="../css/hub/venues.css?v=20260224a">
@@ -481,7 +481,7 @@
         <div id="admin" class="tabcontent">
             <h2>管理</h2>
 
-            <section>
+            <section id="pending-users-section">
                 <h3>承認待ちユーザー</h3>
                 <div id="pending-users-list">
                     <p class="loading">読み込み中...</p>
@@ -505,6 +505,7 @@
                     <button id="btn-attendance-rate" type="button" class="admin-tile"><span class="admin-tile-icon" aria-hidden="true">📊</span><span class="admin-tile-body"><b>選手の参加率</b><small>選手ごとの参加の割合</small></span></button>
                     <button id="btn-duty-groups" type="button" class="admin-tile"><span class="admin-tile-icon" aria-hidden="true">🔔</span><span class="admin-tile-body"><b>当番グループ設定</b><small>当番の組と予定への割り当て</small></span></button>
                     <button id="btn-luggage-settings" type="button" class="admin-tile"><span class="admin-tile-icon" aria-hidden="true">📦</span><span class="admin-tile-body"><b>荷物設定</b><small>共用の荷物（ボール・テントなど）</small></span></button>
+                    <button id="btn-permissions" type="button" class="admin-tile"><span class="admin-tile-icon" aria-hidden="true">🔐</span><span class="admin-tile-body"><b>権限の設定</b><small>役割ごとに使える機能・役割のきまり</small></span></button>
                 </div>
             </section>
         </div>
@@ -951,38 +952,38 @@
     <!-- 共通モジュール -->
     <script src="../js/common/global.js?v=20260224a"></script>
     <script src="../js/common/utils.js?v=20261023a"></script>
-    <script src="../js/common/storage.js?v=20261016d"></script>
+    <script src="../js/common/storage.js?v=20261023e"></script>
     <script src="../js/common/ui.js?v=20261016d"></script>
-    <script src="../js/common/auth.js?v=20261016g"></script>
-    <script src="../js/common/db.js?v=20261023d"></script>
+    <script src="../js/common/permissions.js?v=20261023e"></script>
+    <script src="../js/common/auth.js?v=20261023e"></script>
+    <script src="../js/common/db.js?v=20261023e"></script>
     <script src="../js/common/inbox.js?v=20261023b"></script>
     <script src="../js/common/holidays.js?v=20261018c"></script>
     <script src="../js/common/weather.js?v=20261017d"></script>
     <script src="../js/common/checklist.js?v=20261016c"></script>
-    <script src="../js/common/playermove.js?v=20261017e"></script>
+    <script src="../js/common/playermove.js?v=20261023e"></script>
     <script src="../js/common/eventfiles.js?v=20261016h"></script>
 
     <!-- HUBページ用モジュール -->
-    <script src="../js/hub/main.js?v=20261016g"></script>
-    <script src="../js/hub/calendar.js?v=20261023d"></script>
-    <script src="../js/hub/members.js?v=20261023d"></script>
-    <script src="../js/hub/notifications.js?v=20261023c"></script>
-    <script src="../js/hub/venues.js?v=20261016g"></script>
-    <script src="../js/hub/coaching.js?v=20261023d"></script>
+    <script src="../js/hub/main.js?v=20261023e"></script>
+    <script src="../js/hub/calendar.js?v=20261023e"></script>
+    <script src="../js/hub/members.js?v=20261023e"></script>
+    <script src="../js/hub/notifications.js?v=20261023e"></script>
+    <script src="../js/hub/venues.js?v=20261023e"></script>
+    <script src="../js/hub/coaching.js?v=20261023e"></script>
     <script src="../js/hub/myevents.js?v=20261023d"></script>
-    <script src="../js/hub/home.js?v=20261023d"></script>
-    <script src="../js/hub/admin.js?v=20261023c"></script>
+    <script src="../js/hub/home.js?v=20261023e"></script>
+    <script src="../js/hub/admin.js?v=20261023e"></script>
+    <script src="../js/hub/permsettings.js?v=20261023e"></script>
 
     <script>
         // タブの切り替えに応じてフローティングボタンの表示を制御
         document.querySelectorAll('.tablinks').forEach(function(tab) {
             tab.addEventListener('click', function() {
                 const floatingButton = document.getElementById('floating-add-button');
-                // メンバー・会場の追加はマネージャーのみ（Firestoreルール）。保護者には出さない
-                const canManage = FCOjima.Auth && FCOjima.Auth.isManager && FCOjima.Auth.isManager();
-                if (!canManage) {
-                    floatingButton.style.display = 'none';
-                } else if (this.textContent === 'メンバー') {
+                // メンバー・会場の追加は権限の設定の「名簿」「会場」がある人だけ（Firestoreルールも同じ）
+                const can = function(f) { return FCOjima.Auth && FCOjima.Auth.can && FCOjima.Auth.can(f); };
+                if (this.textContent === 'メンバー' && can('members')) {
                     floatingButton.style.display = 'flex';
                     floatingButton.className = 'add-member-button';
                     floatingButton.title = 'メンバーを追加';
@@ -990,7 +991,7 @@
                         e.preventDefault();
                         FCOjima.Hub.Members.openAddMemberModal();
                     };
-                } else if (this.textContent === '会場登録') {
+                } else if (this.textContent === '会場登録' && can('venues')) {
                     floatingButton.style.display = 'flex';
                     floatingButton.className = 'add-venue-button';
                     floatingButton.title = '会場を追加';
@@ -1028,9 +1029,9 @@
                 if (nameEl) { nameEl.textContent = name; nameEl.title = name; }
             }
 
-            // 操作ログはマネージャーしか読めない（Firestoreルール）。保護者には常に「ログがありません」と
+            // 操作ログは「操作ログを見る」の権限がある人しか読めない（Firestoreルール）。権限がないと常に「ログがありません」と
             // 出て、実際にはログがあるのに無いように見えていたため、ボタン自体を出さない
-            if (!(FCOjima.Auth.isManager && FCOjima.Auth.isManager())) {
+            if (!FCOjima.Auth.can('logs_view')) {
                 ['view-logs', 'member-logs', 'notifications-logs', 'venues-logs'].forEach(function(id) {
                     // 非表示ではなく取り除く（スマホの2列ボタン配置で、残ったボタンが全幅になるように）
                     var b = document.getElementById(id);

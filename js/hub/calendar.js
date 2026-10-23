@@ -41,8 +41,24 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         // 荷物ピッカーの初期化
         this.initLuggagePicker();
 
+        // 予定の追加・編集・削除の権限がなければボタンを出さない
+        var addBtn = document.getElementById('add-event');
+        if (addBtn && !Calendar.canEdit()) addBtn.style.display = 'none';
+        var dayAdd = document.getElementById('day-events-add');
+        if (dayAdd && !Calendar.canEdit()) dayAdd.style.display = 'none';
+
         console.log('カレンダー機能の初期化が完了しました');
     };
+
+    /** 予定を追加・編集・削除できるか（権限の設定の「予定」。初期値は承認済みの全員） */
+    Calendar.canEdit = function() {
+        return !!(app.Auth && app.Auth.can && app.Auth.can('events'));
+    };
+    function denyIfCannotEdit() {
+        if (Calendar.canEdit()) return false;
+        UI.showAlert('予定の追加・編集・削除の権限がありません（権限の設定で変えられます）', 'warning');
+        return true;
+    }
 
     // =============================================
     //  荷物（共用備品）ピッカー
@@ -458,9 +474,10 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             this.openDayModal(dateStr);
         });
         
-        // 日付クリックで予定追加モーダルを開く
+        // 日付クリックで予定追加モーダルを開く（予定の権限がなければ、その日の予定の一覧）
         day.addEventListener('click', () => {
-            this.openAddEventModal(date);
+            if (Calendar.canEdit()) this.openAddEventModal(date);
+            else this.openDayModal(dateStr);
         });
         
         return day;
@@ -724,7 +741,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         // マネージャーには未定でも出して「担当」ボタン
         if (app.Hub.Coaching && event.type !== 'nighter') {
             const coachVal = app.Hub.Coaching.detailValue(event);
-            const canAssign = app.Auth && app.Auth.isManager && app.Auth.isManager();
+            const canAssign = app.Auth && app.Auth.can && app.Auth.can('coach_plan');
             if (coachVal) facts += fact('🧢', '帯同指導者', coachVal, canAssign ? '<button type="button" id="event-coach-btn" class="ed-map ed-coach">担当</button>' : '', 'ed-wide');
         }
 
@@ -989,6 +1006,11 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         // ナイターは配車管理ボタンを非表示
         var manageBtn = document.getElementById('manage-event');
         if (manageBtn) manageBtn.style.display = (event.type === 'nighter') ? 'none' : '';
+        // 予定の権限がなければ編集・削除を出さない
+        ['edit-event', 'delete-event'].forEach(function(id) {
+            var b = document.getElementById(id);
+            if (b) b.style.display = Calendar.canEdit() ? '' : 'none';
+        });
 
         // モーダルを表示
         UI.openModal('event-details-modal');
@@ -1019,6 +1041,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
      * @param {Date} date - 日付（nullの場合は現在の日付）
      */
     Calendar.openAddEventModal = function(date = null) {
+        if (denyIfCannotEdit()) return;
         console.log('予定追加モーダルを開きます...');
         
         // モーダルのタイトルを設定
@@ -1241,6 +1264,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
      * 新規イベント保存
      */
     Calendar.saveEvent = function() {
+        if (denyIfCannotEdit()) return;
         const events = app.Hub.events;
         const logs = app.Hub.logs;
 
@@ -1389,6 +1413,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
      * @param {number} eventId - イベントID
      */
     Calendar.editEvent = function(eventId) {
+        if (denyIfCannotEdit()) return;
         const events = app.Hub.events;
         const event = events.find(e => String(e.id) === String(eventId));
         if (!event) return;
@@ -1489,6 +1514,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
      * @param {number} eventId - イベントID
      */
     Calendar.deleteEvent = function(eventId) {
+        if (denyIfCannotEdit()) return;
         const events = app.Hub.events;
         const logs = app.Hub.logs;
 

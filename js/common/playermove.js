@@ -42,9 +42,9 @@ FCOjima.PlayerMove = FCOjima.PlayerMove || {};
         });
     }
 
-    /** マネージャー（管理者・監督・コーチ・役員）だけが使える */
+    /** 権限の設定の「参加者を追加」がある人だけが使える（初期値は管理者・監督・コーチ・役員） */
     PM.canUse = function() {
-        return !!(app.Auth && app.Auth.isManager && app.Auth.isManager());
+        return !!(app.Auth && app.Auth.can && app.Auth.can('player_move'));
     };
 
     /**
@@ -180,6 +180,8 @@ FCOjima.PlayerMove = FCOjima.PlayerMove || {};
             toEventId: String(toEv.id),
             toEventTitle: titleOf(toEv)
         };
+        // 書いた人の印（消せる人の判定に使う）
+        if (app.Auth && app.Auth.authorStamp) Object.assign(notice, app.Auth.authorStamp());
         try {
             await app.DB.putNotification(notice);
             rec.noticeId = notice.id;
@@ -282,7 +284,7 @@ FCOjima.PlayerMove = FCOjima.PlayerMove || {};
      */
     PM.open = async function(toEv, opts) {
         if (!PM.canUse()) {
-            app.UI.showAlert('選手の参加変更は管理者・指導者・役員のみ行えます', 'warning');
+            app.UI.showAlert('選手の参加変更の権限がありません（権限の設定で変えられます）', 'warning');
             return;
         }
         opts = opts || {};

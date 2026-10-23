@@ -13,18 +13,18 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
     var Storage = app.Storage;
 
     /**
-     * メンバーを追加・編集・削除できるか（Firestoreルール上マネージャーのみ）。
+     * メンバーを追加・編集・削除できるか（権限の設定の「名簿」。初期値は管理者・監督・コーチ・役員）。
      * 以前は保護者にも追加・編集・削除ボタンが表示され、押すと画面上は「保存しました」と
      * 出るのにサーバーへの書き込みは拒否され、再読み込みで元に戻っていた
      */
     function canManage() {
-        return !!(app.Auth && app.Auth.isManager && app.Auth.isManager());
+        return !!(app.Auth && app.Auth.can && app.Auth.can('members'));
     }
     Members.canManage = canManage;
 
     function denyIfCannotManage() {
         if (canManage()) return false;
-        UI.showAlert('メンバーの追加・編集・削除は管理者・指導者・役員のみ行えます', 'warning');
+        UI.showAlert('メンバーの追加・編集・削除の権限がありません（権限の設定で変えられます）', 'warning');
         return true;
     }
 

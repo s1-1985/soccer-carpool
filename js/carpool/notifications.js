@@ -71,14 +71,13 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
             return new Date(b.date) - new Date(a.date);
         });
 
-        // 削除ボタンは投稿者本人か管理者・指導者・役員だけに出す（HUBの連絡事項と同じ）。
-        // 以前は全員に出ており、保護者が他の人の連絡を誤って消せた
-        const me = (FCOjima.Auth && FCOjima.Auth.getDisplayName) ? FCOjima.Auth.getDisplayName() : '';
-        const isManager = !!(FCOjima.Auth && FCOjima.Auth.isManager && FCOjima.Auth.isManager());
+        // 削除ボタンは書いた本人・管理者・「ほかの人の連絡の削除」の権限がある人だけに出す（HUBの連絡事項と同じ。
+        // 管理者が書いたものは管理者だけ）。以前は全員に出ており、保護者が他の人の連絡を誤って消せた
+        const canDeleteNote = function(n) { return !!(FCOjima.Auth && FCOjima.Auth.canDeleteNote && FCOjima.Auth.canDeleteNote(n)); };
 
         sorted.forEach(function(n, i) {
             const idx = notifications.indexOf(n);
-            const canDelete = isManager || (n.user && me && n.user === me);
+            const canDelete = canDeleteNote(n);
             const card = document.createElement('div');
             card.className = 'notification-card ' + (n.type || 'info');
             card.innerHTML =
@@ -113,7 +112,9 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
         const user = (window.FCOjima && FCOjima.Auth && FCOjima.Auth.getDisplayName)
             ? FCOjima.Auth.getDisplayName() : '';
         const notifications = FCOjima.Carpool.appData.notifications || [];
-        notifications.unshift({ date: today, text: text, type: 'info', user: user });
+        // 書いた人の印（uid・管理者なら byAdmin）。消せる人の判定に使う
+        notifications.unshift(Object.assign({ date: today, text: text, type: 'info', user: user },
+            (FCOjima.Auth && FCOjima.Auth.authorStamp) ? FCOjima.Auth.authorStamp() : {}));
         FCOjima.Carpool.appData.notifications = notifications;
         FCOjima.Carpool.saveData();
 
@@ -165,6 +166,10 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
     Notifications.deleteNotification = function(index) {
         const notifications = FCOjima.Carpool.appData.notifications || [];
         if (!notifications[index]) return;
+        if (!(FCOjima.Auth && FCOjima.Auth.canDeleteNote && FCOjima.Auth.canDeleteNote(notifications[index]))) {
+            UI.showAlert('この連絡事項を削除する権限がありません');
+            return;
+        }
 
         if (UI.showConfirm('この連絡事項を削除してもよろしいですか？')) {
             notifications.splice(index, 1);
@@ -198,8 +203,10 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
         }
         
         if (UI.showConfirm(`連絡事項を全て削除してもよろしいですか？（${notifications.length}件）`)) {
-            // 連絡事項をクリア
-            FCOjima.Carpool.appData.notifications = [];
+            // 連絡事項をクリア（消す権限のない連絡は残す）
+            FCOjima.Carpool.appData.notifications = notifications.filter(function(n) {
+                return !(FCOjima.Auth && FCOjima.Auth.canDeleteNote && FCOjima.Auth.canDeleteNote(n));
+            });
             FCOjima.Carpool.saveData();
             
             // UI更新

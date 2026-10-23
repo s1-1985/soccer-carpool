@@ -313,16 +313,27 @@ FCOjima.DB = FCOjima.DB || {};
             });
     };
 
-    DB.saveNotifications = async function(notifications) {
-        (notifications || []).forEach((n, i) => {
-            // ID未付与の旧データはここで採番（String(undefined)="undefined" の
-            // 同一ドキュメントに全件が上書きされ消失するのを防ぐ）
-            if (!n.id) n.id = Date.now().toString() + '_' + i;
+    /**
+     * 3か月より古い連絡事項を消す（「ほかの人の連絡の削除」の権限がある人・管理者が HUB を開いたとき）。
+     * 以前は一覧の保存（syncCollection）のついでに消していたが、連絡事項の削除を権限のある人に限ったため、
+     * 保護者が連絡を書いたときの保存がそのせいで失敗しないよう、書く・消すは1件ずつにして、古い分はここで消す。
+     * 管理者が書いたものは管理者だけが消せる（ルールで拒否されるので、ほかの人は飛ばす）
+     */
+    DB.cleanupOldNotifications = async function(isAdmin) {
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+        const snapshot = await Collections.notifications().get();
+        ensureFromServer(snapshot);
+        const old = snapshot.docs.filter(function(doc) {
+            const d = doc.data() || {};
+            const t = new Date(d.date).getTime();
+            return !isNaN(t) && t < threeMonthsAgo.getTime() && (isAdmin || !d.byAdmin);
         });
-        await syncCollection('notifications', Collections.notifications(), notifications);
+        const results = await Promise.allSettled(old.map(function(doc) { return doc.ref.delete(); }));
+        return results.filter(function(r) { return r.status === 'fulfilled'; }).length;
     };
 
-    /** 連絡事項を1件、ID を指定して書き込む／消す（一覧全体の保存を経由しない） */
+    /** 連絡事項を1件、ID を指定して書き込む／消す（一覧全体の保存を経由しない。書いた人の印 uid・byAdmin は呼び出し側で付ける） */
     DB.putNotification = async function(notification) {
         const data = Object.assign({}, notification);
         const id = String(data.id);
@@ -377,7 +388,31 @@ FCOjima.DB = FCOjima.DB || {};
             log.eventId = String(extra.eventId);
         }
 
-        await Collections.logs().add(log);
+        // 端末のログと同じ ID で保存する（管理者がログを消すとき、手元のログとサーバーのログを同じ ID で消せるように）
+        if (extra && extra.id) await Collections.logs().doc(String(extra.id)).set(log);
+        else await Collections.logs().add(log);
+    };
+
+    /** ログを消す（管理者だけ。Firestore のルール） */
+    DB.deleteLogs = async function(ids) {
+        const list = (ids || []).map(String).filter(Boolean);
+        for (let i = 0; i < list.length; i += 400) {
+            const batch = db.batch();
+            list.slice(i, i + 400).forEach(function(id) { batch.delete(Collections.logs().doc(id)); });
+            await batch.commit();
+        }
+        return list.length;
+    };
+
+    /**
+     * その種類のログを（3か月より前の分も）すべて消す（管理者だけ）。type を省くと全部の種類
+     * @returns {Promise<number>} 消した件数
+     */
+    DB.deleteAllLogs = async function(type) {
+        const q = type ? Collections.logs().where('type', '==', String(type)) : Collections.logs();
+        const snapshot = await q.get();
+        ensureFromServer(snapshot);
+        return DB.deleteLogs(snapshot.docs.map(function(doc) { return doc.id; }));
     };
 
     // ========== イベント固有データ（配車・出欠） ==========
@@ -499,7 +534,8 @@ FCOjima.DB = FCOjima.DB || {};
 
     /**
      * @param {Array<string>|null} [childrenIds] - 承認時に管理者が照合した子供（null/省略なら変更しない）
-     * @param {{role?: string, name?: string|null}} [extra] - 承認時に決めた役割・名簿に合わせた名前（省略なら変更しない）
+     * @param {{role?: string, name?: string|null, demoteUids?: Array<string>}} [extra] - 承認時に決めた役割・名簿に合わせた名前（省略なら変更しない）。
+     *   監督として承認するときは、いまの監督など「監督」の役割の人（demoteUids）を同じ書き込みでコーチにする（監督は1人だけ）
      */
     DB.approveUser = async function(uid, approvedByUid, childrenIds, extra) {
         const data = {
@@ -512,6 +548,11 @@ FCOjima.DB = FCOjima.DB || {};
         if (Array.isArray(childrenIds)) {
             data.childrenIds = childrenIds.map(String);
             data.childrenLinked = true; // 管理者が照合済み（入力された氏名での自動照合はしない）
+        }
+        if (data.role === 'coach') {
+            delete data.role;
+            await DB.setKantoku(uid, (extra && extra.demoteUids) || [], data);
+            return;
         }
         await db.collection('teams').doc(TEAM_ID)
             .collection('users').doc(uid).update(data);
@@ -527,6 +568,53 @@ FCOjima.DB = FCOjima.DB || {};
     DB.updateUserRole = async function(uid, role) {
         await db.collection('teams').doc(TEAM_ID)
             .collection('users').doc(uid).update({ role });
+    };
+
+    // ========== 監督（1人だけ）と権限の設定 ==========
+    // settings/roles: { kantoku: uid }（いまの監督）。settings/permissions: { 役割: { 機能: true/false } }
+    function usersCol() { return db.collection('teams').doc(TEAM_ID).collection('users'); }
+    function settingsDoc(id) { return db.collection('teams').doc(TEAM_ID).collection('settings').doc(id); }
+
+    /**
+     * 監督を指定する（管理者）。同じ書き込みで、前の監督・ほかに「監督」の役割の人はコーチにする（監督は1人だけ）
+     * @param {string} uid - 新しい監督
+     * @param {Array<string>} demoteUids - コーチにする人（いまの監督など）
+     * @param {Object} [approval] - 承認待ちの人を監督として承認するときの承認の項目（status など）
+     */
+    DB.setKantoku = async function(uid, demoteUids, approval) {
+        const batch = db.batch();
+        batch.update(usersCol().doc(String(uid)), Object.assign({}, approval || {}, { role: 'coach' }));
+        (demoteUids || []).forEach(function(x) {
+            if (String(x) !== String(uid)) batch.update(usersCol().doc(String(x)), { role: 'assist' });
+        });
+        batch.set(settingsDoc('roles'), { kantoku: String(uid) });
+        await batch.commit();
+    };
+
+    /** 監督の引き継ぎ（いまの監督が次の監督を指名する。自分はコーチになる） */
+    DB.handoverKantoku = async function(myUid, nextUid) {
+        const batch = db.batch();
+        batch.update(usersCol().doc(String(nextUid)), { role: 'coach' });
+        batch.update(usersCol().doc(String(myUid)), { role: 'assist' });
+        batch.set(settingsDoc('roles'), { kantoku: String(nextUid) });
+        await batch.commit();
+    };
+
+    /** 監督を外す（管理者）。役割を role にし、いまの監督の記録も消す */
+    DB.removeKantoku = async function(uid, role, clearRecord) {
+        const batch = db.batch();
+        batch.update(usersCol().doc(String(uid)), { role: String(role) });
+        if (clearRecord) batch.set(settingsDoc('roles'), { kantoku: '' });
+        await batch.commit();
+    };
+
+    /** 権限の設定の1つの欄（役割×機能）を変える */
+    DB.setPermission = async function(role, feature, value) {
+        const col = {};
+        col[String(feature)] = !!value;
+        const data = {};
+        data[String(role)] = col;
+        await settingsDoc('permissions').set(data, { merge: true });
     };
 
     /** ログインの名前を変える（名簿のメンバーの名前を直したとき。マネージャーが自分以外の人の分だけ変えられる） */

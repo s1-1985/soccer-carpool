@@ -4,7 +4,7 @@
  * はじめて開いた人が「何をすればいいか」が分かるように、その人にいま必要なことだけを出す
  *  - 保護者: まだ答えていない出欠（その場で「参加／不参加」）
  *  - 監督・コーチ: 指導の都合の未回答（参加予定タブへ）
- *  - マネージャー: 承認待ちの人（管理タブへ）と、今日から7日間の予定ごとの出欠・車の席・帯同指導者・割り当て
+ *  - 承認の権限がある人: 承認待ちの人（管理タブへ）。出欠状況の権限がある人: 今日から7日間の予定ごとの出欠・車の席・帯同指導者・割り当て
  *  - 全員: 新しい連絡（連絡事項タブへ）、スマホのブラウザで開いているときは一度だけ「ホーム画面に追加」の案内
  * タブにも件数を出す（参加予定 = 出欠の未回答＋都合の未回答、管理 = 承認待ち）
  */
@@ -39,7 +39,8 @@ FCOjima.Hub.Home = FCOjima.Hub.Home || {};
     function UI() { return app.UI; }
     function Utils() { return app.Utils; }
     function esc(s) { return app.UI.escapeHTML(String(s == null ? '' : s)); }
-    function isManager() { return !!(app.Auth && app.Auth.isManager && app.Auth.isManager()); }
+    // 権限の設定の機能（js/common/permissions.js）
+    function can(f) { return !!(app.Auth && app.Auth.can && app.Auth.can(f)); }
     function iso(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
     function fmt(date) {
         var d = new Date(date + 'T00:00:00');
@@ -72,7 +73,7 @@ FCOjima.Hub.Home = FCOjima.Hub.Home || {};
     /** 指導の都合の未回答の日数（自分が指導者でなければ 0） */
     async function coachLeft() {
         var C = app.Hub.Coaching;
-        if (!C || !isManager()) return 0;
+        if (!C || !can('coach_answer')) return 0;
         var me = C.myCoach(_profile);
         if (!me) return 0;
         await C.ensureLoaded();
@@ -91,7 +92,7 @@ FCOjima.Hub.Home = FCOjima.Hub.Home || {};
 
     /** 今週の予定の配車の状況を読み込む（読み込み済みの予定は reload のときだけ読み直す） */
     async function loadWeek(reload) {
-        if (!isManager()) return;
+        if (!can('attendance_view')) return;
         if (reload) _week = {};
         var C = app.Hub.Coaching;
         if (C) await C.ensureLoaded();
@@ -221,7 +222,7 @@ FCOjima.Hub.Home = FCOjima.Hub.Home || {};
                 '<span class="hh-count">未回答 ' + _coachLeft + '日</span><span class="hh-go">答える ›</span></button>';
         }
         // 承認待ち
-        if (_pending > 0 && isManager()) {
+        if (_pending > 0 && can('approve')) {
             todos += '<button type="button" class="hh-card hh-link" data-go="admin-tab"><span class="hh-ttl">👤 承認待ち</span>' +
                 '<span class="hh-count">' + _pending + '人</span><span class="hh-go">確認する ›</span></button>';
         }
@@ -267,7 +268,7 @@ FCOjima.Hub.Home = FCOjima.Hub.Home || {};
 
     /** 今週の予定（マネージャー）: 予定ごとに 出欠・車の席・帯同指導者・割り当て */
     function weekHtml() {
-        if (!isManager()) return '';
+        if (!can('attendance_view')) return '';
         var evs = weekEvents().filter(function(ev) { return _week[String(ev.id)]; });
         if (!evs.length) return '';
         var chip = function(state, text) { return '<span class="hh-chip' + (state ? ' is-' + state : '') + '">' + text + '</span>'; };

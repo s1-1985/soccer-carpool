@@ -55,7 +55,11 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
     function fmt(date) { var d = dateOf(date); return (d.getMonth() + 1) + '/' + d.getDate() + '(' + DOW[d.getDay()] + ')'; }
     function holName(date) { return (app.Holidays && app.Holidays.nameOf) ? app.Holidays.nameOf(date) : ''; }
     function dayCls(date) { var w = dateOf(date).getDay(); return (w === 0 || holName(date)) ? ' co-sun' : w === 6 ? ' co-sat' : ''; }
-    function isManager() { return !!(app.Auth && app.Auth.isManager && app.Auth.isManager()); }
+    // 権限の設定: 「指導の都合を回答する（自分の分）」と「指導者の予定・担当を決める」（初期値はどちらも管理者・監督・コーチ・役員）
+    function can(f) { return !!(app.Auth && app.Auth.can && app.Auth.can(f)); }
+    function canAnswer() { return can('coach_answer'); }
+    function canPlan() { return can('coach_plan'); }
+    function canReadAvail() { return canAnswer() || canPlan(); }
     function shortName(m) { return (m && m.abbr) ? m.abbr : (m ? m.name : ''); }
     function evTime(ev) { return ev.startTime ? ev.startTime + '〜' : (ev.departureTime ? ev.departureTime + '出発' : ''); }
     C.ANSWERS = ANS;
@@ -165,7 +169,7 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
             if (!C._assign) C._assign = {};
         })];
         tasks.push(C.loadDates());
-        if (isManager()) {
+        if (canReadAvail()) {
             tasks.push(app.DB.loadCoachAvailability().then(function(m) { C._avail = m; C._availFailed = false; }).catch(function(e) {
                 console.warn('指導者の都合を読み込めませんでした:', e);
                 if (!C._avail) C._avail = {};
@@ -175,7 +179,7 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
         await Promise.all(tasks);
     };
     C.ensureLoaded = async function() {
-        if (C._assign === null || C._dates === null || (isManager() && C._avail === null)) await C.load();
+        if (C._assign === null || C._dates === null || (canReadAvail() && C._avail === null)) await C.load();
     };
 
     /** 都合を聞く日の追加・外した日を読み込む（読み込めなければ土日・祝日だけ） */
@@ -408,10 +412,10 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
                 b.addEventListener('click', function() { app.Hub.Calendar.showEventDetails(b.dataset.event); });
             });
         };
-        // 都合はマネージャー（監督・コーチ・役員・管理者）しか読み書きできない。ログインの役割が保護者のままの
-        // 指導者には、押しても保存できないボタンを出さずに案内する（担当は見られる）
-        if (!isManager()) {
-            container.innerHTML = html + '<p class="co-hint co-role-hint">都合を回答するには、ログインの役割が「監督」か「コーチ」である必要があります。管理者に役割の変更を頼んでください。</p></section>';
+        // 都合は「指導の都合を回答する」の権限がある人しか読み書きできない（権限の設定）。権限のない指導者
+        // （ログインの役割が保護者のままの人など）には、押しても保存できないボタンを出さずに案内する（担当は見られる）
+        if (!canAnswer()) {
+            container.innerHTML = html + '<p class="co-hint co-role-hint">都合を回答する権限がありません。管理者・監督・コーチに、ログインの役割を「コーチ」にするか、権限の設定で「指導の都合を回答する」を付けてもらってください。</p></section>';
             bindDuty();
             return;
         }
@@ -561,7 +565,7 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
      * @param {string} [date] - 'YYYY-MM-DD' を渡すとその日を開く（カレンダーの「都合・担当を見る」など）
      */
     C.openPlanner = async function(date) {
-        if (!isManager()) return;
+        if (!canPlan()) return;
         var modal = ensureModal('coach-planner-modal', 1020, '<h2 class="co-modal-title">🧢 指導者の予定・担当</h2>');
         if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
             C._planSel = date;
@@ -842,7 +846,7 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
      * @param {Function} [onDone] - 追加したあとに呼ぶ
      */
     C.openAddDates = function(onDone) {
-        if (!isManager()) return;
+        if (!canPlan()) return;
         var modal = ensureModal('coach-dates-modal', 1030, '<h2 class="co-modal-title">都合を聞く日を追加</h2>' +
             '<p class="co-hint">お盆・年末年始など、土日・祝日のほかに活動する日を追加します（土日・祝日は自動で聞きます）。追加した日はコーチの「指導の予定」に出ます。</p>');
         var today = iso(new Date());
@@ -914,7 +918,7 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
      * 行ける人・未回答・行けない人に分けて出す。同じ日の他の予定の担当なら「〇〇も担当」
      */
     C.openAssign = async function(ev, onClose) {
-        if (!isManager()) return;
+        if (!canPlan()) return;
         var modal = ensureModal('coach-assign-modal', 1030, '<h2 class="co-modal-title co-assign-title"></h2><p class="co-hint">押すと担当になります（もう一度押すと外れます）。すぐ保存されます。</p>');
         modal.querySelector('.co-assign-title').textContent = fmt(ev.date) + ' ' + (ev.title || '') + ' の担当';
         modal._onClose = onClose || null;
@@ -989,13 +993,13 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
     C.detailValue = function(ev) {
         var names = C.assignedMembers(ev.id).map(function(m) { return m.name; });
         if (names.length) return esc(names.join('・'));
-        return isManager() ? '<span class="co-muted">未定</span>' : '';
+        return canPlan() ? '<span class="co-muted">未定</span>' : '';
     };
 
     /** 予定の追加・編集フォーム: 選んだ日の指導者の都合（マネージャーのみ） */
     C.renderFormHint = async function(el, date) {
         if (!el) return;
-        if (!isManager() || !date || C.coaches().length === 0) { el.innerHTML = ''; el.style.display = 'none'; return; }
+        if (!canPlan() || !date || C.coaches().length === 0) { el.innerHTML = ''; el.style.display = 'none'; return; }
         el.style.display = '';
         el.dataset.date = date;
         if (C._avail === null || C._dates === null) {
@@ -1046,7 +1050,7 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
     C.renderDayAsk = async function(el, date) {
         if (!el) return;
         date = String(date);
-        if (!isManager() || C.coaches().length === 0 || date < iso(new Date())) { el.innerHTML = ''; el.style.display = 'none'; return; }
+        if (!canPlan() || C.coaches().length === 0 || date < iso(new Date())) { el.innerHTML = ''; el.style.display = 'none'; return; }
         el.style.display = '';
         el.dataset.date = date;
         if (C._dates === null || C._avail === null) {
@@ -1096,7 +1100,7 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
      * カレンダーの日付に、土日・祝日のほかに都合を聞く日として追加した日の印（🧢）を付ける（マネージャーのみ）
      */
     C.markCalendar = function() {
-        if (!isManager()) return;
+        if (!canPlan()) return;
         if (C._dates === null) {
             if (!C._datesLoading) {
                 C._datesLoading = true;
