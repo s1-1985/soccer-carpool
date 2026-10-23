@@ -28,6 +28,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
      */
     Admin.init = function() {
         console.log('管理タブを初期化しています...');
+        Admin.applyPermissions();
         Admin.refresh();
         Admin.initAttendanceMatrixModal();
         Admin.initEventDetailModal();
@@ -37,6 +38,35 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         Admin.initDutyGroupsModal();
         Admin.initAllUsersModal();
         Admin.initSignupQrModal();
+        if (app.Hub.PermSettings && app.Hub.PermSettings.init) app.Hub.PermSettings.init();
+    };
+
+    // 管理タブのボタンと、それを使える機能（権限の設定）。権限がなければボタンを出さない
+    var TILE_FEATURES = {
+        'btn-coach-planner': 'coach_plan',
+        'btn-attendance-matrix': 'attendance_view',
+        'btn-driver-stats': 'attendance_view',
+        'btn-attendance-rate': 'attendance_view',
+        'btn-signup-qr': 'signup_qr',
+        'btn-duty-groups': 'duty',
+        'btn-luggage-settings': 'luggage'
+    };
+    function can(f) { return !!(app.Auth && app.Auth.can && app.Auth.can(f)); }
+    Admin.can = can;
+
+    /** 権限に合わせて管理タブのボタン・承認待ちの欄を出し分ける（登録済みユーザー・権限の設定は管理者・監督・コーチ・役員の全員） */
+    Admin.applyPermissions = function() {
+        Object.keys(TILE_FEATURES).forEach(function(id) {
+            var b = document.getElementById(id);
+            if (b) b.style.display = can(TILE_FEATURES[id]) ? '' : 'none';
+        });
+        var pend = document.getElementById('pending-users-section');
+        if (pend) pend.style.display = can('approve') ? '' : 'none';
+        // ボタンが全部隠れた見出しは出さない
+        document.querySelectorAll('#admin .admin-group').forEach(function(g) {
+            var shown = [].some.call(g.querySelectorAll('.admin-tile'), function(b) { return b.style.display !== 'none'; });
+            g.style.display = shown ? '' : 'none';
+        });
     };
 
     /**
@@ -138,6 +168,10 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
     Admin.loadPendingUsers = async function() {
         var el = document.getElementById('pending-users-list');
         if (!el) return;
+        if (!can('approve')) {
+            if (app.Hub.Home && app.Hub.Home.setPendingCount) app.Hub.Home.setPendingCount(0);
+            return;
+        }
         el.innerHTML = '<p class="loading">読み込み中...</p>';
 
         try {
@@ -172,6 +206,26 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         var hit = n ? adults.filter(function(m) { return Utils.normalizeNameLoose(m.name) === n; }) : [];
         if (hit.length !== 1 && k) hit = adults.filter(function(m) { return m.kana && Utils.normalizeNameLoose(m.kana) === k; });
         return hit.length === 1 ? hit[0] : null;
+    };
+
+    function myRole() {
+        var p = app.Auth && app.Auth.currentUserProfile;
+        return p ? p.role : '';
+    }
+
+    /** 承認するときに付けられる役割（固定のきまり。監督は管理者だけ） */
+    Admin._approvableRoles = function() {
+        var me = myRole();
+        return APPROVE_ROLES.filter(function(r) {
+            return r === 'coach' ? me === 'admin' : FCOjima.Perm.canChangeRole(me, 'parent', r);
+        });
+    };
+
+    /** 登録済みユーザー（読み込んだもの。まだなら読む） */
+    Admin._users = null;
+    Admin._ensureUsers = async function() {
+        if (!Admin._users) Admin._users = await FCOjima.DB.loadAllUsers();
+        return Admin._users;
     };
 
     /** 承認するときの役割の初期値: 名簿の役割 → 申請の立場の順 */
@@ -225,10 +279,12 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 '<button type="button" class="reject-btn" data-uid="' + u.uid + '">却下</button>' +
             '</div>';
 
-        // 役割
+        // 役割（付けられる役割だけ。監督にできるのは管理者、コーチは管理者・監督・コーチ、役員は管理者・監督・コーチ・役員）
         var roleSel = card.querySelector('.pending-role-select');
-        var defRole = Admin._defaultApproveRole(u, matched);
-        APPROVE_ROLES.forEach(function(r) {
+        var allowed = Admin._approvableRoles();
+        var pickRole = function(r) { return allowed.indexOf(r) !== -1 ? r : 'parent'; };
+        var defRole = pickRole(Admin._defaultApproveRole(u, matched));
+        allowed.forEach(function(r) {
             var opt = document.createElement('option');
             opt.value = r;
             opt.textContent = ROLE_LABELS[r];
@@ -262,7 +318,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
         };
         memberSel.addEventListener('change', function() {
             var m = memberOf();
-            if (m) roleSel.value = Admin._defaultApproveRole(u, m);
+            if (m) roleSel.value = pickRole(Admin._defaultApproveRole(u, m));
             updateNote();
         });
         updateNote();
@@ -343,6 +399,12 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             });
             lines += '\n子供: ' + (names.length > 0 ? names.join('、') : '（なし）');
         }
+        // 監督として承認するときは、いまの監督（ほかに「監督」の役割の人）はコーチになる（監督は1人だけ）
+        if (extra.role === 'coach') {
+            var others = (await Admin._ensureUsers()).filter(function(x) { return x.role === 'coach' && x.uid !== uid; });
+            extra.demoteUids = others.map(function(x) { return x.uid; });
+            if (others.length) lines += '\n今の監督（' + others.map(function(x) { return x.name || x.uid; }).join('・') + '）はコーチになります';
+        }
         if (!confirm((name || uid) + ' を承認しますか？' + lines)) return;
         try {
             var currentUid = app.Auth && app.Auth.getCurrentUser() ? app.Auth.getCurrentUser().uid : null;
@@ -420,11 +482,14 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
 
         try {
             var users = await FCOjima.DB.loadAllUsers();
+            Admin._users = users;
             var approved = users.filter(function(u) { return u.status === 'approved'; });
             var rejected = users.filter(function(u) { return u.status === 'rejected'; });
             el.innerHTML = '';
+            // 監督（1人だけ）の指定・引き継ぎ
+            el.appendChild(Admin._kantokuBox(approved));
             if (approved.length === 0) {
-                el.innerHTML = '<p style="color:#999;padding:8px;">登録済みユーザーはいません。</p>';
+                el.insertAdjacentHTML('beforeend', '<p style="color:#999;padding:8px;">登録済みユーザーはいません。</p>');
             }
             var members = app.Hub.members || [];
 
@@ -450,13 +515,15 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 ctrl.style.alignItems = 'center';
 
                 var currentProfile = app.Auth && app.Auth.currentUserProfile;
-                var iAmAdmin = !!(currentProfile && currentProfile.role === 'admin');
+                var me = myRole();
+                var iAmAdmin = me === 'admin';
 
+                // 選べる役割: 今の役割と、今の役割から変えてよい役割（固定のきまり。js/common/permissions.js）。
+                // 監督にする・監督を外すのは管理者だけ（いまの監督は上の欄で次の監督を指名する）
                 var select = document.createElement('select');
                 select.style.cssText = 'padding:4px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px;';
                 Object.keys(ROLE_LABELS).forEach(function(role) {
-                    // 管理者役割の付与は admin のみ（Firestoreルールと同期）
-                    if (role === 'admin' && !iAmAdmin && u.role !== 'admin') return;
+                    if (role !== u.role && !FCOjima.Perm.canChangeRole(me, u.role || 'parent', role)) return;
                     var opt = document.createElement('option');
                     opt.value = role;
                     opt.textContent = ROLE_LABELS[role];
@@ -466,11 +533,14 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
 
                 if (u.uid === (currentProfile && currentProfile.uid)) {
                     select.disabled = true;
-                    select.title = '自分の役割は変更できません';
+                    select.title = u.role === 'coach' ? '監督は上の欄で次の監督を指名できます' : '自分の役割は変更できません';
                 } else if (u.role === 'admin' && !iAmAdmin) {
-                    // 管理者の役割変更（剥奪）も admin のみ（Firestoreルールと同期）
+                    // 管理者に対する操作は管理者だけ（Firestoreルールと同期）
                     select.disabled = true;
                     select.title = '管理者の役割変更は管理者のみ可能です';
+                } else if (select.options.length <= 1) {
+                    select.disabled = true;
+                    select.title = (ROLE_LABELS[u.role] || '') + 'を外せるのは' + Admin._removersText(u.role) + 'です';
                 }
 
                 var saveBtn = document.createElement('button');
@@ -514,7 +584,8 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                     btn.style.cssText = 'padding:4px 12px;font-size:12px;';
                     btn.addEventListener('click', function() { Admin.approveUser(u.uid, u.name); });
                     row.appendChild(info);
-                    row.appendChild(btn);
+                    // 承認し直せるのは、承認の権限があり、その人の役割を付けられる人（ルールと同じ）
+                    if (can('approve') && FCOjima.Perm.canAssignRole(myRole(), u.role || 'parent')) row.appendChild(btn);
                     el.appendChild(row);
                 });
             }
@@ -527,14 +598,100 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
      * ユーザー役割を変更
      */
     Admin.updateRole = async function(uid, newRole, name) {
+        var users = await Admin._ensureUsers().catch(function() { return []; });
+        var target = users.filter(function(x) { return x.uid === uid; })[0] || {};
+        if (target.role === newRole) return;
         try {
-            await FCOjima.DB.updateUserRole(uid, newRole);
+            if (newRole === 'coach') {
+                // 監督にする（管理者）: いまの監督・ほかに「監督」の役割の人はコーチになる（監督は1人だけ）
+                var others = users.filter(function(x) { return x.role === 'coach' && x.uid !== uid; });
+                if (!confirm((name || uid) + 'さんを監督にしますか？' +
+                    (others.length ? '\n今の監督（' + others.map(function(x) { return x.name || x.uid; }).join('・') + '）はコーチになります' : ''))) return;
+                await FCOjima.DB.setKantoku(uid, others.map(function(x) { return x.uid; }));
+                app.Auth.kantokuUid = uid;
+            } else if (target.role === 'coach') {
+                // 監督を外す（管理者）
+                if (!confirm((name || uid) + 'さんを監督から外して「' + (ROLE_LABELS[newRole] || newRole) + '」にしますか？\n（監督がいなくなります。新しい監督は管理者が指定します）')) return;
+                await FCOjima.DB.removeKantoku(uid, newRole, app.Auth.kantokuUid === uid);
+                if (app.Auth.kantokuUid === uid) app.Auth.kantokuUid = '';
+            } else {
+                await FCOjima.DB.updateUserRole(uid, newRole);
+            }
             if (UI) UI.showAlert((name || uid) + ' の役割を「' + (ROLE_LABELS[newRole] || newRole) + '」に変更しました', 'success');
             // 一覧を読み直す（変更前の役割のまま表示・操作可否が判定され続けないように）
             Admin.loadAllUsers();
         } catch(e) {
             if (UI) UI.showAlert('変更に失敗しました: ' + e.message, 'error');
         }
+    };
+
+    /** その役割を外せる人（説明用） */
+    Admin._removersText = function(role) {
+        var who = ['admin', 'coach', 'assist', 'officer'].filter(function(r) { return FCOjima.Perm.canAssignRole(r, role); });
+        if (role === 'coach' || role === 'admin') who = ['admin'];
+        return who.map(function(r) { return ROLE_LABELS[r]; }).join('・');
+    };
+
+    /**
+     * 監督（1人だけ）の欄: いまの監督と、管理者の「監督に指定する」、いまの監督の「次の監督に指名する」
+     * @param {Array} approved - 承認済みのユーザー
+     */
+    Admin._kantokuBox = function(approved) {
+        var esc = UI.escapeHTML;
+        var me = app.Auth.currentUserProfile || {};
+        var kUid = app.Auth.kantokuUid || '';
+        var coachUsers = approved.filter(function(u) { return u.role === 'coach'; });
+        var current = approved.filter(function(u) { return u.uid === kUid && u.role === 'coach'; })[0] || null;
+        var box = document.createElement('div');
+        box.className = 'kantoku-box';
+        var html = '<div class="kantoku-head">🧢 監督（1人だけ）: <b>' + (current ? esc(current.name || '') : 'まだ指定されていません') + '</b></div>';
+        var stray = coachUsers.filter(function(u) { return !current || u.uid !== current.uid; });
+        if (stray.length) {
+            html += '<p class="kantoku-warn">⚠ 役割が「監督」の人が' + (current ? 'ほかに' : '') + stray.length + '人います（' +
+                esc(stray.map(function(u) { return u.name || ''; }).join('・')) + '）。管理者が監督を1人指定してください（ほかの人はコーチになります）</p>';
+        }
+        var candidates = approved.filter(function(u) { return u.role !== 'admin' && u.uid !== (current && current.uid); });
+        var options = candidates.map(function(u) {
+            return '<option value="' + esc(u.uid) + '">' + esc(u.name || u.email || u.uid) + '（' + esc(ROLE_LABELS[u.role] || u.role || '') + '）</option>';
+        }).join('');
+        if (me.role === 'admin') {
+            html += '<div class="kantoku-row"><select class="kantoku-select"><option value="">監督にする人を選ぶ</option>' + options + '</select>' +
+                '<button type="button" class="kantoku-btn" data-mode="designate">監督に指定する</button></div>';
+        } else if (current && current.uid === me.uid) {
+            html += '<div class="kantoku-row"><select class="kantoku-select"><option value="">次の監督を選ぶ</option>' +
+                candidates.filter(function(u) { return u.uid !== me.uid; }).map(function(u) {
+                    return '<option value="' + esc(u.uid) + '">' + esc(u.name || u.email || u.uid) + '（' + esc(ROLE_LABELS[u.role] || u.role || '') + '）</option>';
+                }).join('') + '</select>' +
+                '<button type="button" class="kantoku-btn" data-mode="handover">次の監督に指名する</button></div>' +
+                '<p class="kantoku-note">指名すると、あなたはコーチになります</p>';
+        } else {
+            html += '<p class="kantoku-note">監督は管理者が指定し、いまの監督が次の監督を指名できます</p>';
+        }
+        box.innerHTML = html;
+        var btn = box.querySelector('.kantoku-btn');
+        if (btn) btn.addEventListener('click', function() {
+            var sel = box.querySelector('.kantoku-select');
+            var uid = sel && sel.value;
+            if (!uid) { UI.showAlert('人を選んでください', 'warning'); return; }
+            var u = approved.filter(function(x) { return x.uid === uid; })[0] || {};
+            if (btn.dataset.mode === 'designate') Admin.updateRole(uid, 'coach', u.name);
+            else Admin.handoverKantoku(uid, u.name);
+        });
+        return box;
+    };
+
+    /** 監督の引き継ぎ（いまの監督が次の監督を指名する。自分はコーチになる） */
+    Admin.handoverKantoku = async function(nextUid, name) {
+        var me = app.Auth.currentUserProfile || {};
+        if (!confirm((name || nextUid) + 'さんを次の監督にしますか？\nあなたはコーチになります（元に戻すには、' + (name || '次の監督') + 'さんか管理者に頼んでください）')) return;
+        try {
+            await FCOjima.DB.handoverKantoku(me.uid, nextUid);
+        } catch (e) {
+            UI.showAlert('監督を引き継げませんでした: ' + e.message, 'error', 8000);
+            return;
+        }
+        UI.showAlert((name || '') + 'さんが監督になりました。あなたはコーチになりました（画面を読み込み直します）', 'success', 4000);
+        setTimeout(function() { window.location.reload(); }, 1500);
     };
 
     // =============================================
@@ -790,7 +947,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
 
                     // 同じ日に他の試合・練習がある対象セルはタップで「参加イベント移動」モーダルを開く
                     // （行事は同じ日の試合と両方に出られるため、移動元・移動先にしない）
-                    if (status !== 'na' && FCOjima.PlayerMove.isMovableEvent(ev)) {
+                    if (status !== 'na' && can('player_move') && FCOjima.PlayerMove.isMovableEvent(ev)) {
                         var sameDayOthers = targetEvents.filter(function(o) {
                             return String(o.id) !== String(ev.id) && o.date === ev.date && FCOjima.PlayerMove.isMovableEvent(o);
                         });
@@ -1469,6 +1626,12 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 groupId: groupId || null,
                 groupName: group ? group.name : null
             };
+            Object.assign(notice, FCOjima.Auth.authorStamp ? FCOjima.Auth.authorStamp() : {});
+            try {
+                await FCOjima.DB.putNotification(notice);
+            } catch (e) {
+                console.warn('当番のお知らせを投稿できませんでした:', e);
+            }
             FCOjima.Hub.notifications = FCOjima.Hub.notifications || [];
             FCOjima.Hub.notifications.unshift(notice);
             Storage.saveNotifications(FCOjima.Hub.notifications);
@@ -1497,7 +1660,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
      * @param {Array} others - 同日の他イベント（移動先候補）
      */
     Admin.openMatrixMoveModal = function(member, fromEv, others) {
-        if (!FCOjima.Auth.isManager()) return;
+        if (!can('player_move')) return;
 
         var Utils = FCOjima.Utils;
         var info = document.getElementById('matrix-move-info');
@@ -1632,8 +1795,8 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             html += FCOjima.Checklist.formatLuggage(ev.luggage);
         }
 
-        // 当番グループ割り当て（機能が有効な場合のみ・管理者が変更可）
-        if (FCOjima.Hub.dutyEnabled) {
+        // 当番グループ割り当て（機能が有効な場合のみ・当番の権限がある人が変更可）
+        if (FCOjima.Hub.dutyEnabled && can('duty')) {
             var dutyGroups = FCOjima.Hub.dutyGroups || [];
             var currentAssignment = FCOjima.Hub.getDutyAssignment(ev.id);
             html += '<div style="display:flex;align-items:center;gap:8px;margin:8px 0;font-size:13px;">'

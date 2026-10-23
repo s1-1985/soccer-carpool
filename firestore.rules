@@ -8,16 +8,20 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function userPath(teamId, uid) {
+      return /databases/$(database)/documents/teams/$(teamId)/users/$(uid);
+    }
+
     // 自分のユーザードキュメントが存在するか
     // ※ get(...).exists は存在しないプロパティ（常に undefined）で、これを使うと
     //   承認チェックが全端末で false になり events/venues/notifications/logs/eventData
     //   の読み取りが全滅する。存在確認は必ず exists() を使い、get() の前段でガードする。
     function userDocExists(teamId) {
-      return exists(/databases/$(database)/documents/teams/$(teamId)/users/$(request.auth.uid));
+      return exists(userPath(teamId, request.auth.uid));
     }
 
     function userData(teamId) {
-      return get(/databases/$(database)/documents/teams/$(teamId)/users/$(request.auth.uid)).data;
+      return get(userPath(teamId, request.auth.uid)).data;
     }
 
     function isApproved(teamId) {
@@ -28,12 +32,103 @@ service cloud.firestore {
       return userDocExists(teamId) ? userData(teamId).role : 'none';
     }
 
+    // 管理者・監督・コーチ・役員（管理タブ・権限の設定・役割の変更）
     function isManager(teamId) {
       return isApproved(teamId) && userRole(teamId) in ['admin', 'coach', 'assist', 'officer'];
     }
 
     function isAdmin(teamId) {
       return isApproved(teamId) && userRole(teamId) == 'admin';
+    }
+
+    // ========== 機能ごとの権限（権限の設定。js/common/permissions.js と同じにすること）==========
+    // teams/{チーム}/settings/permissions: { coach: { 機能: true/false }, assist: {...}, officer: {...}, parent: {...} }
+    // 書かれていない機能は初期値（以前の動きと同じ）。管理者は常にすべて使える（欄そのものがない）
+
+    function permPath(teamId) {
+      return /databases/$(database)/documents/teams/$(teamId)/settings/permissions;
+    }
+
+    function permFeatures() {
+      return ['events', 'members', 'venues', 'notices_delete', 'player_move', 'coach_answer',
+              'coach_plan', 'approve', 'attendance_view', 'duty', 'luggage', 'signup_qr', 'logs_view'];
+    }
+
+    // 保護者にも付けられる機能（管理タブの中の機能は付けられない）
+    function parentFeatures() {
+      return ['events', 'members', 'venues', 'notices_delete', 'player_move', 'coach_answer'];
+    }
+
+    function defaultPerm(role, f) {
+      return role in ['coach', 'assist', 'officer'] ? f in permFeatures() : (role == 'parent' && f == 'events');
+    }
+
+    function permOf(teamId, role, f) {
+      return (exists(permPath(teamId)) && get(permPath(teamId)).data.get(role, {}).get(f, null) is bool)
+        ? get(permPath(teamId)).data.get(role, {}).get(f, false)
+        : defaultPerm(role, f);
+    }
+
+    // 自分がその機能を使えるか
+    function can(teamId, f) {
+      return isApproved(teamId) && (
+        userRole(teamId) == 'admin'
+        || (userRole(teamId) in ['coach', 'assist', 'officer']
+            && permOf(teamId, userRole(teamId), f))
+        || (userRole(teamId) == 'parent' && f in parentFeatures()
+            && permOf(teamId, 'parent', f)));
+    }
+
+    // ========== 役割（固定のきまり。設定では変えられない）==========
+    // 管理者 ＞ 監督 ＞ コーチ ＞ 役員 ＞ 保護者
+    //  - 管理者を付ける・外す、管理者に対する操作は管理者だけ
+    //  - 監督は1人だけ（settings/roles の kantoku）。最初は管理者が指定し、監督は次の監督を指名できる
+    //  - コーチを付ける・外すのは 管理者・監督・コーチ、役員を付ける・外すのは 管理者・監督・コーチ・役員
+
+    function rolesPath(teamId) {
+      return /databases/$(database)/documents/teams/$(teamId)/settings/roles;
+    }
+
+    function kantokuBefore(teamId) {
+      return exists(rolesPath(teamId)) ? get(rolesPath(teamId)).data.get('kantoku', '') : '';
+    }
+
+    function kantokuAfter(teamId) {
+      return existsAfter(rolesPath(teamId)) ? getAfter(rolesPath(teamId)).data.get('kantoku', '') : '';
+    }
+
+    // その役割を付ける・外せるか（監督・管理者は別）
+    function canAssignRole(teamId, r) {
+      return userRole(teamId) == 'admin'
+        || r == 'parent'
+        || (r == 'officer' && userRole(teamId) in ['coach', 'assist', 'officer'])
+        || (r == 'assist' && userRole(teamId) in ['coach', 'assist']);
+    }
+
+    // ほかの人の役割を from → to にしてよいか
+    //  監督にする: 同じ書き込みで settings/roles の kantoku をその人にする（1人だけ）。管理者か、いまの監督（引き継ぎ）
+    //  監督を外す: 管理者だけ（settings/roles の kantoku もその人でなくなる）
+    function roleChangeOk(teamId, uid, from, to) {
+      return from == to || (
+        (from == 'admin' || to == 'admin' ? userRole(teamId) == 'admin' : true)
+        && (from == 'coach'
+            ? (userRole(teamId) == 'admin' && kantokuAfter(teamId) != uid)
+            : canAssignRole(teamId, from))
+        && (to == 'coach'
+            ? (kantokuAfter(teamId) == uid && (userRole(teamId) == 'admin' || kantokuBefore(teamId) == request.auth.uid))
+            : canAssignRole(teamId, to)));
+    }
+
+    // 監督の引き継ぎ: いまの監督が次の監督を指名し、自分はコーチになる（同じ書き込みで）
+    function selfHandoverOk(teamId, uid) {
+      return request.auth.uid == uid
+        && resource.data.get('role', '') == 'coach'
+        && request.resource.data.get('role', '') == 'assist'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role'])
+        && kantokuBefore(teamId) == uid
+        && kantokuAfter(teamId) != uid
+        && kantokuAfter(teamId) != ''
+        && getAfter(userPath(teamId, kantokuAfter(teamId))).data.get('role', '') == 'coach';
     }
 
     // メンバー m が自分の家庭の保護者か（氏名が自分のプロフィールと同じ、または同じ子供に紐づいている）
@@ -47,6 +142,19 @@ service cloud.firestore {
       );
     }
 
+    // メンバー（指導者）が自分か（ログインの名前とメンバーの名前が同じ）
+    function isOwnMember(teamId, memberId) {
+      return exists(/databases/$(database)/documents/teams/$(teamId)/members/$(memberId))
+        && get(/databases/$(database)/documents/teams/$(teamId)/members/$(memberId)).data.get('name', '') == userData(teamId).get('name', '');
+    }
+
+    // 連絡事項を書いたのが管理者か（書いた人の uid がある連絡事項だけ分かる）
+    function authorIsAdmin(teamId, d) {
+      return d.get('uid', '') is string && d.get('uid', '') != ''
+        && exists(userPath(teamId, d.get('uid', '')))
+        && get(userPath(teamId, d.get('uid', ''))).data.get('role', '') == 'admin';
+    }
+
     // ========== チームデータ ==========
 
     match /teams/{teamId} {
@@ -56,6 +164,69 @@ service cloud.firestore {
       match /config/{configId} {
         allow read:  if isAuth() && isManager(teamId);
         allow write: if false;  // アプリからは変更不可。Firebase Console/Admin SDK のみ
+      }
+
+      // ----- 権限の設定（機能ごと・役割ごとの ON/OFF）-----
+      // 変えられるのは 管理者・監督・コーチ・役員。自分より下の役割の欄だけ（管理者の欄はない）。
+      // 欄に書けるのは決まった機能の true/false だけで、付ける（true にする）のは自分も使える機能だけ
+      match /settings/permissions {
+        function lowerRoles(r) {
+          return r == 'admin' ? ['coach', 'assist', 'officer', 'parent']
+            : r == 'coach' ? ['assist', 'officer', 'parent']
+            : r == 'assist' ? ['officer', 'parent']
+            : r == 'officer' ? ['parent'] : [];
+        }
+        function grantOk(r, col, old, f) {
+          return col.get(f, false) is bool
+            && (col.get(f, false) != true || old.get(f, defaultPerm(r, f)) == true || can(teamId, f));
+        }
+        function colOk(r, old) {
+          let col = request.resource.data.get(r, {});
+          return col is map
+            && col.keys().hasOnly(r == 'parent' ? parentFeatures() : permFeatures())
+            && grantOk(r, col, old, 'events') && grantOk(r, col, old, 'members') && grantOk(r, col, old, 'venues')
+            && grantOk(r, col, old, 'notices_delete') && grantOk(r, col, old, 'player_move') && grantOk(r, col, old, 'coach_answer')
+            && grantOk(r, col, old, 'coach_plan') && grantOk(r, col, old, 'approve') && grantOk(r, col, old, 'attendance_view')
+            && grantOk(r, col, old, 'duty') && grantOk(r, col, old, 'luggage') && grantOk(r, col, old, 'signup_qr')
+            && grantOk(r, col, old, 'logs_view');
+        }
+        allow read: if isAuth() && isApproved(teamId);
+        allow create: if isAuth() && isManager(teamId)
+          && request.resource.data.keys().hasOnly(lowerRoles(userRole(teamId)))
+          && (!('coach' in request.resource.data) || colOk('coach', {}))
+          && (!('assist' in request.resource.data) || colOk('assist', {}))
+          && (!('officer' in request.resource.data) || colOk('officer', {}))
+          && (!('parent' in request.resource.data) || colOk('parent', {}));
+        allow update: if isAuth() && isManager(teamId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(lowerRoles(userRole(teamId)))
+          && (!('coach' in request.resource.data.diff(resource.data).affectedKeys()) || colOk('coach', resource.data.get('coach', {})))
+          && (!('assist' in request.resource.data.diff(resource.data).affectedKeys()) || colOk('assist', resource.data.get('assist', {})))
+          && (!('officer' in request.resource.data.diff(resource.data).affectedKeys()) || colOk('officer', resource.data.get('officer', {})))
+          && (!('parent' in request.resource.data.diff(resource.data).affectedKeys()) || colOk('parent', resource.data.get('parent', {})));
+        allow delete: if false;
+      }
+
+      // ----- いまの監督（1人だけ）-----
+      // kantoku を変えられるのは、管理者（指定）と、いまの監督（次の監督の指名）。
+      // 新しい監督は同じ書き込みで役割が「監督」になっていること、前の監督は「監督」でなくなっていること
+      match /settings/roles {
+        allow read: if isAuth() && isApproved(teamId);
+        allow create, update: if isAuth() && isApproved(teamId)
+          && request.resource.data.keys().hasOnly(['kantoku'])
+          && request.resource.data.get('kantoku', '') is string
+          && (request.resource.data.get('kantoku', '') == ''
+              || getAfter(userPath(teamId, request.resource.data.get('kantoku', ''))).data.get('role', '') == 'coach')
+          && (kantokuBefore(teamId) == '' || kantokuBefore(teamId) == request.resource.data.get('kantoku', '')
+              || getAfter(userPath(teamId, kantokuBefore(teamId))).data.get('role', '') != 'coach')
+          && (isAdmin(teamId)
+              || (kantokuBefore(teamId) == request.auth.uid
+                  && request.resource.data.get('kantoku', '') != ''
+                  && request.resource.data.get('kantoku', '') != request.auth.uid));
+        allow delete: if false;
+      }
+
+      match /settings/{other} {
+        allow read, write: if false;
       }
 
       // ----- ユーザープロファイル（保護者・スタッフ登録・承認管理）-----
@@ -75,14 +246,22 @@ service cloud.firestore {
           && request.resource.data.status == 'pending'
           && request.resource.data.role == 'parent';
 
-        // マネージャーは承認・役割変更が可能
-        // ただし自分自身の status/role は変更不可（自分昇格防止）
-        // admin 役割の付与・剥奪は admin のみ可能
-        allow update: if isAuth()
-          && isManager(teamId)
-          && request.auth.uid != uid
-          && (request.resource.data.role != 'admin' || isAdmin(teamId))
-          && (resource.data.role != 'admin' || isAdmin(teamId));
+        // 承認・却下（申請の承認の権限。相手がいまの役割を外せる人のときだけ＝役員はコーチ・監督を却下にできない）、
+        // 役割の変更（上の固定のきまり）、名前を名簿に合わせる（承認・名簿の権限）。
+        // 自分自身は変えられない（監督の引き継ぎで自分がコーチになるときだけ）。管理者に対する操作は管理者だけ
+        allow update: if isAuth() && isApproved(teamId) && (
+          selfHandoverOk(teamId, uid)
+          || (request.auth.uid != uid
+              && isManager(teamId)
+              && (resource.data.get('role', '') != 'admin' || isAdmin(teamId))
+              && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['role', 'status', 'name', 'childrenIds', 'childrenLinked', 'approvedAt', 'approvedBy'])
+              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'childrenIds', 'childrenLinked', 'approvedAt', 'approvedBy'])
+                  || (can(teamId, 'approve') && canAssignRole(teamId, resource.data.get('role', 'parent'))))
+              && (!('name' in request.resource.data.diff(resource.data).affectedKeys())
+                  || can(teamId, 'approve') || can(teamId, 'members'))
+              && roleChangeOk(teamId, uid, resource.data.get('role', 'parent'), request.resource.data.get('role', 'parent')))
+        );
 
         // 削除は不可（Firebase Console のみ）
         allow delete: if false;
@@ -96,10 +275,8 @@ service cloud.firestore {
         // 入力する方式に変え、名簿との照合は承認時に管理者が行う（hub/register.html・管理タブ）
         allow read: if isAuth() && isApproved(teamId);
 
-        // 作成・更新: マネージャーのみ
-        // TODO: 将来的にその選手の保護者も編集可にする
-        allow create, update: if isAuth() && isManager(teamId);
-        allow delete: if isAuth() && isManager(teamId);
+        // 作成・更新・削除: 名簿の権限（初期値は 管理者・監督・コーチ・役員）
+        allow create, update, delete: if isAuth() && can(teamId, 'members');
 
         // 兄弟児（siblings）だけは保護者本人も変更できる（車提供の画面から自分の家庭の兄弟児を登録・削除）。
         // 対象は自分の家庭の保護者のメンバー（氏名が自分のプロフィールと同じ、または同じ子供に紐づいている）。
@@ -112,27 +289,44 @@ service cloud.firestore {
       // ----- イベント（予定）-----
       match /events/{eventId} {
         allow read: if isAuth() && isApproved(teamId);
-        // 承認済みユーザーなら誰でも作成・編集・削除可（ユーザーの方針）
-        allow write: if isAuth() && isApproved(teamId);
+        // 予定の権限（初期値は承認済みの全員。以前と同じ）
+        allow create, delete: if isAuth() && can(teamId, 'events');
+        // 学年外の選手を加える・外す（出欠ページの「参加者を追加」など）は承認済みならだれでも
+        allow update: if isAuth() && (can(teamId, 'events')
+          || (isApproved(teamId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['extraPlayers'])));
       }
 
       // ----- 会場 -----
       match /venues/{venueId} {
         allow read: if isAuth() && isApproved(teamId);
-        allow write: if isAuth() && isManager(teamId);
+        allow write: if isAuth() && can(teamId, 'venues');
       }
 
       // ----- 連絡事項 -----
+      // 書くのは承認済みならだれでも（書いた人の uid を付けるなら自分の uid。管理者が書いた印 byAdmin は管理者だけ）。
+      // 消せるのは、書いた本人・管理者・「ほかの人の連絡の削除」の権限がある人（管理者が書いた連絡は管理者だけ）。
+      // uid のない以前の連絡は、名前が同じなら本人として消せる
       match /notifications/{notifId} {
-        allow read:   if isAuth() && isApproved(teamId);
-        allow write:  if isAuth() && isApproved(teamId);
+        allow read: if isAuth() && isApproved(teamId);
+        allow create: if isAuth() && isApproved(teamId)
+          && request.resource.data.get('uid', request.auth.uid) == request.auth.uid
+          && (!('byAdmin' in request.resource.data) || isAdmin(teamId));
+        allow update: if isAuth() && isAdmin(teamId);
+        allow delete: if isAuth() && isApproved(teamId) && (
+          isAdmin(teamId)
+          || resource.data.get('uid', '') == request.auth.uid
+          || (resource.data.get('uid', '') == '' && resource.data.get('user', '') != ''
+              && resource.data.get('user', '') == userData(teamId).get('name', ''))
+          || (can(teamId, 'notices_delete') && !authorIsAdmin(teamId, resource.data)));
       }
 
       // ----- ログ -----
+      // 見るのは「操作ログを見る」の権限がある人、消すのは管理者だけ
       match /logs/{logId} {
-        allow read:   if isAuth() && isManager(teamId);
+        allow read:   if isAuth() && can(teamId, 'logs_view');
         allow create: if isAuth() && isApproved(teamId);
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if isAuth() && isAdmin(teamId);
       }
 
       // ----- イベント固有データ（配車・出欠・座席割り当て）-----
@@ -143,48 +337,50 @@ service cloud.firestore {
       // ----- 当番表 設定（機能ON/OFF）-----
       match /dutySettings/{settingId} {
         allow read:  if isAuth() && isApproved(teamId);
-        allow write: if isAuth() && isManager(teamId);
+        allow write: if isAuth() && can(teamId, 'duty');
       }
 
       // ----- 荷物（共用備品）マスタ（管理タブで登録）-----
       match /luggageSettings/{settingId} {
         allow read:  if isAuth() && isApproved(teamId);
-        allow write: if isAuth() && isManager(teamId);
+        allow write: if isAuth() && can(teamId, 'luggage');
       }
 
       // ----- 当番グループ（当番の割り当て単位）-----
       match /dutyGroups/{groupId} {
         allow read:  if isAuth() && isApproved(teamId);
-        allow write: if isAuth() && isManager(teamId);
+        allow write: if isAuth() && can(teamId, 'duty');
       }
 
       // ----- 当番割り当て（イベント×グループ）-----
       // eventDataやeventsは承認済みなら誰でも書き込み可のため、当番割り当ては
-      // マネージャー限定にするために別コレクションに分離している
+      // 当番の権限がある人に限るために別コレクションに分離している
       match /dutyAssignments/{eventId} {
         allow read:  if isAuth() && isApproved(teamId);
-        allow write: if isAuth() && isManager(teamId);
+        allow write: if isAuth() && can(teamId, 'duty');
       }
 
       // ----- 指導者（監督・コーチ）の都合（日付ごとの ○/午前/午後/×）-----
-      // 回答するのは監督・コーチ、見て担当を決めるのは監督・コーチ・役員・管理者（どれもマネージャー）。
-      // コーチ本人がアプリを使っていなくても代わりに入れられるよう、マネージャーなら誰の分でも書ける
+      // 見るのは「指導者の予定・担当」か「指導の都合を回答する」の権限がある人。
+      // 書くのは「指導者の予定・担当」の権限がある人（本人の代わりに入れる）と、回答の権限がある本人（自分の分だけ）
       match /coachAvailability/{memberId} {
-        allow read, write: if isAuth() && isManager(teamId);
+        allow read: if isAuth() && (can(teamId, 'coach_plan') || can(teamId, 'coach_answer'));
+        allow write: if isAuth() && (can(teamId, 'coach_plan')
+          || (can(teamId, 'coach_answer') && isOwnMember(teamId, memberId)));
       }
 
       // ----- 指導者の担当（予定ごとに付く監督・コーチ）-----
-      // 予定の詳細に表示するため閲覧は承認済み全員、変更はマネージャーのみ
+      // 予定の詳細に表示するため閲覧は承認済み全員、変更は「指導者の予定・担当」の権限がある人
       match /coachAssignments/{eventId} {
         allow read:  if isAuth() && isApproved(teamId);
-        allow write: if isAuth() && isManager(teamId);
+        allow write: if isAuth() && can(teamId, 'coach_plan');
       }
 
       // ----- 指導者に都合を聞く日（土日・祝日のほかに足した日・外した日）-----
-      // 聞く日はコーチの「指導の予定」に出すため閲覧は承認済み全員、変更はマネージャーのみ
+      // 聞く日はコーチの「指導の予定」に出すため閲覧は承認済み全員、変更は「指導者の予定・担当」の権限がある人
       match /coachDates/{docId} {
         allow read:  if isAuth() && isApproved(teamId);
-        allow write: if isAuth() && isManager(teamId);
+        allow write: if isAuth() && can(teamId, 'coach_plan');
       }
     }
   }

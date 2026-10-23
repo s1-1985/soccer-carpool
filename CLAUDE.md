@@ -32,6 +32,10 @@ Vanilla JS + Firebase（Hosting/Firestore/Auth/Storage）。ビルド工程な�
     スマホ幅で必ず見る
 - `innerHTML` に入れる値は、出所に関係なく `UI.escapeHTML` を通す。予定の日付（`event.date`）も承認済みなら誰でも書き込めるので、
   日付として使う前に `YYYY-MM-DD` の形か確かめる（2026-10-23 指導者の画面で日付に仕込んだHTMLが動いた。詳細は handover.md）
+- 機能を使えるかは `Auth.can('機能')` で判定する（役割ごとの ON/OFF を管理タブ「権限の設定」で変えられる。2026-10-23）。
+  新しい機能を権限で絞るときは `js/common/permissions.js` の `FEATURES` と、`firestore.rules` の `permFeatures`・`parentFeatures`・`defaultPerm` を**両方**直す。
+  管理タブ・登録済みユーザー・権限の設定を開けるかだけは `Auth.isManager()`（管理者・監督・コーチ・役員）。
+  役割のきまり（監督は1人・任命と解任・管理者に対する操作は管理者だけ・ログの削除は管理者だけ）は設定では変えられない。詳細は handover.md
 - 画面を変えたら `tests/e2e/` の E2E テストを流す（下の「E2E テスト」）。表示を変えたらテストの期待値も直す（テストを消して通さない）
 
 ## Firestore ルール記述の注意点

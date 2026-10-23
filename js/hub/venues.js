@@ -12,18 +12,18 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
     var Storage = app.Storage;
 
     /**
-     * 会場を追加・編集・削除できるか（Firestoreルール上マネージャーのみ）。
+     * 会場を追加・編集・削除できるか（権限の設定の「会場」。初期値は管理者・監督・コーチ・役員）。
      * 以前は保護者にも追加・編集ボタンが表示され、保存すると画面上は成功表示なのに
      * サーバーへの書き込みは拒否され、再読み込みで消えていた
      */
     function canManage() {
-        return !!(app.Auth && app.Auth.isManager && app.Auth.isManager());
+        return !!(app.Auth && app.Auth.can && app.Auth.can('venues'));
     }
     Venues.canManage = canManage;
 
     function denyIfCannotManage() {
         if (canManage()) return false;
-        UI.showAlert('会場の追加・編集・削除は管理者・指導者・役員のみ行えます', 'warning');
+        UI.showAlert('会場の追加・編集・削除の権限がありません（権限の設定で変えられます）', 'warning');
         return true;
     }
 

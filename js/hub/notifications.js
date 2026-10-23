@@ -172,10 +172,8 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
             var userStr = n.user ? UI.escapeHTML(n.user) : '';
             var textStr = UI.escapeHTML(n.text || '').replace(/\n/g, '<br>');
 
-            // 削除ボタンは投稿者本人 or 権限者のみ表示
-            var currentUser = (app.Auth && app.Auth.getDisplayName) ? app.Auth.getDisplayName() : '';
-            var canDelete = (app.Auth && app.Auth.isManager && app.Auth.isManager()) ||
-                            (n.user && currentUser && n.user === currentUser);
+            // 削除ボタンは書いた本人・管理者・「ほかの人の連絡の削除」の権限がある人だけ（管理者が書いたものは管理者だけ）
+            var canDelete = !!(app.Auth && app.Auth.canDeleteNote && app.Auth.canDeleteNote(n));
             var isNew = !!_newTeam[String(n.id)];
             if (isNew) div.className += ' is-new';
             div.innerHTML =
@@ -232,19 +230,23 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
 
         // Firestoreの doc パスに使用するためユニークIDを付与（未設定だと全件が "undefined" パスに上書きされる）
         var newId = Date.now().toString() + Math.floor(Math.random() * 1000);
-        var newItem = { id: newId, date: dateStr, text: text, user: user };
+        // 書いた人の印（uid・管理者なら byAdmin）。消せる人の判定に使う
+        var newItem = Object.assign({ id: newId, date: dateStr, text: text, user: user }, app.Auth.authorStamp ? app.Auth.authorStamp() : {});
 
-        app.Hub.notifications = app.Hub.notifications || [];
-        app.Hub.notifications.unshift(newItem);
-
-        // ログ記録
-        app.Hub.logs = Storage.addLog('notifications', '連絡事項追加', '「' + text.substring(0, 30) + '」', app.Hub.logs);
-
-        Storage.saveNotifications(app.Hub.notifications);
-        this.renderNotifications();
-
-        if (textEl) textEl.value = '';
-        UI.showAlert('連絡事項を送信しました', 'success');
+        // 1件だけ書く（以前は一覧ごと保存しており、そのついでに古い連絡を消していた）
+        var self = this;
+        app.DB.putNotification(newItem).then(function() {
+            app.Hub.notifications = app.Hub.notifications || [];
+            app.Hub.notifications.unshift(newItem);
+            app.Hub.logs = Storage.addLog('notifications', '連絡事項追加', '「' + text.substring(0, 30) + '」', app.Hub.logs);
+            Storage.saveNotifications(app.Hub.notifications);
+            self.renderNotifications();
+            if (textEl) textEl.value = '';
+            UI.showAlert('連絡事項を送信しました', 'success');
+        }).catch(function(e) {
+            console.warn('連絡事項を送れませんでした:', e);
+            UI.showAlert('送信できませんでした。通信環境を確認して、もう一度送ってください', 'error', 6000);
+        });
     };
 
     Notifications.shareNotification = function(index) {
@@ -279,16 +281,23 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
         var n = notifications[index];
         if (!n) return;
 
+        if (!(app.Auth && app.Auth.canDeleteNote && app.Auth.canDeleteNote(n))) {
+            UI.showAlert('この連絡事項を削除する権限がありません', 'warning');
+            return;
+        }
         if (!UI.showConfirm('この連絡事項を削除してもよろしいですか？')) return;
 
-        var user = (app.Auth && app.Auth.getDisplayName) ? app.Auth.getDisplayName() : 'システム';
-        app.Hub.logs = Storage.addLog('notifications', '連絡事項削除', '「' + (n.text || '').substring(0, 30) + '」', app.Hub.logs);
-
-        notifications.splice(index, 1);
-        app.Hub.notifications = notifications;
-        Storage.saveNotifications(notifications);
-        this.renderNotifications();
-        UI.showAlert('連絡事項を削除しました', 'success');
+        var self = this;
+        app.DB.deleteNotification(n.id).then(function() {
+            app.Hub.logs = Storage.addLog('notifications', '連絡事項削除', '「' + (n.text || '').substring(0, 30) + '」', app.Hub.logs);
+            app.Hub.notifications = (app.Hub.notifications || []).filter(function(x) { return x !== n; });
+            Storage.saveNotifications(app.Hub.notifications);
+            self.renderNotifications();
+            UI.showAlert('連絡事項を削除しました', 'success');
+        }).catch(function(e) {
+            console.warn('連絡事項を削除できませんでした:', e);
+            UI.showAlert('削除できませんでした（権限がないか、通信できませんでした）', 'error', 6000);
+        });
     };
 
 })(window.FCOjima);

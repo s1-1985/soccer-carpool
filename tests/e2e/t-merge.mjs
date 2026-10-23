@@ -11,7 +11,8 @@ await put(`${T}/eventData/${EV}`, {
   ],
   attendance: [], assignments: [],
   notifications: [
-    { date: '2026-10-10', text: '古い連絡', type: 'info', user: 'x' },
+    // 保護者が自分で書いた連絡（ほかの人の連絡は、保護者は消せない: 権限の設定の「ほかの人の連絡の削除」）
+    { date: '2026-10-10', text: '古い連絡', type: 'info', user: '保護者' },
     { date: '2026-10-12', text: '残す連絡', type: 'info', user: 'x' }
   ],
   comment: '', comments: []

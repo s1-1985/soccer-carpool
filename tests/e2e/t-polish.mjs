@@ -120,7 +120,7 @@ const overflow = (sel) => { const root = document.querySelector(sel); const w = 
     inline: document.querySelector('#pending-users-list .approve-btn').getAttribute('style')
   }));
   const uniq = [...new Set(ad.groups)];
-  chk('管理のボタンは「よく使う」「記録・設定」に分かれ、それぞれに説明がある', uniq.length === 2 && /^よく使う:btn-coach-planner,btn-attendance-matrix,btn-signup-qr,btn-all-users$/.test(uniq[0]) && /^記録・設定:btn-driver-stats,btn-attendance-rate,btn-duty-groups,btn-luggage-settings$/.test(uniq[1]) && ad.descs === 8, JSON.stringify(ad));
+  chk('管理のボタンは「よく使う」「記録・設定」に分かれ、それぞれに説明がある（記録・設定の最後に「権限の設定」）', uniq.length === 2 && /^よく使う:btn-coach-planner,btn-attendance-matrix,btn-signup-qr,btn-all-users$/.test(uniq[0]) && /^記録・設定:btn-driver-stats,btn-attendance-rate,btn-duty-groups,btn-luggage-settings,btn-permissions$/.test(uniq[1]) && ad.descs === 9, JSON.stringify(ad));
   chk('承認待ちのカードは「承認する」（大きい緑）と「却下」（小さい）', ad.approve === '承認する' && ad.reject === '却下' && ad.wide && !ad.inline, JSON.stringify(ad));
   const ov = await page.evaluate(overflow, '#admin');
   chk('360px で管理タブがはみ出さない', ov.length === 0, JSON.stringify(ov));

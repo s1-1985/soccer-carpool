@@ -128,6 +128,7 @@ FCOjima.Auth = FCOjima.Auth || {};
             }
 
             Auth.currentUserProfile = profile;
+            await Auth.loadPermissions();
             return profile;
         } catch (e) {
             console.error('ユーザー情報の取得に失敗:', e);
@@ -164,11 +165,71 @@ FCOjima.Auth = FCOjima.Auth || {};
     };
 
     /**
-     * 現在のユーザーがマネージャー権限を持つか確認
+     * 現在のユーザーがマネージャー（管理者・監督・コーチ・役員）か。管理タブ・権限の設定・役割の変更に使う。
+     * 機能ごとの権限は Auth.can（権限の設定で役割ごとに変えられる）
      */
     Auth.isManager = function() {
         const p = Auth.currentUserProfile;
         return p && ['admin', 'coach', 'assist', 'officer'].includes(p.role);
+    };
+
+    Auth.isAdmin = function() {
+        const p = Auth.currentUserProfile;
+        return !!(p && p.role === 'admin');
+    };
+
+    /**
+     * 権限の設定（settings/permissions）と、いまの監督（settings/roles の kantoku）を読む。
+     * 読めなければ初期値（以前と同じ動き）で動く
+     */
+    Auth.permissions = null;
+    Auth.kantokuUid = '';
+    Auth.loadPermissions = async function() {
+        const settings = db.collection('teams').doc(TEAM_ID).collection('settings');
+        const [perm, roles] = await Promise.all([
+            settings.doc('permissions').get().catch(function(e) { console.warn('権限の設定を読み込めませんでした（初期値で動きます）:', e); return null; }),
+            settings.doc('roles').get().catch(function(e) { console.warn('監督の設定を読み込めませんでした:', e); return null; })
+        ]);
+        Auth.permissions = (perm && perm.exists) ? (perm.data() || {}) : {};
+        Auth.kantokuUid = (roles && roles.exists) ? String((roles.data() || {}).kantoku || '') : '';
+        return Auth.permissions;
+    };
+
+    /**
+     * 連絡（チームの連絡事項・予定ごとの連絡）に付ける、書いた人の印。
+     * uid は消せる人の判定（Firestore のルール: 本人・管理者・「ほかの人の連絡の削除」の権限がある人。管理者が書いたものは管理者だけ）、
+     * byAdmin は画面で削除ボタンを出すかどうかに使う
+     */
+    Auth.authorStamp = function() {
+        const u = auth.currentUser;
+        const stamp = {};
+        if (u) stamp.uid = u.uid;
+        if (Auth.isAdmin()) stamp.byAdmin = true;
+        return stamp;
+    };
+
+    /**
+     * その連絡を消せるか（画面の削除ボタン）。自分が書いたもの（uid、uid のない以前の連絡は名前）・管理者は消せる。
+     * ほかの人のものは「ほかの人の連絡の削除」の権限がある人だけ。管理者が書いたものは管理者だけ
+     * @param {Object} n - { uid, byAdmin, user }
+     */
+    Auth.canDeleteNote = function(n) {
+        if (!n) return false;
+        const u = auth.currentUser;
+        if (Auth.isAdmin()) return true;
+        if (n.uid ? (u && n.uid === u.uid) : (n.user && n.user === Auth.getDisplayName())) return true;
+        if (n.byAdmin) return false;
+        return Auth.can('notices_delete');
+    };
+
+    /**
+     * その機能を使えるか（js/common/permissions.js の機能。管理者は常に使える）
+     * @param {string} feature - 'events' | 'members' | 'approve' など
+     */
+    Auth.can = function(feature) {
+        const p = Auth.currentUserProfile;
+        if (!p || p.status !== 'approved' || !window.FCOjima.Perm) return false;
+        return FCOjima.Perm.can(p.role, feature, Auth.permissions);
     };
 
 })(FCOjima.Auth);
