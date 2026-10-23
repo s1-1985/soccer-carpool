@@ -415,7 +415,7 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
         // 都合は「指導の都合を回答する」の権限がある人しか読み書きできない（権限の設定）。権限のない指導者
         // （ログインの役割が保護者のままの人など）には、押しても保存できないボタンを出さずに案内する（担当は見られる）
         if (!canAnswer()) {
-            container.innerHTML = html + '<p class="co-hint co-role-hint">都合を回答する権限がありません。ログインの役割を「監督」か「コーチ」にしてもらうか、管理者・監督に権限の設定を頼んでください。</p></section>';
+            container.innerHTML = html + '<p class="co-hint co-role-hint">都合を回答する権限がありません。管理者・監督・コーチに、ログインの役割を「コーチ」にするか、権限の設定で「指導の都合を回答する」を付けてもらってください。</p></section>';
             bindDuty();
             return;
         }
