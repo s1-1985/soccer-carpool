@@ -44,6 +44,11 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
         }
 
         this.updateNotifications();
+        // このページを開いたら、この予定の連絡は読んだことにする（HUB・上の「連絡」の新着が消える）
+        if (event && FCOjima.Inbox) {
+            FCOjima.Inbox.markEventSeen(event.id, FCOjima.Carpool.appData.notifications || []);
+            FCOjima.Inbox.renderCarpoolNav(event.id, FCOjima.Carpool.appData.notifications || []);
+        }
         console.log('連絡機能の初期化が完了しました');
     };
 

@@ -208,3 +208,44 @@
         align-items: flex-start;
     }
 }
+/* 新着の印（js/common/inbox.js） */
+.notif-new {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: #dc3545;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    vertical-align: 1px;
+}
+.notification-card.is-new { background: #fffaf0; }
+
+/* 予定ごとの連絡（配車の「連絡」をHUBでも見る） */
+.notif-sub { font-size: 15px; margin: 18px 0 10px; color: #3a3020; }
+.notif-sub small { font-size: 12px; font-weight: 600; color: #9a8a66; margin-left: 4px; }
+.event-notes .notif-sub:first-child { margin-top: 4px; }
+.event-note-card {
+    background: #fff;
+    border: 1px solid #e6dcc4;
+    border-left: 4px solid #2f7fd0;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+}
+.event-note-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.event-note-date { font-size: 12.5px; font-weight: 700; color: #6b6355; }
+.event-note-title { font-size: 15px; font-weight: 800; color: #1C1600; }
+.event-note { padding: 6px 0; border-top: 1px dashed #eadfbf; }
+.event-note.is-new .event-note-text { font-weight: 700; }
+.event-note-meta { font-size: 12px; color: #888; }
+.event-note-text { font-size: 14px; line-height: 1.6; color: #2a2210; word-break: break-word; }
+.event-note-link {
+    display: inline-block;
+    margin-top: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #2f6db5;
+    text-decoration: none;
+}

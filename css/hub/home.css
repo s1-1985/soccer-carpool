@@ -168,3 +168,37 @@ button.hh-more, button.hh-more:hover { background: #fff8e6; box-shadow: none; }
 button.me-ans-btn, button.me-ans-btn:hover { background: #fff; box-shadow: none; letter-spacing: 0; }
 button.me-ans-present.is-on, button.me-ans-present.is-on:hover { background: #2e9e4f; }
 button.me-ans-absent.is-on, button.me-ans-absent.is-on:hover { background: #c8473a; }
+
+/* 予定ごとの連絡（参加予定のカード・予定の詳細） */
+.me-notes {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #2f6db5;
+    text-decoration: none;
+}
+.me-notes.has-new { color: #c0392b; }
+.ed-note { padding: 6px 0; border-top: 1px dashed #eadfbf; }
+.ed-section-head + .ed-note { border-top: none; }
+.ed-note-meta { font-size: 12px; color: #888; }
+.ed-note-text { font-size: 14px; line-height: 1.6; color: #2a2210; word-break: break-word; }
+.ed-note.is-new .ed-note-text { font-weight: 700; }
+.ed-notes-link { display: inline-block; margin-top: 6px; font-size: 13px; font-weight: 700; color: #2f6db5; text-decoration: none; }
+/* 新着の印（連絡事項タブと同じ） */
+.ed-notes .notif-new {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: #dc3545;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+/* 「ホーム画面に追加」の案内（一度閉じたら出さない） */
+.hh-a2hs { border-left-color: #2f7fd0; border-color: #bcd5ef; }
+.hh-a2hs-text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.7; color: #3a3020; }
+.hh-a2hs-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.hh-a2hs-actions button { font-size: 13px; padding: 8px 12px; }

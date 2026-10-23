@@ -348,9 +348,51 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             await FCOjima.DB.approveUser(uid, currentUid, childrenIds, extra);
             if (UI) UI.showAlert((extra.name || name || uid) + ' を承認しました', 'success');
             Admin.refresh();
+            Admin.showApprovedNotice(extra.name || name || '');
         } catch(e) {
             if (UI) UI.showAlert('承認に失敗しました: ' + e.message, 'error');
         }
+    };
+
+    /**
+     * 承認したことを本人に知らせる（LINE で送る・文をコピー）。
+     * 承認されても本人には通知が届かず、承認待ちの画面を開き直すまで気づけなかった
+     * @param {string} name - 承認した人の名前
+     */
+    Admin.showApprovedNotice = function(name) {
+        var url = FCOjima.Utils.lineSafeUrl(window.location.origin + '/hub/index.html');
+        var msg = (name ? name + 'さん\n' : '') + 'FC尾島ジュニアのアプリの利用を承認しました。\n' +
+            '下のリンクから開くと、そのまま使えます。\n' + url;
+        var modal = document.getElementById('approved-notice-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'approved-notice-modal';
+            modal.className = 'modal';
+            modal.style.zIndex = '1060';
+            modal.innerHTML = '<div class="modal-content" style="max-width:420px;">' +
+                '<span class="close" aria-label="閉じる">&times;</span>' +
+                '<h2 style="font-size:16px;margin-bottom:6px;">✅ 承認しました</h2>' +
+                '<p style="font-size:13px;color:#555;margin:0 0 8px;">本人には自動で知らせが届きません。LINE で知らせましょう。</p>' +
+                '<textarea class="approved-notice-text form-control" rows="5" readonly style="width:100%;font-size:13px;"></textarea>' +
+                '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">' +
+                '<button type="button" class="approved-notice-line" style="flex:1;">LINEで知らせる</button>' +
+                '<button type="button" class="secondary-button approved-notice-copy" style="flex:1;">文をコピー</button>' +
+                '</div></div>';
+            document.body.appendChild(modal);
+            var close = function() { modal.style.display = 'none'; };
+            modal.querySelector('.close').addEventListener('click', close);
+            modal.addEventListener('click', function(e) { if (e.target === modal) close(); });
+            modal.querySelector('.approved-notice-line').addEventListener('click', function() {
+                var text = modal.querySelector('.approved-notice-text').value;
+                window.open('https://line.me/R/msg/text/?' + encodeURIComponent(text), '_blank');
+            });
+            modal.querySelector('.approved-notice-copy').addEventListener('click', function() {
+                var ok = FCOjima.Utils.copyToClipboard(modal.querySelector('.approved-notice-text').value);
+                if (UI) UI.showAlert(ok ? '文をコピーしました。LINEに貼り付けてください' : 'コピーできませんでした', ok ? 'success' : 'error');
+            });
+        }
+        modal.querySelector('.approved-notice-text').value = msg;
+        modal.style.display = 'flex';
     };
 
     /**
