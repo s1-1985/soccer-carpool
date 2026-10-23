@@ -42,11 +42,19 @@ const ed = {
 };
 await putAs(ptok.idToken, `${T}/eventData/${EV}`, ed);
 await putAs(ptok.idToken, `${T}/eventData/${EVP}`, ed);
-await putAs(ptok.idToken, `${T}/notifications/nx1`, { date: P('notifDate'), text: P('notifText'), user: P('notifUser') });
-await putAs(ptok.idToken, `${T}/notifications/nx2`, { type: 'move', date: '2026/10/16 10:00', ts: Date.now(), text: P('moveText'), user: P('moveUser'), memberId: 'x1', memberName: P('moveMember'), eventDate: iso(future), fromEventTitle: P('fromTitle'), toEventTitle: P('toTitle'), fromEventId: EV, toEventId: EV2 });
+// 連絡事項は書いた人の名前・uid がルールで本人に限られるので（名前に HTML を入れた人が書いた想定で）直接入れる
+await put(`${T}/notifications/nx1`, { date: P('notifDate'), text: P('notifText'), user: P('notifUser') });
+await put(`${T}/notifications/nx2`, { type: 'move', date: '2026/10/16 10:00', ts: Date.now(), text: P('moveText'), user: P('moveUser'), memberId: 'x1', memberName: P('moveMember'), eventDate: iso(future), fromEventTitle: P('fromTitle'), toEventTitle: P('toTitle'), fromEventId: EV, toEventId: EV2 });
 // 未承認（申請中）ユーザー: 誰でも作れる
-const stok = await tokenFor('xss2pending@example.com', 'x');
-await putAs(stok.idToken, `${T}/users/${stok.localId}`, { name: P('pendName'), email: P('pendEmail'), kana: P('pendKana'), gender: P('pendGender'), role: 'parent', status: 'pending', childrenIds: [P('pendChild')] });
+// 申請に入れられるのは登録画面の項目だけ（ルール）。メールはログインのメールと同じでないといけないので、メールに HTML を入れたアカウントで申請する
+// 申請の名前・フリガナは60文字まで（ルール）。60文字に収まる仕込みでも確かめる
+const SP = (tag) => `"'><img src=x onerror=(self.__xss||=[]).push('${tag}')>`;
+const PEND_EMAIL = ('x' + P('pendemail').replace(/ /g, '') + '@example.com').toLowerCase(); // ログインのメールは小文字になる
+const stok = await tokenFor(PEND_EMAIL, 'x');
+const pendOk = await fetch(`${FS}/${T}/users/${stok.localId}`, { method: 'PATCH', headers: { Authorization: 'Bearer ' + stok.idToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ fields: Object.fromEntries(Object.entries({
+  name: SP('pendName'), email: PEND_EMAIL, kana: SP('pendKana'), requestedRole: P('pendRole'), role: 'parent', status: 'pending', childrenIds: [], childrenNames: [P('pendChild')]
+}).map(([k, v]) => [k, fv(v)])) }) }).then(r => r.ok);
+chk('（前提）承認待ちの申請に HTML を仕込めた（登録画面と同じ項目）', pendOk);
 
 const ctx = await context({ email: 'xss2admin@example.com', name: '管理者', device: null });
 const page = await ctx.newPage();

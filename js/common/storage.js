@@ -340,6 +340,25 @@ FCOjima.Storage = FCOjima.Storage || {};
     };
 
     /**
+     * 端末に残したチームのデータ（名簿・予定・会場・連絡事項・操作ログ・予定ごとの配車のデータ）を消す。
+     * ログアウトしたときと、前と違う人がこの端末でログインしたときに呼ぶ（Auth）。
+     * 以前はログアウトしても残り、共用の端末では次に使う人（権限の少ない人）にも前の人のデータ（操作ログなど）が見えた
+     */
+    Storage.clearTeamData = function() {
+        try {
+            const prefix = this.PREFIX;
+            const fixed = ['members', 'events', 'venues', 'logs', 'notifications'].map(function(k) { return prefix + k; });
+            const keys = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k && (fixed.indexOf(k) !== -1 || k.indexOf(prefix + 'event_') === 0)) keys.push(k);
+            }
+            keys.forEach(function(k) { localStorage.removeItem(k); });
+            sessionStorage.removeItem(prefix + 'selectedEvent');
+        } catch (e) { console.warn('端末のデータを消せませんでした:', e); }
+    };
+
+    /**
      * 選択されたイベントをセッションストレージに保存
      * @param {Object} event - イベントオブジェクト
      */

@@ -173,6 +173,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             return;
         }
         el.innerHTML = '<p class="loading">読み込み中...</p>';
+        Admin._users = null; // 承認カードの「同じ名前の人」の確認は、読み込み直すたびに最新のユーザーで
 
         try {
             var users = await FCOjima.DB.loadPendingUsers();
@@ -316,12 +317,32 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 : (FCOjima.Utils.normalizeName(m.name) !== FCOjima.Utils.normalizeName(u.name)
                     ? 'ログインの名前を名簿の「' + m.name + '」に合わせます' : '名簿の名前と同じです');
         };
+        // 同じ名前ですでに登録済みの人がいれば知らせる。名前で本人を確かめている機能（兄弟児の登録・指導者の都合・
+        // 以前の連絡の削除・子供の紐づけ）があるので、別の人の名前を名乗った申請（なりすまし）に気づけるように
+        var dupEl = document.createElement('div');
+        dupEl.className = 'pending-dup-warn';
+        dupEl.style.cssText = 'display:none;font-size:12px;color:#b45309;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:6px 8px;margin:4px 0;';
+        noteEl.parentNode.insertBefore(dupEl, noteEl.nextSibling);
+        var checkDup = function() {
+            Admin._ensureUsers().then(function(users) {
+                var m = memberOf();
+                var names = [u.name, m && m.name].filter(Boolean).map(FCOjima.Utils.normalizeName);
+                var dups = (users || []).filter(function(x) {
+                    return x.uid !== u.uid && x.status === 'approved' && x.name && names.indexOf(FCOjima.Utils.normalizeName(x.name)) !== -1;
+                });
+                dupEl.textContent = dups.length ? '⚠ 同じ名前で登録済みの人がいます（' + dups.map(function(x) { return x.email || x.name; }).join('、') +
+                    '）。同じ人の2つ目のアカウントか、別の人のなりすましでないかを確かめてから承認してください' : '';
+                dupEl.style.display = dups.length ? '' : 'none';
+            }).catch(function(e) { console.warn('登録済みユーザーを読み込めませんでした:', e); });
+        };
         memberSel.addEventListener('change', function() {
             var m = memberOf();
             if (m) roleSel.value = pickRole(Admin._defaultApproveRole(u, m));
             updateNote();
+            checkDup();
         });
         updateNote();
+        checkDup();
 
         // 申請時に入力された子供の氏名ごとに、選手名簿から本人を選ぶ欄（一致する選手を初期選択）。
         // 登録画面では承認前の人に名簿を見せないため、照合はここで管理者が行う

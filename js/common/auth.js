@@ -13,6 +13,8 @@ FCOjima.Auth = FCOjima.Auth || {};
 
     // ログインページのパス（ルートからの相対パス）
     const LOGIN_PAGE = '/hub/login.html';
+    // 端末に残したチームのデータが、だれがログインしていたときのものか（別の人がログインしたら消す）
+    const CACHE_UID_KEY = 'fcojima_cache_uid';
 
     /**
      * ログイン状態の監視を開始
@@ -57,6 +59,9 @@ FCOjima.Auth = FCOjima.Auth || {};
      * サインアウト
      */
     Auth.signOut = function() {
+        // 端末に残したチームのデータも消す（共用の端末で次の人に見えないよう）
+        if (window.FCOjima && FCOjima.Storage && FCOjima.Storage.clearTeamData) FCOjima.Storage.clearTeamData();
+        try { localStorage.removeItem(CACHE_UID_KEY); } catch (e) { /* 消せなくても続ける */ }
         return auth.signOut().then(function() {
             window.location.href = LOGIN_PAGE;
         });
@@ -126,6 +131,13 @@ FCOjima.Auth = FCOjima.Auth || {};
                 window.location.href = '/hub/pending.html';
                 return null;
             }
+
+            // 前にこの端末でログインしていたのが別の人なら、端末に残っているその人のデータを消す
+            try {
+                const last = localStorage.getItem(CACHE_UID_KEY);
+                if (last && last !== user.uid && window.FCOjima && FCOjima.Storage && FCOjima.Storage.clearTeamData) FCOjima.Storage.clearTeamData();
+                localStorage.setItem(CACHE_UID_KEY, user.uid);
+            } catch (e) { /* 端末に保存できなくても続ける */ }
 
             Auth.currentUserProfile = profile;
             await Auth.loadPermissions();
