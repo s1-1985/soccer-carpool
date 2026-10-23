@@ -5,6 +5,9 @@
     "ignore": [
       "firebase.json",
       "**/.*",
+      "**/.*/**",
+      "gha-creds-*.json",
+      "**/gha-creds-*.json",
       "**/node_modules/**",
       "firestore.rules",
       "firestore.indexes.json",

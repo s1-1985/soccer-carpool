@@ -19,6 +19,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # .git/config に GitHub のトークンを残さない（以前は .git ごとホスティングに配信され、/.git/config から読めた）
+          persist-credentials: false
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -36,6 +39,21 @@ jobs:
           gsutil cors set cors.json gs://fc-ojimajr-hub.appspot.com || \
           echo "CORS設定をスキップ（バケット未作成の可能性）"
 
+      - name: Deploy Storage / Firestore Rules (main branch only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          npm install -g firebase-tools
+          firebase deploy --only storage --project fc-ojimajr-hub || \
+          echo "Storageルールのデプロイをスキップ"
+          firebase deploy --only firestore:rules --project fc-ojimajr-hub
+
+      # google-github-actions/auth はサービスアカウントの鍵を作業フォルダ（＝ホスティングで配るフォルダ）に
+      # gha-creds-*.json として書き出す。以前はこれがホスティングに配信され、公開の Actions のログに出るファイル名で
+      # だれでも鍵を取れた。ホスティングのデプロイには使わない（firebaseServiceAccount を使う）ので、デプロイの前に消す。
+      # firebase.json の hosting.ignore でも gha-creds-*.json と .git などを外している（二重の防御）
+      - name: Remove the gcloud credentials file before deploying hosting
+        run: rm -f "$GOOGLE_GHA_CREDS_PATH" gha-creds-*.json
+
       - name: Deploy to Firebase Hosting (Preview - PR only)
         if: github.event_name == 'pull_request'
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -45,14 +63,6 @@ jobs:
           projectId: fc-ojimajr-hub
           channelId: preview-${{ github.event.pull_request.number }}
 
-      - name: Deploy Storage / Firestore Rules (main branch only)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          npm install -g firebase-tools
-          firebase deploy --only storage --project fc-ojimajr-hub || \
-          echo "Storageルールのデプロイをスキップ"
-          firebase deploy --only firestore:rules --project fc-ojimajr-hub
-
       - name: Deploy to Firebase Hosting (Live - main branch)
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -61,3 +71,13 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FC_OJIMAJR_HUB }}
           projectId: fc-ojimajr-hub
           channelId: live
+
+      # 鍵ファイル・.git が配信されていないことを本番で確かめる（配信されていたら失敗にして気づけるように）
+      - name: Check that no credentials are served (main branch only)
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+        run: |
+          for p in "$(basename "${GOOGLE_GHA_CREDS_PATH:-gha-creds-none.json}")" .git/config .git/HEAD .github/workflows/firebase-deploy.yml; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "https://fc-ojimajr-hub.web.app/$p")
+            echo "$p -> $code"
+            if [ "$code" = "200" ]; then echo "::error::$p is publicly served"; exit 1; fi
+          done

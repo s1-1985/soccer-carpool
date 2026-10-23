@@ -1,11 +1,34 @@
 # 引き継ぎドキュメント (handover)
 
 最終更新: 2026-10-23
-mainの最新コミット: `6b0df9c` (2026-10-23)「fix: 全体デバッグ11巡目（指導者の画面のXSS・削除した指導者の✓・名前の変更とログインの名前・はじめての端末の新着ほか） (#129)」
+mainの最新コミット: `ef5c86b` (2026-10-23)「feat: 役割のきまり（監督は1人・任命と解任・管理者に対する操作は管理者だけ・ログの削除は管理者だけ）と権限の設定 (#130)」
 本番URL: https://fc-ojimajr-hub.web.app （Firebase Hosting / プロジェクト `fc-ojimajr-hub`）
 
 **はじめに読むもの**: `CLAUDE.md`（作業ルール）→ `todo.md`（現状と次の候補）→ このファイルの先頭のいくつかのセクション。
 E2E テストは `tests/e2e/`（`README.md`）。このファイルは新しい順。
+
+---
+
+## 2026-10-23（続き6）【インシデント】サービスアカウントの鍵と .git がホスティングで公開されていた
+
+セキュリティの検証で見つけた。**ホスティングは `public: "."`（リポジトリのルートをそのまま配る）なので、CI の作業フォルダにできたファイルも配信されていた。**
+- `google-github-actions/auth` が書き出すサービスアカウントの鍵 `gha-creds-<16桁>.json`（中身は GitHub の Secret `FIREBASE_SERVICE_ACCOUNT_FC_OJIMAJR_HUB`）が、
+  本番・プレビューの `https://…/gha-creds-<16桁>.json` で配信されていた（2026-10-23 に本番で 200・2336バイトを確認。中身は開いていない）。
+  ファイル名は Actions のログ（「Created credentials file at …」）に出ており、**リポジトリは公開なのでログはだれでも読める** → だれでも鍵を取れた。
+  デプロイのたびに名前は変わるが、中身は同じ鍵
+- `.git/` 一式（`/.git/config` には checkout のトークン `AUTHORIZATION: basic …` も）と `.github/` も配信されていた。
+  トークンは GITHUB_TOKEN（contents: read ほか）で、ジョブが終わると使えなくなる
+- 原因: `firebase.json` の `hosting.ignore` の `**/.*` はドットで始まる**ファイル**にしか当たらず、`.git/` の中や `gha-creds-*.json` を外していなかった
+  （firebase-tools の `listFiles` で確認: 直す前は 186 ファイル（.git 124 件・鍵・.github を含む）、直した後は 60 ファイル）
+
+**直したこと**: `hosting.ignore` に `**/.*/**`・`gha-creds-*.json`・`**/gha-creds-*.json`。ワークフローでホスティングのデプロイの前に鍵ファイルを消す、
+checkout を `persist-credentials: false` に、本番のデプロイ後に鍵ファイル・`.git/config` などが配信されていないことを確かめる（配信されていたら失敗）。
+
+**ユーザーがやること（AI ではできない）**:
+1. Google Cloud コンソール → IAM と管理 → サービスアカウント → デプロイ用のサービスアカウント → 鍵 で、**今の鍵を削除**し新しい鍵を作る
+2. GitHub → Settings → Secrets and variables → Actions の `FIREBASE_SERVICE_ACCOUNT_FC_OJIMAJR_HUB` を新しい鍵に差し替える
+3. Firebase コンソール → Hosting のプレビューチャンネル（`preview-…`）を削除する（古いプレビューには鍵ファイルが残っている。鍵を削除すれば使えなくはなる）
+4. 不審な使われ方がないか: Cloud Logging の監査ログ（そのサービスアカウントの操作）、IAM の変更、Hosting のリリース履歴、Firestore のデータ
 
 ---
 
