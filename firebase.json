@@ -12,6 +12,7 @@
       "cors.json",
       "**/*.md",
       "docs/**",
+      "tests/**",
       "**/*.log"
     ],
     "headers": [

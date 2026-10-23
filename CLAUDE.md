@@ -17,9 +17,20 @@ Vanilla JS + Firebase（Hosting/Firestore/Auth/Storage）。ビルド工程な�
 - JS/CSS変更時は参照側HTMLの `?v=YYYYMMDD` キャッシュバストを更新する
 - `img/` 配下の画像を差し替えるときも参照側に `?v=N` を付ける（ファイル名が同じだとキャッシュされ古い画像が残る）
 - PR作成・マージ・デプロイ確認は基本AIが自動で行う（ユーザー方針。`AI_HANDOFF.md` 参照）
+  - 2026-10 の Claude Code（Web）のセッションでは: GitHub の MCP ツールでドラフトPRを作る → CIがプレビューURLをコメント →
+    ユーザーが確認してマージ → AIが本番の配信（`?v=` が新しくなったか）を curl で確認、という流れだった
+  - マージ後に同じセッションブランチで続けるときは `git fetch origin main && git checkout -B <ブランチ> origin/main` で作り直してから
+    `git push --force-with-lease`（マージ済みの履歴に積み上げない）
 - モバイルChromeでは `position: sticky` が `rowspan` を持つ `<th>` に対して正しく効かない。
   複数行ヘッダー＋左固定列のテーブルを作る場合は、ヘッダーを1セル構造にまとめる
   （2026-07-18 出欠マトリクスの「左見出しが飛び出す」バグの原因。詳細は handover.md）
+- CSS の当たり方に注意（2026-10-23 のブラッシュアップで見つけた不具合）
+  - 予定の種類（`game`/`practice`/`event`/`other`）をそのまま class にすると、種類「イベント」は `class="… event"` になり、
+    カレンダーのマス用の `.event`・`.event.event` が当たる（リストの項目が小さい文字・2行で切れる・紫になった）
+  - `css/common.css` の `button` には金色の背景・影・hover がある。文字だけ・枠だけのボタンは `box-shadow: none` と `:hover` も上書きする
+  - ページの CSS の `@media (max-width: 768px)` が、後ろに書いた通常の指定を打ち消すことがある（連絡事項のカードの `flex-direction: column` など）。
+    スマホ幅で必ず見る
+- 画面を変えたら `tests/e2e/` の E2E テストを流す（下の「E2E テスト」）。表示を変えたらテストの期待値も直す（テストを消して通さない）
 
 ## Firestore ルール記述の注意点
 
@@ -33,7 +44,8 @@ Vanilla JS + Firebase（Hosting/Firestore/Auth/Storage）。ビルド工程な�
   Cloud Storage のサービスエージェントに `Firebase Rules Firestore Service Agent` ロールが必要（付与手順は handover.md）。
   CI のデプロイではこのロールは付与されない。ロールがないと添付ファイルは誰も使えなくなる
 - ローカルのエミュレータで Storage のルールを試すと、firebase-tools が 127.0.0.1 宛ての通信も HTTPS_PROXY 経由にするため
-  Firestore を参照できず常に拒否になることがある（本番の不具合ではない。handover.md 参照）
+  Firestore を参照できず常に拒否になることがある（本番の不具合ではない。handover.md 参照）。
+  `tests/e2e/emulators.sh` で起動すれば `noproxy-local.js` がローカル宛てだけ直接つなぐので起きない
 
 ## DB設計の注意点
 
@@ -48,10 +60,22 @@ Vanilla JS + Firebase（Hosting/Firestore/Auth/Storage）。ビルド工程な�
 Firebase Console → Firestore → `teams/fc-ojima/users` に手動でドキュメントを作成する。
 詳細手順は `handover.md` の「初代管理者のセットアップ手順」を参照。
 
-## ローカルテスト（エミュレータ使用）
+## E2E テスト（`tests/e2e/`。詳しくは `tests/e2e/README.md`）
+
+Firebase エミュレータ＋Playwright で画面を実際に操作して確かめるテスト一式（41ファイル・約565項目。2026-10-23 時点ですべて PASS）。
+本番には配信しない（`firebase.json` の hosting の ignore に `tests/**`）。
+```bash
+cd tests/e2e
+./setup.sh                       # 初回だけ（npm install と vendor/ の取得）
+./emulators.sh > emu.log 2>&1 &  # 「All emulators ready」まで待つ
+./run-all.sh r1                  # 一式（40分ほど）。結果は r1-summary.txt
+```
+以前のテストはセッションの scratchpad にしかなく、セッションが終わると消えていた。新しいテストもこのフォルダに置き、`run-all.sh` に足す。
+
+## ローカルで画面を触る（エミュレータ使用）
 
 ```bash
-firebase emulators:start
+tests/e2e/emulators.sh   # または firebase emulators:start（クラウドの環境ではプロキシの関係で emulators.sh を使う）
 ```
 ブラウザで `localhost:5000` を開き、DevTools コンソールで:
 ```javascript

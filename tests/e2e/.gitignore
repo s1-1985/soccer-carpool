@@ -1,0 +1,5 @@
+node_modules/
+vendor/
+*.png
+*.log
+*-summary.txt

@@ -1,8 +1,31 @@
 # 引き継ぎドキュメント (handover)
 
-最終更新: 2026-07-19
-mainの最新コミット: `a23124c` (2026-07-19)「fix: 保護者の子供情報の不整合を修正＋メンバーカードを役割・学年で見た目差別化 (#88)」
+最終更新: 2026-10-23
+mainの最新コミット: `98382c2` (2026-10-23)「feat: 直近の画面のブラッシュアップ（やることを予定ごとに・管理のボタン・連絡事項のカード・承認待ちの画面ほか） (#127)」
 本番URL: https://fc-ojimajr-hub.web.app （Firebase Hosting / プロジェクト `fc-ojimajr-hub`）
+
+**はじめに読むもの**: `CLAUDE.md`（作業ルール）→ `todo.md`（現状と次の候補）→ このファイルの先頭のいくつかのセクション。
+E2E テストは `tests/e2e/`（`README.md`）。このファイルは新しい順。
+
+---
+
+## 2026-10-23（続き3） 次のセッションへの引き継ぎ（E2E テストをリポジトリに保存・MD の整理）
+
+**ユーザー依頼**: 「そろそろ次のセッションにいくので各MDにまとめて」
+
+### E2E テストを `tests/e2e/` に保存
+- これまでのテスト（`t-*.mjs` など）はセッションの scratchpad にしかなく、セッションが終わると消えていた（各セクションの「既存のテスト一式」）
+- 一式 41ファイル（約565項目）と `lib.mjs`・`detect.mjs`・天気の固定データ（`wx/`）・観察用の `shots-polish.mjs` を保存
+- 新規: `setup.sh`（npm install と CDN のスクリプトを `vendor/` に取得）、`emulators.sh`（クラウドのプロキシ環境でエミュレータを起動。
+  `noproxy-local.js` でローカル宛てだけ直接つなぐ）、`run-all.sh`（一式を流して `接頭辞-summary.txt`）、`package.json`（playwright 1.56.1・firebase-tools 15.33.0）
+- 絶対パスをやめた（`t-weather` の固定データ・`t-coachdates` の holidays.js・`lib.mjs` の vendor）
+- `firebase.json` の hosting の ignore に `tests/**`（本番に配信しない）。`node_modules/`・`vendor/`・ログ・スクリーンショットは `.gitignore`
+- 新しい環境で `setup.sh` → `emulators.sh` → `run-all.sh` の順に流して確認
+
+### MD の整理
+- `CLAUDE.md`: E2E テストの流し方、CSS の当たり方の注意（`.event` の class の衝突・`button` の共通スタイル・768px のメディアクエリ）、Web セッションでの PR の流れ
+- `todo.md`: 7月以降の PR の一覧と、実機で確かめてほしいこと・未着手のアイデア
+- `AI_HANDOFF.md`: 先頭に「2026-10 時点の要点」（下の古いセクションとの違い・今のファイル構成・Firestore のコレクション）
 
 ---
 
