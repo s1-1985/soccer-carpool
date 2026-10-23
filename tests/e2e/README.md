@@ -10,7 +10,7 @@
 cd tests/e2e
 ./setup.sh                       # 初回だけ: npm install（playwright・firebase-tools）と vendor/ の取得
 ./emulators.sh > emu.log 2>&1 &  # エミュレータを起動（バックグラウンド）。emu.log に「All emulators ready」が出るまで待つ
-./run-all.sh r1                  # 一式（43ファイル・587項目、40分ほど）。結果は r1-summary.txt
+./run-all.sh r1                  # 一式（45ファイル・653項目、40分ほど）。結果は r1-summary.txt
 node t-polish.mjs                # 1ファイルだけ流すとき（NO_PROXY=127.0.0.1,localhost を付ける）
 ```
 
