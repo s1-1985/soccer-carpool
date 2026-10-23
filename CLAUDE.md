@@ -11,10 +11,10 @@ Vanilla JS + Firebase（Hosting/Firestore/Auth/Storage）。ビルド工程な�
 ## 重要ルール
 
 - `.github/workflows/firebase-deploy.yml` の push トリガーに main 以外のブランチを追加しない
+  （2026-06-11の本番巻き戻り事故の原因。詳細は handover.md）
 - ホスティングはリポジトリのルート（`public: "."`）をそのまま配る。CI の作業フォルダにできるファイル（`gha-creds-*.json` のサービスアカウントの鍵・`.git/`）が
   配信されないよう、`firebase.json` の `hosting.ignore`（`**/.*/**`・`gha-creds-*.json`）とワークフローの「鍵ファイルを消す」ステップを消さない
   （2026-10-23 に鍵と .git が本番で公開されていた。詳細は handover.md）。新しいファイルの置き場を作ったら、配信されるか `listFiles` で確かめる
-  （2026-06-11の本番巻き戻り事故の原因。詳細は handover.md）
 - 古いセッションブランチを再開・再pushしない
 - イベントID・学年の比較は `String(a) === String(b)` で行う（型不一致バグが頻発した）
 - JS/CSS変更時は参照側HTMLの `?v=YYYYMMDD` キャッシュバストを更新する
