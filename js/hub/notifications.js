@@ -12,11 +12,116 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
     var UI = app.UI;
     var Storage = app.Storage;
 
+    var EVENT_NOTE_DAYS = 30;   // 予定ごとの連絡を出す予定（今日から何日先まで）
+    var EVENT_NOTE_SHOW = 3;    // 1つの予定で出す連絡の数（新しい順）
+    var _eventNotes = [];       // [{ ev, notes }]（連絡のある予定だけ）
+    var _newTeam = {};          // タブを開いたときに新着だったチームの連絡事項のID
+    var _newEvent = {};         // 同じく予定ごとの連絡（予定ID → 連絡のキーの一覧）
+
     Notifications.init = function() {
         console.log('連絡事項機能を初期化しています...');
         this.setupEventListeners();
         this.renderNotifications();
+        // 予定ごとの連絡を読み、タブ・やることに新着の件数を出す
+        Notifications.loadEventNotes().then(function() {
+            Notifications.updateBadge();
+            if (app.Hub.Home && app.Hub.Home.render) app.Hub.Home.render();
+        });
         console.log('連絡事項機能の初期化が完了しました');
+    };
+
+    function todayISO() {
+        var d = new Date();
+        return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    }
+
+    /**
+     * これからの予定（今日から30日・ナイター練習を除く）の「連絡」（配車の連絡）を読む。
+     * 以前は予定ごとの連絡は配車のページを開かないと見られず、HUB の連絡事項と2か所に分かれていた
+     */
+    Notifications.loadEventNotes = async function() {
+        var from = todayISO();
+        var end = new Date(); end.setDate(end.getDate() + EVENT_NOTE_DAYS);
+        var to = end.getFullYear() + '-' + ('0' + (end.getMonth() + 1)).slice(-2) + '-' + ('0' + end.getDate()).slice(-2);
+        var evs = (app.Hub.events || []).filter(function(ev) {
+            return ev && ev.type !== 'nighter' && String(ev.date) >= from && String(ev.date) <= to;
+        }).slice().sort(app.Utils.compareEvents);
+        var data = await Promise.all(evs.map(function(ev) {
+            return app.DB.loadEventData(ev.id).catch(function() { return null; });
+        }));
+        _eventNotes = evs.map(function(ev, i) {
+            return { ev: ev, notes: ((data[i] && data[i].notifications) || []).filter(function(n) { return n && n.text; }) };
+        }).filter(function(x) { return x.notes.length > 0; });
+    };
+
+    /** 新着の件数（チームの連絡事項＋これからの予定ごとの連絡） */
+    Notifications.unreadCount = function() {
+        if (!app.Inbox) return 0;
+        var n = app.Inbox.teamUnread(app.Hub.notifications || []).length;
+        _eventNotes.forEach(function(x) { n += app.Inbox.eventUnread(x.ev.id, x.notes).length; });
+        return n;
+    };
+
+    /** 連絡事項タブの件数 */
+    Notifications.updateBadge = function() {
+        var b = document.getElementById('notif-badge');
+        if (!b) return;
+        var n = Notifications.unreadCount();
+        b.textContent = n > 0 ? (n > 99 ? '99+' : String(n)) : '';
+        b.classList.toggle('num', n > 0);
+        b.classList.toggle('on', n > 0);
+        b.setAttribute('aria-label', n > 0 ? '新着 ' + n + '件' : '');
+    };
+
+    /**
+     * 連絡事項タブを開いたとき: 新着に印を付けて出し、読んだことにする
+     */
+    Notifications.open = async function() {
+        await Notifications.loadEventNotes();
+        _newTeam = {};
+        _newEvent = {};
+        if (app.Inbox) {
+            app.Inbox.teamUnread(app.Hub.notifications || []).forEach(function(n) { _newTeam[String(n.id)] = true; });
+            _eventNotes.forEach(function(x) {
+                _newEvent[String(x.ev.id)] = app.Inbox.eventUnread(x.ev.id, x.notes).map(app.Inbox.noteKey);
+            });
+        }
+        Notifications.renderEventNotes();
+        Notifications.renderNotifications();
+        if (app.Inbox) {
+            app.Inbox.markTeamSeen(app.Hub.notifications || []);
+            _eventNotes.forEach(function(x) { app.Inbox.markEventSeen(x.ev.id, x.notes); });
+        }
+        Notifications.updateBadge();
+        if (app.Hub.Home && app.Hub.Home.render) app.Hub.Home.render();
+    };
+
+    /** 予定ごとの連絡（これからの予定。新しい連絡から3件ずつ、押すとその予定の連絡のページ） */
+    Notifications.renderEventNotes = function() {
+        var box = document.getElementById('hub-event-notes');
+        if (!box) return;
+        if (!_eventNotes.length) { box.innerHTML = ''; return; }
+        var esc = UI.escapeHTML;
+        var fmt = function(date) {
+            var d = new Date(date + 'T00:00:00');
+            return (d.getMonth() + 1) + '/' + d.getDate() + '(' + ['日', '月', '火', '水', '木', '金', '土'][d.getDay()] + ')';
+        };
+        box.innerHTML = '<h3 class="notif-sub">📣 予定ごとの連絡 <small>これからの予定</small></h3>' + _eventNotes.map(function(x) {
+            var news = _newEvent[String(x.ev.id)] || [];
+            return '<div class="event-note-card">' +
+                '<div class="event-note-head"><span class="event-note-date">' + fmt(x.ev.date) + '</span>' +
+                '<span class="event-note-title">' + esc(x.ev.title || '') + '</span>' +
+                (news.length ? '<span class="notif-new">新着 ' + news.length + '</span>' : '') + '</div>' +
+                x.notes.slice(0, EVENT_NOTE_SHOW).map(function(n) {
+                    var isNew = app.Inbox && news.indexOf(app.Inbox.noteKey(n)) !== -1;
+                    return '<div class="event-note' + (isNew ? ' is-new' : '') + '">' +
+                        '<div class="event-note-meta">' + esc(/^\d{4}-\d{2}-\d{2}$/.test(n.date || '') ? fmt(n.date) : (n.date || '')) + (n.user ? ' ・ ' + esc(n.user) : '') + (isNew ? '<span class="notif-new">新着</span>' : '') + '</div>' +
+                        '<div class="event-note-text">' + esc(n.text).replace(/\n/g, '<br>') + '</div></div>';
+                }).join('') +
+                '<a class="event-note-link" href="../carpool/notifications.html?event=' + encodeURIComponent(String(x.ev.id)) + '">' +
+                (x.notes.length > EVENT_NOTE_SHOW ? 'ほか' + (x.notes.length - EVENT_NOTE_SHOW) + '件・' : '') + 'この予定の連絡を見る・書く ›</a>' +
+                '</div>';
+        }).join('') + '<h3 class="notif-sub">チームの連絡事項</h3>';
     };
 
     Notifications.setupEventListeners = function() {
@@ -27,6 +132,10 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
                 Notifications.sendNotification();
             });
         }
+
+        // タブを開いたら新着に印を付けて出し、読んだことにする
+        var tab = document.getElementById('notifications-tab');
+        if (tab) tab.addEventListener('click', function() { Notifications.open(); });
 
         // ログ表示ボタン
         var logsBtn = document.getElementById('notifications-logs');
@@ -67,9 +176,11 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
             var currentUser = (app.Auth && app.Auth.getDisplayName) ? app.Auth.getDisplayName() : '';
             var canDelete = (app.Auth && app.Auth.isManager && app.Auth.isManager()) ||
                             (n.user && currentUser && n.user === currentUser);
+            var isNew = !!_newTeam[String(n.id)];
+            if (isNew) div.className += ' is-new';
             div.innerHTML =
                 '<div class="notification-header">' +
-                    '<div class="notification-date">' + dateStr + '</div>' +
+                    '<div class="notification-date">' + dateStr + (isNew ? '<span class="notif-new">新着</span>' : '') + '</div>' +
                     '<div class="notification-author">' + userStr + '</div>' +
                 '</div>' +
                 '<div class="notification-content">' + textStr + '</div>' +

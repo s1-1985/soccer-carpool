@@ -669,6 +669,8 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
             base[f] = cloneJSON(v);
         });
         this._base = base;
+        // 上の「連絡」に、この予定の新着の連絡の件数（js/common/inbox.js）
+        if (FCOjima.Inbox && appData.eventId != null) FCOjima.Inbox.renderCarpoolNav(appData.eventId, appData.notifications);
     };
 
     /**

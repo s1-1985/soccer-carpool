@@ -9,11 +9,11 @@
     <meta name="theme-color" content="#1C1600">
     <link rel="apple-touch-icon" href="/img/icon-192.png">
     <link rel="stylesheet" href="../css/common.css?v=20261017a">
-    <link rel="stylesheet" href="../css/hub/calendar.css?v=20261018c">
+    <link rel="stylesheet" href="../css/hub/calendar.css?v=20261023b">
     <link rel="stylesheet" href="../css/hub/coaching.css?v=20261022c">
-    <link rel="stylesheet" href="../css/hub/home.css?v=20261023a">
+    <link rel="stylesheet" href="../css/hub/home.css?v=20261023b">
     <link rel="stylesheet" href="../css/hub/members.css?v=20260719">
-    <link rel="stylesheet" href="../css/hub/notifications.css?v=20260224a">
+    <link rel="stylesheet" href="../css/hub/notifications.css?v=20261023b">
     <link rel="stylesheet" href="../css/hub/venues.css?v=20260224a">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -316,7 +316,7 @@
         <div class="tab">
             <button class="tablinks active" onclick="FCOjima.UI.openTab(event, 'calendar')" id="defaultTab">カレンダー</button>
             <button class="tablinks" id="my-events-tab" onclick="FCOjima.UI.openTab(event, 'my-events')" style="display:none;">参加予定<span class="tab-badge" id="my-events-badge"></span></button>
-            <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'notifications')">連絡事項</button>
+            <button class="tablinks" id="notifications-tab" onclick="FCOjima.UI.openTab(event, 'notifications')">連絡事項<span class="tab-badge" id="notif-badge"></span></button>
             <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'members')">メンバー</button>
             <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'venues')">会場登録</button>
             <button class="tablinks" id="admin-tab" onclick="FCOjima.UI.openTab(event, 'admin')" style="display:none;">管理<span class="tab-badge" id="admin-badge"></span></button>
@@ -344,7 +344,7 @@
                 <div class="view-toggle">
                     <button id="calendar-view" class="active">カレンダー</button>
                     <button id="list-view">リスト</button>
-                    <button id="my-child-filter" class="secondary-button" title="自分の子供に関係するイベントのみ表示">全員</button>
+                    <button id="my-child-filter" class="secondary-button" title="お子さんが対象の予定だけを表示" aria-pressed="false" style="display:none;">☐ わが子の予定だけ</button>
                 </div>
             </div>
 
@@ -432,6 +432,8 @@
         <!-- 連絡事項タブ -->
         <div id="notifications" class="tabcontent">
             <h2>連絡事項</h2>
+            <!-- 予定ごとの連絡（配車の「連絡」。これからの予定の分。js/hub/notifications.js） -->
+            <div id="hub-event-notes" class="event-notes"></div>
             <div id="notificationsList" class="notifications-list">
                 <!-- 連絡事項がJSで動的に生成される -->
             </div>
@@ -961,6 +963,7 @@
     <script src="../js/common/ui.js?v=20261016d"></script>
     <script src="../js/common/auth.js?v=20261016g"></script>
     <script src="../js/common/db.js?v=20261023a"></script>
+    <script src="../js/common/inbox.js?v=20261023b"></script>
     <script src="../js/common/holidays.js?v=20261018c"></script>
     <script src="../js/common/weather.js?v=20261017d"></script>
     <script src="../js/common/checklist.js?v=20261016c"></script>
@@ -969,14 +972,14 @@
 
     <!-- HUBページ用モジュール -->
     <script src="../js/hub/main.js?v=20261016g"></script>
-    <script src="../js/hub/calendar.js?v=20261023a"></script>
+    <script src="../js/hub/calendar.js?v=20261023b"></script>
     <script src="../js/hub/members.js?v=20261022b"></script>
-    <script src="../js/hub/notifications.js?v=20261023a"></script>
+    <script src="../js/hub/notifications.js?v=20261023b"></script>
     <script src="../js/hub/venues.js?v=20261016g"></script>
     <script src="../js/hub/coaching.js?v=20261023a"></script>
-    <script src="../js/hub/myevents.js?v=20261023a"></script>
-    <script src="../js/hub/home.js?v=20261023a"></script>
-    <script src="../js/hub/admin.js?v=20261023a"></script>
+    <script src="../js/hub/myevents.js?v=20261023b"></script>
+    <script src="../js/hub/home.js?v=20261023b"></script>
+    <script src="../js/hub/admin.js?v=20261023b"></script>
 
     <script>
         // タブの切り替えに応じてフローティングボタンの表示を制御
@@ -1049,6 +1052,9 @@
                 if (adminTab) adminTab.style.display = '';
                 if (FCOjima.Hub.Admin && FCOjima.Hub.Admin.init) FCOjima.Hub.Admin.init();
             }
+
+            // 「わが子の予定だけ」は子供が紐づいている人だけに出す
+            if (FCOjima.Hub.Calendar && FCOjima.Hub.Calendar.updateChildFilter) FCOjima.Hub.Calendar.updateChildFilter();
 
             // 参加予定タブ（子供が登録されているユーザーのみ。バッジ・変更ダイアログもここで初期化）
             if (FCOjima.Hub.MyEvents && FCOjima.Hub.MyEvents.init) {

@@ -5,6 +5,7 @@
  *  - 保護者: まだ答えていない出欠（その場で「参加／不参加」）
  *  - 監督・コーチ: 指導の都合の未回答（参加予定タブへ）
  *  - マネージャー: 承認待ちの人（管理タブへ）と、今日から7日間の予定ごとの出欠・車の席・帯同指導者・割り当て
+ *  - 全員: 新しい連絡（連絡事項タブへ）、スマホのブラウザで開いているときは一度だけ「ホーム画面に追加」の案内
  * タブにも件数を出す（参加予定 = 出欠の未回答＋都合の未回答、管理 = 承認待ち）
  */
 
@@ -16,6 +17,18 @@ FCOjima.Hub.Home = FCOjima.Hub.Home || {};
     var Home = app.Hub.Home;
     var MAX_ATT_ROWS = 3;    // やることに出す出欠の数（残りは参加予定タブで）
     var WEEK_DAYS = 7;       // 今週の予定（今日から何日）
+
+    var A2HS_KEY = 'fcojima_a2hs_done'; // 「ホーム画面に追加」の案内を閉じた（次から出さない）
+    var _installEvt = null;             // Android の Chrome がくれる「インストール」（あれば押すだけで追加できる）
+    window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        _installEvt = e;
+        if (Home.render) Home.render();
+    });
+    window.addEventListener('appinstalled', function() {
+        try { localStorage.setItem(A2HS_KEY, '1'); } catch (e) {}
+        if (Home.render) Home.render();
+    });
 
     var _profile = null;
     var _pending = 0;        // 承認待ちの人数（管理タブが読み込んだもの）
@@ -134,6 +147,33 @@ FCOjima.Hub.Home = FCOjima.Hub.Home || {};
         }
     };
 
+    /**
+     * 「ホーム画面に追加」の案内を出すか: スマホのブラウザで開いていて（ホーム画面のアプリではない）、まだ閉じていない
+     * @returns {string|null} 'ios' | 'android' | null
+     */
+    function a2hsKind() {
+        try { if (localStorage.getItem(A2HS_KEY) === '1') return null; } catch (e) { return null; }
+        var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+        if (standalone) return null;
+        var ua = navigator.userAgent || '';
+        if (/iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'ios';
+        if (/Android/.test(ua)) return 'android';
+        return null;
+    }
+
+    function a2hsHtml() {
+        var kind = a2hsKind();
+        if (!kind) return '';
+        var how = kind === 'ios'
+            ? 'Safari の画面下の <b>共有ボタン</b>（□に↑）→「<b>ホーム画面に追加</b>」'
+            : (_installEvt ? '下の「ホーム画面に追加」を押してください' : 'Chrome の右上の <b>︙</b> →「<b>ホーム画面に追加</b>」（または「アプリをインストール」）');
+        return '<section class="hh-card hh-a2hs"><div class="hh-head"><span class="hh-ttl">📱 ホーム画面に追加しておくと便利です</span></div>' +
+            '<p class="hh-a2hs-text">次からはアイコンを押すだけで開けます。' + how + '</p>' +
+            '<div class="hh-a2hs-actions">' +
+            (kind === 'android' && _installEvt ? '<button type="button" class="hh-a2hs-install">ホーム画面に追加</button>' : '') +
+            '<button type="button" class="secondary-button hh-a2hs-close">閉じる（次から出さない）</button></div></section>';
+    }
+
     /** やることと今週の予定を出す */
     Home.render = function() {
         Home.renderBadges();
@@ -171,7 +211,16 @@ FCOjima.Hub.Home = FCOjima.Hub.Home || {};
                 '<span class="hh-count">' + _pending + '人</span><span class="hh-go">確認する ›</span></button>';
         }
 
-        var html = todos ? '<div class="hh-label">やること</div>' + todos : '';
+        // 新しい連絡（チームの連絡事項・これからの予定ごとの連絡）
+        var N = app.Hub.Notifications;
+        var unreadNotes = (N && N.unreadCount) ? N.unreadCount() : 0;
+        if (unreadNotes > 0) {
+            todos += '<button type="button" class="hh-card hh-link" data-go="notifications-tab"><span class="hh-ttl">📣 新しい連絡</span>' +
+                '<span class="hh-count">' + unreadNotes + '件</span><span class="hh-go">見る ›</span></button>';
+        }
+
+        var html = a2hsHtml();
+        html += todos ? '<div class="hh-label">やること</div>' + todos : '';
         html += weekHtml();
         root.innerHTML = html;
         root.style.display = html ? '' : 'none';
@@ -186,6 +235,17 @@ FCOjima.Hub.Home = FCOjima.Hub.Home || {};
         });
         root.querySelectorAll('[data-go]').forEach(function(b) {
             b.addEventListener('click', function() { openTab(b.dataset.go); });
+        });
+        var install = root.querySelector('.hh-a2hs-install');
+        if (install) install.addEventListener('click', function() {
+            var evt = _installEvt;
+            _installEvt = null;
+            if (evt) evt.prompt();
+        });
+        var close = root.querySelector('.hh-a2hs-close');
+        if (close) close.addEventListener('click', function() {
+            try { localStorage.setItem(A2HS_KEY, '1'); } catch (e) {}
+            Home.render();
         });
     };
 

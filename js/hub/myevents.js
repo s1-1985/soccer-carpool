@@ -148,6 +148,8 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
                     checklist: ev.checklist,
                     dutyGroupName: dutyAssignment ? dutyAssignment.groupName : null,
                     deadline: ev.attendanceDeadline || '',
+                    // この予定の連絡（配車の「連絡」）
+                    notes: ((dataArr[i] && dataArr[i].notifications) || []).filter(function(n) { return n && n.text; }),
                     kids: kids
                 });
             }
@@ -509,6 +511,16 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
                     kidsDiv.appendChild(row);
                 });
                 card.appendChild(kidsDiv);
+                // この予定の連絡（新着があれば件数）。押すとその予定の連絡のページ
+                if (it.notes && it.notes.length) {
+                    var unread = app.Inbox ? app.Inbox.eventUnread(it.eventId, it.notes).length : 0;
+                    var notesLink = document.createElement('a');
+                    notesLink.className = 'me-notes' + (unread ? ' has-new' : '');
+                    notesLink.href = '../carpool/notifications.html?event=' + encodeURIComponent(it.eventId);
+                    notesLink.textContent = '📣 この予定の連絡 ' + it.notes.length + '件' + (unread ? '（新着 ' + unread + '）' : '') + ' ›';
+                    notesLink.addEventListener('click', function(e) { e.stopPropagation(); });
+                    card.appendChild(notesLink);
+                }
                 if (it.kids.every(function(k) { return k.status === 'absent'; })) card.classList.add('me-all-absent');
                 listEl.appendChild(card);
             });

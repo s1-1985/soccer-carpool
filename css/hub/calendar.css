@@ -568,3 +568,9 @@
 #day-events-list .day-events-holiday { margin-bottom: 6px; color: #dc3545; font-size: 13px; font-weight: 700; }
 /* 指導者に都合を聞く日として追加した日の印（マネージャーのみ） */
 .cal-coach-mark { margin-right: 2px; font-size: 9px; vertical-align: 1px; }
+
+/* リスト表示（予定のある日だけ・今月は今日から） */
+.list-past-toggle { display: block; width: 100%; margin: 4px 0 10px; font-size: 13px; }
+.date-heading.is-today { color: #b07800; }
+.date-heading.is-past { opacity: .7; }
+.list-empty { cursor: default; }

@@ -287,19 +287,32 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             Calendar.deleteEvent(eventId);
         });
 
-        // 「自分の子供のみ」フィルターボタン
+        // 「わが子の予定だけ」の切り替え（オン・オフが分かるようにチェックの印。以前は「全員」「自分の子供のみ」と
+        // 文字が入れ替わるだけで、今の表示なのか押すとそうなるのか分かりにくかった）
         var myChildBtn = document.getElementById('my-child-filter');
         if (myChildBtn) {
+            Calendar.updateChildFilter();
             myChildBtn.addEventListener('click', function() {
                 Calendar.myChildOnly = !Calendar.myChildOnly;
-                this.textContent = Calendar.myChildOnly ? '自分の子供のみ' : '全員';
-                this.classList.toggle('active', Calendar.myChildOnly);
+                Calendar.updateChildFilter();
                 Calendar.renderCalendar();
                 Calendar.renderEventsList();
             });
         }
 
         console.log('カレンダーのイベントリスナー設定が完了しました');
+    };
+
+    /** 「わが子の予定だけ」ボタンの表示（子どもが紐づいていない人には出さない） */
+    Calendar.updateChildFilter = function() {
+        var btn = document.getElementById('my-child-filter');
+        if (!btn) return;
+        var profile = app.Auth && app.Auth.currentUserProfile;
+        var hasKids = !!(profile && profile.childrenIds && profile.childrenIds.length);
+        btn.style.display = hasKids ? '' : 'none';
+        btn.textContent = (Calendar.myChildOnly ? '☑' : '☐') + ' わが子の予定だけ';
+        btn.classList.toggle('active', Calendar.myChildOnly);
+        btn.setAttribute('aria-pressed', String(Calendar.myChildOnly));
     };
 
     /**
@@ -557,70 +570,59 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         else coach.style.display = 'none';
     };
     
+    Calendar._listShowPast = false; // リスト表示: 今月の今日より前の予定も出す
+
     /**
-     * リスト表示を描画（すべての日付を表示）
+     * リスト表示を描画: 予定のある日だけ。今月は今日から（前の予定は「今日より前の予定も見る」で出す）。
+     * 以前は月の1日から全部の日を「予定なし」も含めて並べ、今週の予定までスクロールする必要があった
      */
     Calendar.renderEventsList = function() {
         const currentDate = app.Hub.currentDate;
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth();
         const events = Calendar.applyMyChildFilter(app.Hub.events).slice().sort(Utils.compareEvents);
-        
         const listContainer = document.getElementById('events-list');
         listContainer.innerHTML = '';
-        
-        // 月の最初の日と最後の日を取得
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
-        
-        // 月内の全日付を生成
-        const allDatesInMonth = [];
-        for (let day = 1; day <= lastDay.getDate(); day++) {
-            allDatesInMonth.push(Utils.formatDate(new Date(year, month, day)));
+
+        const today = Utils.formatDate(new Date());
+        const ym = year + '-' + String(month + 1).padStart(2, '0');
+        const inMonth = events.filter(ev => String(ev.date || '').slice(0, 7) === ym);
+        const isThisMonth = ym === today.slice(0, 7);
+        const past = isThisMonth ? inMonth.filter(ev => ev.date < today) : [];
+        const shown = (isThisMonth && !Calendar._listShowPast) ? inMonth.filter(ev => ev.date >= today) : inMonth;
+
+        if (past.length) {
+            const toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'secondary-button list-past-toggle';
+            toggle.textContent = Calendar._listShowPast ? '今日より前の予定を隠す' : '今日より前の予定も見る（' + past.length + '件）';
+            toggle.addEventListener('click', () => {
+                Calendar._listShowPast = !Calendar._listShowPast;
+                this.renderEventsList();
+            });
+            listContainer.appendChild(toggle);
         }
-        
-        // 日付ごとのイベントを準備
-        const eventsByDate = {};
-        allDatesInMonth.forEach(date => {
-            eventsByDate[date] = events.filter(event => event.date === date);
-        });
-        
-        // すべての日付を表示
-        allDatesInMonth.forEach(dateString => {
-            const dateObj = new Date(dateString);
-            
-            // 日付の見出しを追加
-            const dateHeading = document.createElement('div');
-            dateHeading.className = 'date-heading';
-            dateHeading.textContent = Utils.formatDateForDisplay(dateString);
-            dateHeading.dataset.date = dateString;
-            listContainer.appendChild(dateHeading);
-            
-            // その日付のイベントを表示
-            const dateEvents = eventsByDate[dateString];
-            
-            if (dateEvents && dateEvents.length > 0) {
-                // イベントがある場合は表示
-                dateEvents.forEach(event => {
-                    const eventItem = this.createEventListItem(event);
-                    listContainer.appendChild(eventItem);
-                });
-            } else {
-                // イベントがない場合は「予定なし」と表示し、クリックで予定追加できるようにする
-                const noEventItem = document.createElement('div');
-                noEventItem.className = 'event-item empty';
-                noEventItem.innerHTML = '<div class="event-title">予定なし</div>';
-                
-                // 予定なし項目をクリックすると、その日付で予定追加ダイアログを開く
-                noEventItem.addEventListener('click', () => {
-                    this.openAddEventModal(new Date(dateString));
-                });
-                
-                listContainer.appendChild(noEventItem);
+        if (!shown.length) {
+            const empty = document.createElement('div');
+            empty.className = 'event-item empty list-empty';
+            empty.innerHTML = '<div class="event-title">' + (isThisMonth ? 'この月のこれからの予定はありません' : 'この月の予定はありません') + '</div>';
+            listContainer.appendChild(empty);
+            return;
+        }
+        let lastDate = '';
+        shown.forEach(event => {
+            if (event.date !== lastDate) {
+                lastDate = event.date;
+                const dateHeading = document.createElement('div');
+                dateHeading.className = 'date-heading' + (event.date === today ? ' is-today' : '') + (event.date < today ? ' is-past' : '');
+                dateHeading.textContent = Utils.formatDateForDisplay(event.date) + (event.date === today ? '（今日）' : '');
+                dateHeading.dataset.date = event.date;
+                listContainer.appendChild(dateHeading);
             }
+            listContainer.appendChild(this.createEventListItem(event));
         });
     };
-    
+
     /**
      * イベントリスト項目を作成
      * @param {Object} event - イベントオブジェクト
@@ -781,6 +783,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         const canAdd = app.PlayerMove && app.PlayerMove.canUse() && app.PlayerMove.isMovableEvent(event);
         const addBtn = canAdd ? '<button type="button" id="event-player-move-btn" class="secondary-button ed-add-btn">＋ 参加者を追加</button>' : '';
 
+        let detailData = null; // この予定の出欠・配車データ（予定ごとの連絡にも使う）
         if (targetMembers.length > 0) {
             // 出欠データはFirestore優先で取得（localStorageのみだと他端末の回答が見えない）
             let eventData = null;
@@ -792,6 +795,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 }
             }
             if (!eventData) eventData = Storage.loadEventData(event.id);
+            detailData = eventData;
             const attendance = eventData.attendance || [];
             const statusMap = {};
             attendance.forEach(a => { statusMap[a.name] = a.status; });
@@ -835,6 +839,26 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             </section>`;
         } else if (deadlineHtml || addBtn) {
             attendanceDisplay = `<section class="ed-section ed-attendance"><div class="ed-section-head"><h4>出欠確認</h4></div>${deadlineHtml}${addBtn}</section>`;
+        }
+
+        // ---- この予定の連絡（配車の「連絡」。以前は配車のページを開かないと見られなかった） ----
+        if (!detailData && event.type !== 'nighter' && FCOjima.DB && FCOjima.DB.loadEventData) {
+            try { detailData = await FCOjima.DB.loadEventData(event.id); } catch (e) { detailData = null; }
+        }
+        const evNotes = ((detailData && detailData.notifications) || []).filter(n => n && n.text);
+        const newNotes = (app.Inbox && evNotes.length) ? app.Inbox.eventUnread(event.id, evNotes).map(app.Inbox.noteKey) : [];
+        let notesHtml = '';
+        if (evNotes.length) {
+            notesHtml = `<section class="ed-section ed-notes">
+                <div class="ed-section-head"><h4>📣 この予定の連絡</h4><span class="ed-section-sub">${evNotes.length}件</span></div>` +
+                evNotes.slice(0, 3).map(n => {
+                    const isNew = app.Inbox && newNotes.indexOf(app.Inbox.noteKey(n)) !== -1;
+                    const d = /^\d{4}-\d{2}-\d{2}$/.test(n.date || '') ? new Date(n.date + 'T00:00:00') : null;
+                    const when = d ? (d.getMonth() + 1) + '/' + d.getDate() + '(' + ['日', '月', '火', '水', '木', '金', '土'][d.getDay()] + ')' : (n.date || '');
+                    return `<div class="ed-note${isNew ? ' is-new' : ''}"><div class="ed-note-meta">${esc(when)}${n.user ? ' ・ ' + esc(n.user) : ''}${isNew ? '<span class="notif-new">新着</span>' : ''}</div>` +
+                        `<div class="ed-note-text">${esc(n.text).replace(/\n/g, '<br>')}</div></div>`;
+                }).join('') +
+                `<a class="ed-notes-link" href="../carpool/notifications.html?event=${encodeURIComponent(String(event.id))}">${evNotes.length > 3 ? 'ほか' + (evNotes.length - 3) + '件・' : ''}連絡を見る・書く ›</a></section>`;
         }
 
         // ---- 持ち物・荷物 ----
@@ -889,6 +913,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             <div class="ed-facts">${facts}</div>
             <div id="event-weather-${esc(String(event.id))}" class="ed-weather"></div>
             ${attendanceDisplay}
+            ${notesHtml}
             ${itemsHtml}
             ${(event.notes || event.description) ? `
             <section class="ed-section detail-item">
@@ -904,6 +929,12 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             </section>
             ${eventLogDisplay}
         `;
+
+        // この予定の連絡を見たことにする（連絡事項タブ・参加予定の新着が消える）
+        if (evNotes.length && app.Inbox) {
+            app.Inbox.markEventSeen(event.id, evNotes);
+            if (app.Hub.Notifications && app.Hub.Notifications.updateBadge) app.Hub.Notifications.updateBadge();
+        }
 
         // お子さんの「参加／不参加」（押すとすぐ保存して、詳細を出し直す）
         if (app.Hub.MyEvents && app.Hub.MyEvents.answerButtons) {
