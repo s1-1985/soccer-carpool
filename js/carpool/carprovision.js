@@ -44,8 +44,33 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         this.updateEventInfo();
         this.updateCarRegistrations();
         this.initSeatMap();
+        // 運転者は、ログインしている人がまだこの予定に車を出していなければその人の名前にしておく
+        // （以前は空欄で、自分の名前を入力するかメンバーから探して選ぶ必要があった）
+        const parentInput = document.getElementById('parentName');
+        if (parentInput && !parentInput.value) parentInput.value = this.defaultDriverName();
         this.initSiblingUI();
         console.log('車提供機能の初期化が完了しました');
+    };
+
+    /**
+     * 運転者の初期値: ログインしている人（名簿にいればその名前）。すでにこの予定に車を出している・
+     * 運転者にできない人なら空
+     */
+    CarProvision.defaultDriverName = function() {
+        const profile = FCOjima.Auth && FCOjima.Auth.currentUserProfile;
+        const name = profile && profile.name ? String(profile.name).trim() : '';
+        if (!name) return '';
+        const key = FCOjima.Utils.normalizeName(name);
+        const member = (FCOjima.Carpool.members || []).find(function(m) {
+            return m.role !== 'player' && FCOjima.Utils.normalizeName(m.name) === key;
+        });
+        const driver = member ? member.name : name;
+        const regs = FCOjima.Carpool.appData.carRegistrations || [];
+        const already = regs.some(function(c) {
+            return FCOjima.Utils.normalizeName(c.parent) === key || FCOjima.Utils.normalizeName(FCOjima.Carpool.carOwner(c)) === key;
+        });
+        if (already || CarProvision._cannotDriveReason(driver)) return '';
+        return driver;
     };
 
     /**

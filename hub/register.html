@@ -55,6 +55,21 @@
             border-bottom: 1px solid #f0f0f0;
         }
         .child-select-item:last-child { border-bottom: none; }
+        .role-choices { display: flex; flex-direction: column; gap: 6px; }
+        .role-choice {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            border: 1.5px solid #d8cfb8;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            background: #fff;
+        }
+        .role-choice:has(input:checked) { border-color: #E8A200; background: #fff6dd; }
+        .role-choice input { margin: 0; accent-color: #E8A200; }
         .form-note {
             font-size: 12px;
             color: #888;
@@ -82,27 +97,25 @@
             </div>
 
             <div class="form-group">
+                <label>立場 <span style="color:red">*</span></label>
+                <div class="role-choices" role="radiogroup" aria-label="立場">
+                    <label class="role-choice"><input type="radio" name="reg-role" value="parent" checked><span>保護者</span></label>
+                    <label class="role-choice"><input type="radio" name="reg-role" value="coach"><span>監督・コーチ</span></label>
+                    <label class="role-choice"><input type="radio" name="reg-role" value="officer"><span>役員</span></label>
+                </div>
+                <p class="form-note">監督・コーチは、承認されると指導の予定（都合の回答）が使えるようになります。</p>
+            </div>
+
+            <div class="form-group">
                 <label for="reg-name">氏名 <span style="color:red">*</span></label>
                 <input type="text" id="reg-name" placeholder="例: 田中 和人" required class="form-control">
+                <p class="form-note">チームの名簿と同じ漢字で入力してください（姓と名の間はスペース）。</p>
             </div>
 
             <div class="form-group">
                 <label for="reg-kana">フリガナ <span style="color:red">*</span></label>
                 <input type="text" id="reg-kana" placeholder="例: タナカ カズト" required class="form-control" pattern="[ァ-ヶー・ｦ-ﾟ\s　]+" title="全角カタカナで入力してください">
                 <p style="font-size:11px;color:#888;margin:2px 0 0;">全角カタカナで入力してください</p>
-            </div>
-
-            <div class="form-group">
-                <label for="reg-gender">性別 <span style="color:red">*</span></label>
-                <select id="reg-gender" required class="form-control">
-                    <option value="male">男性</option>
-                    <option value="female">女性</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="reg-birth">生年月日</label>
-                <input type="date" id="reg-birth" class="form-control">
             </div>
 
             <div class="form-group">
@@ -201,8 +214,10 @@
 
             const name = document.getElementById('reg-name').value.trim();
             const kana = (document.getElementById('reg-kana') || {}).value?.trim() || '';
-            const gender = document.getElementById('reg-gender').value;
-            const birth = document.getElementById('reg-birth').value;
+            // 立場（承認するときの役割の初期値。役割そのものは承認する人が決める）。
+            // 性別・生年月日は使っていなかったため聞かない（お母さんが初期値の「男性」のまま送ってしまうこともあった）
+            const roleInput = document.querySelector('input[name="reg-role"]:checked');
+            const requestedRole = roleInput ? roleInput.value : 'parent';
 
             if (!name) {
                 errEl.textContent = '氏名を入力してください。';
@@ -228,8 +243,7 @@
                     .collection('users').doc(currentUser.uid).set({
                         name,
                         kana: kana || null,
-                        gender,
-                        birth: birth || null,
+                        requestedRole,
                         email: currentUser.email || null,
                         role: 'parent',
                         // 子供は承認時に管理者が選手名簿と照合して childrenIds を設定する

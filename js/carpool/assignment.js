@@ -1279,7 +1279,6 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         // 出欠確認・割り当てページのURLを追加（イベントID付き。IDがないと別の端末で開いたときにイベントが特定できない）
         message += '\n\n▼ 出欠確認:\n' + app.Carpool.pageUrl('attendance.html');
         message += '\n▼ 座席割り当て:\n' + app.Carpool.pageUrl('assignments.html');
-        message += '\n\n※リンクはSafari/Chromeで開いてください（LINEブラウザ非対応）';
 
         // テキストをクリップボードにコピー
         if (Utils.copyToClipboard(message)) {

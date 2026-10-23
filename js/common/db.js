@@ -499,13 +499,16 @@ FCOjima.DB = FCOjima.DB || {};
 
     /**
      * @param {Array<string>|null} [childrenIds] - 承認時に管理者が照合した子供（null/省略なら変更しない）
+     * @param {{role?: string, name?: string|null}} [extra] - 承認時に決めた役割・名簿に合わせた名前（省略なら変更しない）
      */
-    DB.approveUser = async function(uid, approvedByUid, childrenIds) {
+    DB.approveUser = async function(uid, approvedByUid, childrenIds, extra) {
         const data = {
             status: 'approved',
             approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
             approvedBy: approvedByUid
         };
+        if (extra && extra.role) data.role = String(extra.role);
+        if (extra && extra.name) data.name = String(extra.name);
         if (Array.isArray(childrenIds)) {
             data.childrenIds = childrenIds.map(String);
             data.childrenLinked = true; // 管理者が照合済み（入力された氏名での自動照合はしない）

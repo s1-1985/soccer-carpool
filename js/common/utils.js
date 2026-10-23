@@ -582,4 +582,208 @@ FCOjima.Utils = FCOjima.Utils || {};
         if (eventData.attendanceRemoved.indexOf(member.name) === -1) return false;
         return !(eventData.attendance || []).some(function(a) { return a && a.name === member.name; });
     };
+
+    /**
+     * LINE のトークで押したときに、LINE の中のブラウザではなく Safari・Chrome で開くリンクにする。
+     * LINE の中のブラウザでは Google のログインができず、URL をコピーして開き直す必要があった。
+     * LINE 以外で開いたときは何も変わらない
+     * @param {string} url
+     */
+    Utils.lineSafeUrl = function(url) {
+        url = String(url || '');
+        if (!url || /[?&]openExternalBrowser=1(&|#|$)/.test(url)) return url;
+        var hash = '';
+        var h = url.indexOf('#');
+        if (h >= 0) { hash = url.slice(h); url = url.slice(0, h); }
+        return url + (url.indexOf('?') >= 0 ? '&' : '?') + 'openExternalBrowser=1' + hash;
+    };
+
+    /**
+     * 出欠の対象の人（名前）: 対象学年の選手（学年指定なしなら全選手）＋学年外追加選手
+     * ＋（種類が「イベント」なら）父・母・役員。出欠表から外した人（attendanceRemoved）は除く。
+     * 出欠ページはこの人たちを出欠表に足し、概要・HUB の集計もこの人たちを対象に数える
+     * @param {Object} event
+     * @param {Array} members
+     * @param {Object|null} eventData
+     * @returns {Array<string>}
+     */
+    Utils.attendanceTargetNames = function(event, members, eventData) {
+        if (!event) return [];
+        var removed = (eventData && Array.isArray(eventData.attendanceRemoved)) ? eventData.attendanceRemoved : [];
+        var targetGrades = (event.target && event.target.length > 0) ? event.target : null;
+        var names = [];
+        var add = function(n) { if (n && names.indexOf(n) === -1 && removed.indexOf(n) === -1) names.push(n); };
+        (members || []).forEach(function(m) {
+            if (m.role !== 'player') return;
+            if (targetGrades && !(m.grade && targetGrades.some(function(g) { return String(g) === String(m.grade); }))) return;
+            add(m.name);
+        });
+        (event.extraPlayers || []).forEach(add);
+        if (event.type === 'event') {
+            (members || []).forEach(function(m) { if (Utils.isGuardian(m)) add(m.name); });
+        }
+        return names;
+    };
+
+    /**
+     * 出欠の集計。対象 = 出欠表の人＋まだ出欠表にいない対象者（出欠ページを誰も開いていなくても数える）
+     * @returns {{total:number, present:number, absent:number, unanswered:number}}
+     */
+    Utils.attendanceSummary = function(event, members, eventData) {
+        var att = (eventData && Array.isArray(eventData.attendance)) ? eventData.attendance : [];
+        var statusOf = {};
+        var names = [];
+        att.forEach(function(a) {
+            if (!a || !a.name) return;
+            statusOf[a.name] = a.status;
+            if (names.indexOf(a.name) === -1) names.push(a.name);
+        });
+        Utils.attendanceTargetNames(event, members, eventData).forEach(function(n) {
+            if (names.indexOf(n) === -1) names.push(n);
+        });
+        var present = names.filter(function(n) { return statusOf[n] === 'present'; }).length;
+        var absent = names.filter(function(n) { return statusOf[n] === 'absent'; }).length;
+        return { total: names.length, present: present, absent: absent, unanswered: names.length - present - absent };
+    };
+
+    // ---------- 配車（eventData）の集計。配車ページ・HUB で同じ数え方にする ----------
+
+    /** 車の持ち主（車提供で登録した人）。座席の割り当てで運転手を替えても変わらない */
+    Utils.carOwner = function(car) {
+        return car ? String(car.owner || car.parent || '').trim() : '';
+    };
+
+    /** 提供できる車（「提供できない」を除く。割り当ての画面の車の並び） */
+    Utils.availableCars = function(eventData) {
+        return ((eventData && eventData.carRegistrations) || []).filter(function(c) { return c && c.canDrive !== 'no'; });
+    };
+
+    /**
+     * 運転手としてこの予定に加わる人（提供できる車の持ち主・いま運転席にいる人・座席の割り当てで運転手になった人）
+     * @param {Object} eventData
+     */
+    Utils.driverPool = function(eventData) {
+        var names = [];
+        var add = function(n) {
+            n = String(n || '').trim();
+            if (n && names.indexOf(n) === -1) names.push(n);
+        };
+        Utils.availableCars(eventData).forEach(function(c) {
+            add(Utils.carOwner(c));
+            add(c.parent);
+        });
+        ((eventData && eventData.driverPeople) || []).forEach(add);
+        return names;
+    };
+
+    /**
+     * 座席が要る人（運転する人を除く）: 出欠で「参加」の人・帯同指導者（不参加を除く）・運転手として加わった人
+     * @param {Object} eventData
+     * @param {Array<Object>} coachMembers - 帯同指導者のメンバー
+     */
+    Utils.seatNeeders = function(eventData, coachMembers) {
+        var attendance = (eventData && eventData.attendance) || [];
+        var driverNames = new Set(Utils.availableCars(eventData).map(function(c) { return c.parent; }));
+        var absentNames = attendance.filter(function(a) { return a && a.status === 'absent'; }).map(function(a) { return a.name; });
+        var need = [];
+        var add = function(n) { if (n && !driverNames.has(n) && need.indexOf(n) === -1) need.push(n); };
+        attendance.forEach(function(a) { if (a && a.status === 'present') add(a.name); });
+        (coachMembers || []).forEach(function(m) { if (m && absentNames.indexOf(m.name) === -1) add(m.name); });
+        Utils.driverPool(eventData).forEach(add);
+        return need;
+    };
+
+    /**
+     * 保存済みの座席割り当てを、現在の車両一覧に対応づける。
+     * 割り当ては「何台目の車か（carIndex）」で保存されているため、割り当て後に
+     * 前の方の車が登録削除・提供不可に変更されると、以降の車の乗員が1台ずつ
+     * ずれて別の車に表示されていた。運転手名が一致する割り当てを優先して対応づけ、
+     * 見つからない車（運転手を変更した等）だけ carIndex で対応づける。
+     * どの車にも対応しない割り当て（削除した車の分）は使わない。
+     * @param {Array} cars - 提供可能な車両（表示順）
+     * @param {Array} assignments - 保存済みの割り当て
+     * @returns {Array} cars と同じ並びの割り当て（なければ null）
+     */
+    Utils.matchAssignmentsToCars = function(cars, assignments) {
+        assignments = assignments || [];
+        var used = new Set();
+        var result = cars.map(function() { return null; });
+        function claim(ci, pred) {
+            if (result[ci]) return;
+            for (var i = 0; i < assignments.length; i++) {
+                if (used.has(i) || !assignments[i]) continue;
+                if (pred(assignments[i])) { used.add(i); result[ci] = assignments[i]; return; }
+            }
+        }
+        // 1) 運転手名と位置の両方が一致
+        cars.forEach(function(car, ci) {
+            claim(ci, function(a) { return a.driver && a.driver === car.parent && String(a.carIndex) === String(ci); });
+        });
+        // 2) 運転手名が一致（前の車が消えて位置がずれた場合）
+        cars.forEach(function(car, ci) {
+            claim(ci, function(a) { return a.driver && a.driver === car.parent; });
+        });
+        // 3) 位置が一致し、その運転手がもう車両一覧にいない（運転手を変更した場合）
+        var parents = new Set(cars.map(function(c) { return c.parent; }));
+        cars.forEach(function(car, ci) {
+            claim(ci, function(a) { return String(a.carIndex) === String(ci) && !(a.driver && parents.has(a.driver)); });
+        });
+        return result;
+    };
+
+    /** 今ある車の座席に割り当てられている人の名前（運転手を除く） */
+    Utils.seatedNames = function(eventData) {
+        var seated = new Set();
+        Utils.matchAssignmentsToCars(Utils.availableCars(eventData), (eventData && eventData.assignments) || []).forEach(function(a) {
+            if (!a || !a.seats) return;
+            Object.keys(a.seats).forEach(function(type) {
+                var row = a.seats[type] || {};
+                Object.keys(row).forEach(function(i) { if (row[i]) seated.add(row[i]); });
+            });
+        });
+        return seated;
+    };
+
+    /**
+     * その人が乗る車（座席の割り当て）。割り当てられていなければ null
+     * @returns {{carIndex:number, driver:string}|null} driver = 運転している人（未定なら空）
+     */
+    Utils.carOf = function(eventData, name) {
+        var cars = Utils.availableCars(eventData);
+        var matched = Utils.matchAssignmentsToCars(cars, (eventData && eventData.assignments) || []);
+        for (var ci = 0; ci < cars.length; ci++) {
+            var a = matched[ci];
+            if (!a || !a.seats) continue;
+            var found = Object.keys(a.seats).some(function(type) {
+                var row = a.seats[type] || {};
+                return Object.keys(row).some(function(i) { return row[i] === name; });
+            });
+            if (found) return { carIndex: ci, driver: String(cars[ci].parent || '').trim() };
+        }
+        return null;
+    };
+
+    /**
+     * 配車の状況（配車の概要の4つのカード・HUB の「今週の予定」で同じ数え方）
+     * @param {Object} event
+     * @param {Array} members
+     * @param {Object|null} eventData
+     * @param {Array<Object>} coachMembers - 帯同指導者のメンバー
+     */
+    Utils.carpoolStatus = function(event, members, eventData, coachMembers) {
+        eventData = eventData || {};
+        var regs = eventData.carRegistrations || [];
+        var cars = Utils.availableCars(eventData);
+        var seats = cars.reduce(function(sum, car) { return sum + Utils.carOpenSeats(car); }, 0);
+        var need = Utils.seatNeeders(eventData, coachMembers);
+        var seated = Utils.seatedNames(eventData);
+        return {
+            attendance: Utils.attendanceSummary(event, members, eventData),
+            totalCars: regs.length,
+            cars: cars.length,
+            seats: seats,
+            need: need.length,
+            assigned: need.filter(function(n) { return seated.has(n); }).length
+        };
+    };
 })();

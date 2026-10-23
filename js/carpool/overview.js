@@ -64,6 +64,10 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
             // 帯同指導者（HUBで監督が決めた担当）
             await app.Carpool.loadEventCoaches();
             this.renderEventCoaches();
+            // 出欠の対象（対象学年の選手など）を数えるためにメンバーを読む
+            if (!(app.Carpool.members && app.Carpool.members.length) && FCOjima.DB && FCOjima.DB.loadMembers) {
+                try { app.Carpool.members = await FCOjima.DB.loadMembers(); } catch (e) { app.Carpool.loadMembers(); }
+            }
 
             console.log('イベントデータを読み込みました: ID=' + event.id + ', タイトル=' + event.title);
             
@@ -338,45 +342,22 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         }
         
         var eventData = app.Carpool.appData;
-        
-        // 出欠状況の集計
-        var attendance = eventData.attendance || [];
-        var totalMembers = attendance.length;
-        var respondedMembers = attendance.filter(function(a) { 
-            return a.status === 'present' || a.status === 'absent';
-        }).length;
-        var presentMembers = attendance.filter(function(a) { return a.status === 'present'; }).length;
-        
-        // 車両提供状況の集計
-        var carRegistrations = eventData.carRegistrations || [];
-        var totalCars = carRegistrations.length;
-        var availableCars = carRegistrations.filter(function(c) { return c.canDrive !== 'no'; }).length;
-        // 乗車可能な席の数（車提供で登録した兄弟児などが乗る席は除く。その席には選手を割り当てない）
-        var totalSeats = carRegistrations.reduce(function(sum, car) {
-            if (car.canDrive === 'no') return sum;
-            return sum + app.Utils.carOpenSeats(car);
-        }, 0);
-        
-        // 割り当て状況の集計: 「参加」の人（運転手を除く）のうち、今ある車の座席に割り当て済みの人数。
-        // 以前は座席にいる名前をすべて数えていたため、荷物・メンバー外乗員・割り当て後に「不参加」に
-        // なった人・削除した車の乗員まで数えられ、まだ割り当てていない選手がいても「割り当て済み」
-        // （緑）と表示されることがあった。また「イベント」で参加の保護者が運転手のときは、座席に
-        // 座らない運転手まで分母に入り、全員割り当てても完了にならなかった
-        var cars = carRegistrations.filter(function(c) { return c.canDrive !== 'no'; });
-        var driverNames = new Set(cars.map(function(c) { return c.parent; }));
-        var seatedNames = new Set();
-        app.Carpool.matchAssignmentsToCars(cars, eventData.assignments || []).forEach(function(assignment) {
-            if (!assignment || !assignment.seats) return;
-            Object.keys(assignment.seats).forEach(function(seatType) {
-                var row = assignment.seats[seatType] || {};
-                Object.keys(row).forEach(function(seatIndex) {
-                    if (row[seatIndex]) seatedNames.add(row[seatIndex]);
-                });
-            });
-        });
-        var needSeat = app.Carpool.seatNeeders();
-        var needSeatCount = needSeat.length;
-        var assignedMembers = needSeat.filter(function(n) { return seatedNames.has(n); }).length;
+        // 出欠・車・割り当ての数え方は HUB の「今週の予定」と共通（Utils.carpoolStatus）。
+        // 出欠の対象は、出欠ページを誰もまだ開いていない（出欠表が空の）ときも対象学年の選手などを数える。
+        // 以前は出欠表の行だけを数えていたため、最初は「出欠 0/0」と出て対象がいないように見えた
+        var st = app.Utils.carpoolStatus(Storage.getSelectedEvent(), app.Carpool.members || [], eventData,
+            app.Carpool.eventCoaches ? app.Carpool.eventCoaches() : []);
+        var totalMembers = st.attendance.total;
+        var respondedMembers = st.attendance.present + st.attendance.absent;
+        var presentMembers = st.attendance.present;
+        // 車両提供状況（乗車可能な席の数は、車提供で登録した兄弟児などが乗る席を除く）
+        var totalCars = st.totalCars;
+        var availableCars = st.cars;
+        var totalSeats = st.seats;
+        // 割り当て状況: 座席が要る人（運転手を除く）のうち、今ある車の座席に割り当て済みの人数。
+        // 荷物・メンバー外乗員・割り当て後に「不参加」になった人・削除した車の乗員は数えない
+        var needSeatCount = st.need;
+        var assignedMembers = st.assigned;
         
         var attendanceOk = respondedMembers >= totalMembers && totalMembers > 0;
         // 座席数は運転席を含まないため、運転手を除いた参加者の数と比べる
@@ -493,7 +474,6 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
 
         // 出欠確認URLを追加（イベントID付き。IDがないと別の端末で開いたときにイベントが特定できない）
         message += '\n▼ 出欠確認:\n' + app.Carpool.pageUrl('attendance.html');
-        message += '\n\n※このリンクはSafari/Chromeで開いてください（LINEブラウザ非対応）';
 
         // テキストをクリップボードにコピー
         if (Utils.copyToClipboard(message)) {
@@ -664,41 +644,9 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         return mergeList(base, local, remote, def.mode === 'prepend');
     }
 
-    /**
-     * 保存済みの座席割り当てを、現在の車両一覧に対応づける。
-     * 割り当ては「何台目の車か（carIndex）」で保存されているため、割り当て後に
-     * 前の方の車が登録削除・提供不可に変更されると、以降の車の乗員が1台ずつ
-     * ずれて別の車に表示されていた。運転手名が一致する割り当てを優先して対応づけ、
-     * 見つからない車（運転手を変更した等）だけ carIndex で対応づける。
-     * どの車にも対応しない割り当て（削除した車の分）は使わない。
-     * @param {Array} cars - 提供可能な車両（表示順）
-     * @param {Array} assignments - 保存済みの割り当て
-     * @returns {Array} cars と同じ並びの割り当て（なければ null）
-     */
+    /** 保存済みの座席割り当てを現在の車両一覧に対応づける（中身は Utils.matchAssignmentsToCars。HUB と共通） */
     app.Carpool.matchAssignmentsToCars = function(cars, assignments) {
-        var used = new Set();
-        var result = cars.map(function() { return null; });
-        function claim(ci, pred) {
-            if (result[ci]) return;
-            for (var i = 0; i < assignments.length; i++) {
-                if (used.has(i) || !assignments[i]) continue;
-                if (pred(assignments[i])) { used.add(i); result[ci] = assignments[i]; return; }
-            }
-        }
-        // 1) 運転手名と位置の両方が一致
-        cars.forEach(function(car, ci) {
-            claim(ci, function(a) { return a.driver && a.driver === car.parent && String(a.carIndex) === String(ci); });
-        });
-        // 2) 運転手名が一致（前の車が消えて位置がずれた場合）
-        cars.forEach(function(car, ci) {
-            claim(ci, function(a) { return a.driver && a.driver === car.parent; });
-        });
-        // 3) 位置が一致し、その運転手がもう車両一覧にいない（運転手を変更した場合）
-        var parents = new Set(cars.map(function(c) { return c.parent; }));
-        cars.forEach(function(car, ci) {
-            claim(ci, function(a) { return String(a.carIndex) === String(ci) && !(a.driver && parents.has(a.driver)); });
-        });
-        return result;
+        return app.Utils.matchAssignmentsToCars(cars, assignments);
     };
 
     var _saveChain = Promise.resolve();
@@ -913,6 +861,8 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         var event = Storage.getSelectedEvent();
         var url = window.location.origin + '/carpool/' + page;
         if (event && event.id !== undefined && event.id !== null) url += '?event=' + encodeURIComponent(String(event.id));
+        // LINE で押すと Safari・Chrome で開く（LINE の中のブラウザでは Google のログインができない）
+        url = app.Utils.lineSafeUrl(url);
         return url;
     };
 
@@ -1093,7 +1043,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
 
     /** 車の持ち主（車提供で登録した人）。座席の割り当てで運転手を替えても変わらない */
     app.Carpool.carOwner = function(car) {
-        return car ? String(car.owner || car.parent || '').trim() : '';
+        return app.Utils.carOwner(car);
     };
 
     /**
@@ -1102,35 +1052,15 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
      * この予定の中だけの参加者として扱う
      */
     app.Carpool.driverPool = function() {
-        var names = [];
-        var add = function(n) {
-            n = String(n || '').trim();
-            if (n && names.indexOf(n) === -1) names.push(n);
-        };
-        (this.appData.carRegistrations || []).forEach(function(c) {
-            if (!c || c.canDrive === 'no') return;
-            add(app.Carpool.carOwner(c));
-            add(c.parent);
-        });
-        (this.appData.driverPeople || []).forEach(add);
-        return names;
+        return app.Utils.driverPool(this.appData);
     };
 
     /**
      * 座席が要る人（運転する人を除く）: 出欠で「参加」の人・帯同指導者（不参加を除く）・運転手として加わった人。
-     * 配車の概要の「割り当て」と車提供の「必要 N席」で同じ数え方にする
+     * 配車の概要の「割り当て」・車提供の「必要 N席」・HUB の「今週の予定」で同じ数え方にする（Utils.seatNeeders）
      */
     app.Carpool.seatNeeders = function() {
-        var attendance = this.appData.attendance || [];
-        var driverNames = new Set((this.appData.carRegistrations || []).filter(function(c) { return c && c.canDrive !== 'no'; })
-            .map(function(c) { return c.parent; }));
-        var absentNames = attendance.filter(function(a) { return a && a.status === 'absent'; }).map(function(a) { return a.name; });
-        var need = [];
-        var add = function(n) { if (n && !driverNames.has(n) && need.indexOf(n) === -1) need.push(n); };
-        attendance.forEach(function(a) { if (a && a.status === 'present') add(a.name); });
-        this.eventCoaches().forEach(function(m) { if (absentNames.indexOf(m.name) === -1) add(m.name); });
-        this.driverPool().forEach(add);
-        return need;
+        return app.Utils.seatNeeders(this.appData, this.eventCoaches());
     };
 
     /** 提供できる車の持ち主（配置待ちから外せない人） */
