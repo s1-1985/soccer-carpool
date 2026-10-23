@@ -168,7 +168,7 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
             var div = document.createElement('div');
             div.className = 'notification-card';
 
-            var dateStr = UI.escapeHTML(n.date || '');
+            var dateStr = UI.escapeHTML(teamDate(n.date));
             var userStr = n.user ? UI.escapeHTML(n.user) : '';
             var textStr = UI.escapeHTML(n.text || '').replace(/\n/g, '<br>');
 
@@ -180,8 +180,9 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
             if (isNew) div.className += ' is-new';
             div.innerHTML =
                 '<div class="notification-header">' +
-                    '<div class="notification-date">' + dateStr + (isNew ? '<span class="notif-new">新着</span>' : '') + '</div>' +
+                    '<div class="notification-date">' + dateStr + '</div>' +
                     '<div class="notification-author">' + userStr + '</div>' +
+                    (isNew ? '<span class="notif-new">新着</span>' : '') +
                 '</div>' +
                 '<div class="notification-content">' + textStr + '</div>' +
                 '<div class="notification-actions">' +
@@ -204,6 +205,15 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
             });
         });
     };
+
+    /** チームの連絡事項の日時（'2026/10/23 08:00' → '10/23(金) 08:00'。今年でなければ年も） */
+    function teamDate(raw) {
+        var m = String(raw || '').match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})(?:\s+(\d{1,2}:\d{2}))?/);
+        if (!m) return raw || '';
+        var d = new Date(+m[1], +m[2] - 1, +m[3]);
+        var s = (+m[2]) + '/' + (+m[3]) + '(' + ['日', '月', '火', '水', '木', '金', '土'][d.getDay()] + ')' + (m[4] ? ' ' + m[4] : '');
+        return (+m[1] === new Date().getFullYear() ? '' : m[1] + '/') + s;
+    }
 
     Notifications.sendNotification = function() {
         var textEl = document.getElementById('notificationText');

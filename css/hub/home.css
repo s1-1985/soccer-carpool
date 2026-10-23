@@ -48,6 +48,12 @@ button.hh-link .hh-go { margin-left: auto; font-size: 13px; font-weight: 800; co
     border-top: 1px dashed #eadfbf;
 }
 .hh-head + .hh-row { border-top: none; }
+/* 予定ごとのまとまり（予定の見出しの下に、子どもごとの「参加／不参加」） */
+.hh-ev { padding: 8px 0 6px; border-top: 1px dashed #eadfbf; }
+.hh-head + .hh-ev { border-top: none; padding-top: 2px; }
+.hh-ev .hh-row { border-top: none; padding: 4px 0 4px 10px; }
+.hh-ev .hh-row-sub { flex: 1 1 6em; font-size: 14px; font-weight: 700; color: #2a2210; }
+.hh-row-go { color: #b07800; font-weight: 800; }
 .hh-row-main {
     flex: 1 1 10em;
     min-width: 0;
@@ -173,12 +179,15 @@ button.me-ans-absent.is-on, button.me-ans-absent.is-on:hover { background: #c847
 .me-notes {
     display: inline-block;
     margin-top: 8px;
-    font-size: 13px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #eef4fb;
+    font-size: 12.5px;
     font-weight: 700;
     color: #2f6db5;
     text-decoration: none;
 }
-.me-notes.has-new { color: #c0392b; }
+.me-notes.has-new { background: #fdecea; color: #b0281c; }
 .ed-note { padding: 6px 0; border-top: 1px dashed #eadfbf; }
 .ed-section-head + .ed-note { border-top: none; }
 .ed-note-meta { font-size: 12px; color: #888; }
@@ -197,8 +206,75 @@ button.me-ans-absent.is-on, button.me-ans-absent.is-on:hover { background: #c847
     font-weight: 800;
 }
 
-/* 「ホーム画面に追加」の案内（一度閉じたら出さない） */
-.hh-a2hs { border-left-color: #2f7fd0; border-color: #bcd5ef; }
-.hh-a2hs-text { margin: 0 0 8px; font-size: 13.5px; line-height: 1.7; color: #3a3020; }
-.hh-a2hs-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.hh-a2hs-actions button { font-size: 13px; padding: 8px 12px; }
+/* 「ホーム画面に追加」の案内（一度閉じたら出さない。やることより控えめに） */
+.hh-a2hs {
+    background: #f1f6fc;
+    border: 1px solid #cfe0f3;
+    border-radius: 12px;
+    padding: 9px 12px 10px;
+    margin: 4px 0 12px;
+}
+.hh-a2hs-head { display: flex; align-items: center; gap: 8px; }
+.hh-a2hs-ttl { flex: 1; font-size: 13.5px; font-weight: 800; color: #24476e; }
+button.hh-a2hs-close, button.hh-a2hs-close:hover {
+    flex-shrink: 0;
+    background: transparent;
+    box-shadow: none;
+    border: 1px solid #b9cfe8;
+    border-radius: 999px;
+    color: #3d6390;
+    font-size: 12px;
+    padding: 4px 10px;
+}
+.hh-a2hs-text { margin: 4px 0 0; font-size: 12.5px; line-height: 1.7; color: #3a4a5c; }
+.hh-a2hs-install { margin-top: 8px; font-size: 13px; padding: 8px 12px; }
+
+/* 管理タブのメニュー（よく使う／記録・設定） */
+.admin-group { margin-top: 20px; }
+.admin-sub { font-size: 14px; color: #6b5a2e; margin: 0 0 8px; }
+.admin-menu { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+button.admin-tile, button.admin-tile:hover {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+    min-height: 64px;
+    padding: 10px 10px;
+    background: #fff;
+    border: 1px solid #e6dcc4;
+    border-radius: 12px;
+    box-shadow: none;
+    text-align: left;
+    color: #1C1600;
+    letter-spacing: 0;
+}
+button.admin-tile:hover { border-color: #E8A200; }
+.admin-tile-icon { font-size: 20px; line-height: 1.2; flex-shrink: 0; }
+.admin-tile-body { display: flex; flex-direction: column; min-width: 0; }
+.admin-tile-body b { font-size: 14px; line-height: 1.35; }
+.admin-tile-body small { font-size: 11.5px; font-weight: 500; color: #7a6f5c; line-height: 1.45; margin-top: 2px; }
+
+/* 承認待ちのカード: 承認を大きく、却下は控えめに */
+.pending-actions { display: flex; gap: 8px; margin-top: 12px; }
+button.approve-btn, button.approve-btn:hover {
+    flex: 1;
+    padding: 10px;
+    background: #2e9e4f;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-weight: 800;
+    font-size: 15px;
+    box-shadow: none;
+}
+button.reject-btn, button.reject-btn:hover {
+    flex: 0 0 auto;
+    padding: 10px 16px;
+    background: #fff;
+    color: #b0281c;
+    border: 1px solid #f1b3ab;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 13px;
+    box-shadow: none;
+}

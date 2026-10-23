@@ -218,10 +218,11 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 ? '<div style="font-size:13px;color:#666;margin-top:4px;">子供（申請時の入力を選手名簿と照合してください）:</div>' +
                   '<div class="pending-children"></div>'
                 : '<div style="font-size:13px;color:#666;">子供: ' + esc(childNames) + '</div>') +
-            '<div style="font-size:12px;color:#aaa;margin-top:4px;">申請日時: ' + (u.registeredAt ? new Date(u.registeredAt.seconds * 1000).toLocaleString('ja-JP') : '不明') + '</div>' +
-            '<div style="display:flex;gap:8px;margin-top:10px;">' +
-                '<button class="approve-btn" data-uid="' + u.uid + '" style="flex:1;padding:8px;background:#2ecc71;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:bold;">承認</button>' +
-                '<button class="reject-btn" data-uid="' + u.uid + '" style="flex:1;padding:8px;background:#e74c3c;color:white;border:none;border-radius:6px;cursor:pointer;">却下</button>' +
+            (u.registeredAt ? '<div style="font-size:12px;color:#aaa;margin-top:4px;">申請日時: ' + new Date(u.registeredAt.seconds * 1000).toLocaleString('ja-JP') + '</div>' : '') +
+            // 承認を大きく、却下は控えめに（以前は同じ大きさの緑と赤が並び、押し間違えやすかった）
+            '<div class="pending-actions">' +
+                '<button type="button" class="approve-btn" data-uid="' + u.uid + '">承認する</button>' +
+                '<button type="button" class="reject-btn" data-uid="' + u.uid + '">却下</button>' +
             '</div>';
 
         // 役割
