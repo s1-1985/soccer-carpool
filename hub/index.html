@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="../css/common.css?v=20261017a">
     <link rel="stylesheet" href="../css/hub/calendar.css?v=20261018c">
     <link rel="stylesheet" href="../css/hub/coaching.css?v=20261022c">
+    <link rel="stylesheet" href="../css/hub/home.css?v=20261023a">
     <link rel="stylesheet" href="../css/hub/members.css?v=20260719">
     <link rel="stylesheet" href="../css/hub/notifications.css?v=20260224a">
     <link rel="stylesheet" href="../css/hub/venues.css?v=20260224a">
@@ -48,6 +49,25 @@
             pointer-events: none;
         }
         .tab-badge.on { display: block; }
+        /* 件数（参加予定 = 未回答、管理 = 承認待ち） */
+        .tab-badge.num {
+            /* 文字に重ならないよう、タブ名の右に並べる */
+            position: static;
+            display: inline-block;
+            vertical-align: 2px;
+            margin-left: 4px;
+            width: auto;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 9px;
+            box-sizing: border-box;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 800;
+            line-height: 18px;
+            text-align: center;
+        }
 
         /* ── 参加予定タブ ── */
         .me-changes {
@@ -76,14 +96,24 @@
         .me-date { font-weight: bold; font-size: 14px; color: #1C1600; }
         .me-title { font-size: 15px; font-weight: bold; margin: 2px 0; }
         .me-meta { font-size: 12px; color: #777; }
-        .me-kids { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
-        .me-kid {
-            font-size: 12px;
-            background: #f4f4f4;
-            border-radius: 12px;
-            padding: 3px 10px;
+        .me-kids { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+        /* 子供ごとの行（名前・乗る車と「参加／不参加」。css/hub/home.css の .me-ans） */
+        .me-kid-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+            background: #faf7ef;
+            border-radius: 10px;
+            padding: 6px 6px 6px 10px;
         }
-        .me-kid.unknown { background: #fff3cd; }
+        .me-kid-row.me-st-unknown { background: #fff3cd; }
+        .me-kid-info { display: flex; flex-direction: column; min-width: 0; flex: 1 1 8em; }
+        .me-kid { font-size: 13.5px; font-weight: 700; color: #2a2210; }
+        .me-kid.unknown { color: #8a5a00; }
+        .me-kid-car { font-size: 12px; color: #2f6b3a; font-weight: 600; margin-top: 1px; }
+        .me-card.me-all-absent { opacity: .72; border-left-color: #c9c2b2; }
 
         /* ── 参加イベント移動（マトリクス） ── */
         .mx-cell-movable { cursor: pointer; }
@@ -289,13 +319,15 @@
             <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'notifications')">連絡事項</button>
             <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'members')">メンバー</button>
             <button class="tablinks" onclick="FCOjima.UI.openTab(event, 'venues')">会場登録</button>
-            <button class="tablinks" id="admin-tab" onclick="FCOjima.UI.openTab(event, 'admin')" style="display:none;">管理</button>
+            <button class="tablinks" id="admin-tab" onclick="FCOjima.UI.openTab(event, 'admin')" style="display:none;">管理<span class="tab-badge" id="admin-badge"></span></button>
         </div>
     </div>
 
     <div class="container">
         <!-- カレンダータブ -->
         <div id="calendar" class="tabcontent" style="display: block;">
+            <!-- やること（出欠の未回答・指導の都合・承認待ち）と今週の予定の状況（js/hub/home.js） -->
+            <div id="hub-home" class="hub-home" style="display:none;"></div>
             <div class="controls">
                 <div class="month-control">
                     <button id="prev-month">&lt;</button>
@@ -353,7 +385,7 @@
             <div id="my-coaching"></div>
             <!-- 保護者: お子さんの参加予定 -->
             <div id="my-events-kids">
-                <p style="font-size:12px;color:#888;margin-bottom:12px;">お子さん（兄弟姉妹含む）が参加対象のイベント一覧です。前回見たときから変わった点は🔔付きで表示されます。</p>
+                <p style="font-size:12px;color:#888;margin-bottom:12px;">お子さん（兄弟姉妹含む）が参加対象の予定です。「参加」「不参加」を押すと、その場で出欠を回答できます。前回見たときから変わった点は🔔付きで表示されます。</p>
                 <div id="my-events-changes"></div>
                 <div id="my-events-list">
                     <p class="loading">読み込み中...</p>
@@ -750,7 +782,8 @@
             </div>
             <!-- 画面の下に固定（長い予定でもスクロールせずに押せる） -->
             <div class="modal-actions ed-actions">
-                <button id="manage-event" class="ed-manage">🚗 配車管理へ</button>
+                <!-- 出欠の一覧・車提供・座席の割り当て（配車管理）へ。以前の「配車管理へ」では出欠もここだと分からなかった -->
+                <button id="manage-event" class="ed-manage">🚗 出欠・配車</button>
                 <button id="edit-event" class="secondary-button">編集</button>
                 <button id="delete-event" class="ed-delete">削除</button>
             </div>
@@ -923,11 +956,11 @@
 
     <!-- 共通モジュール -->
     <script src="../js/common/global.js?v=20260224a"></script>
-    <script src="../js/common/utils.js?v=20261017f"></script>
+    <script src="../js/common/utils.js?v=20261023a"></script>
     <script src="../js/common/storage.js?v=20261016d"></script>
     <script src="../js/common/ui.js?v=20261016d"></script>
     <script src="../js/common/auth.js?v=20261016g"></script>
-    <script src="../js/common/db.js?v=20261022c"></script>
+    <script src="../js/common/db.js?v=20261023a"></script>
     <script src="../js/common/holidays.js?v=20261018c"></script>
     <script src="../js/common/weather.js?v=20261017d"></script>
     <script src="../js/common/checklist.js?v=20261016c"></script>
@@ -936,13 +969,14 @@
 
     <!-- HUBページ用モジュール -->
     <script src="../js/hub/main.js?v=20261016g"></script>
-    <script src="../js/hub/calendar.js?v=20261022a"></script>
+    <script src="../js/hub/calendar.js?v=20261023a"></script>
     <script src="../js/hub/members.js?v=20261022b"></script>
-    <script src="../js/hub/notifications.js?v=20261016c"></script>
+    <script src="../js/hub/notifications.js?v=20261023a"></script>
     <script src="../js/hub/venues.js?v=20261016g"></script>
-    <script src="../js/hub/coaching.js?v=20261022c"></script>
-    <script src="../js/hub/myevents.js?v=20261018a"></script>
-    <script src="../js/hub/admin.js?v=20261017d"></script>
+    <script src="../js/hub/coaching.js?v=20261023a"></script>
+    <script src="../js/hub/myevents.js?v=20261023a"></script>
+    <script src="../js/hub/home.js?v=20261023a"></script>
+    <script src="../js/hub/admin.js?v=20261023a"></script>
 
     <script>
         // タブの切り替えに応じてフローティングボタンの表示を制御
@@ -1020,6 +1054,8 @@
             if (FCOjima.Hub.MyEvents && FCOjima.Hub.MyEvents.init) {
                 FCOjima.Hub.MyEvents.init(userProfile);
             }
+            // カレンダーの上の「やること」・今週の予定と、タブの件数
+            if (FCOjima.Hub.Home && FCOjima.Hub.Home.init) FCOjima.Hub.Home.init(userProfile);
 
             // 参加イベント移動モーダルの閉じるボタン
             const matrixMoveClose = document.getElementById('matrix-move-close');

@@ -812,9 +812,21 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 const icon = st === 'p' ? '○' : st === 'a' ? '×' : '－';
                 return `<div class="ed-att ed-att-${st}"><span class="ed-att-icon">${icon}</span><span class="ed-att-name">${esc(m.name)}</span></div>`;
             }).join('');
+            // ログインしている保護者のお子さん: ここで「参加／不参加」を答えられる（ボタンは表示したあとに付ける）。
+            // 以前は「配車管理へ」→「出欠確認」へ進み、全員の一覧から自分の子を探して答える必要があった
+            const myKids = (app.Hub.MyEvents && app.Hub.MyEvents.getChildren) ? app.Hub.MyEvents.getChildren() : [];
+            const mine = targetMembers.filter(m => myKids.some(k => k.name === m.name));
+            const stName = m => statusMap[m.name] === 'present' ? 'present' : statusMap[m.name] === 'absent' ? 'absent' : 'unknown';
+            const mineHtml = mine.length ? `<div class="ed-mine"><div class="ed-mine-head">お子さんの出欠<span>押すとすぐ保存されます</span></div>` +
+                mine.map(m => {
+                    const car = stName(m) === 'present' ? Utils.carOf(eventData, m.name) : null;
+                    const carText = (app.Hub.MyEvents && app.Hub.MyEvents.carText) ? app.Hub.MyEvents.carText(car) : '';
+                    return `<div class="ed-mine-row ed-mine-${stName(m)}" data-name="${esc(m.name)}" data-status="${stName(m)}"><div class="ed-mine-info"><span class="ed-mine-name">${esc(m.name)}${stName(m) === 'unknown' ? '<small>未回答</small>' : ''}</span>${carText ? `<span class="ed-mine-car">${esc(carText)}</span>` : ''}</div></div>`;
+                }).join('') + '</div>' : '';
             attendanceDisplay = `
             <section class="ed-section ed-attendance">
                 <div class="ed-section-head"><h4>出欠確認</h4><span class="ed-section-sub">${targetMembers.length}人</span></div>
+                ${mineHtml}
                 <div class="ed-att-bar" aria-hidden="true"><span class="ed-bar-p" style="width:${pct(presentCount)}%"></span><span class="ed-bar-u" style="width:${pct(pendingCount)}%"></span><span class="ed-bar-a" style="width:${pct(absentCount)}%"></span></div>
                 <div class="ed-att-legend"><span class="ed-leg-p">参加 <b>${presentCount}</b></span><span class="ed-leg-u">未回答 <b>${pendingCount}</b></span><span class="ed-leg-a">不参加 <b>${absentCount}</b></span></div>
                 ${deadlineHtml}
@@ -892,6 +904,15 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             </section>
             ${eventLogDisplay}
         `;
+
+        // お子さんの「参加／不参加」（押すとすぐ保存して、詳細を出し直す）
+        if (app.Hub.MyEvents && app.Hub.MyEvents.answerButtons) {
+            content.querySelectorAll('.ed-mine-row').forEach(function(row) {
+                row.appendChild(app.Hub.MyEvents.answerButtons(String(event.id), row.dataset.name, row.dataset.status, function() {
+                    Calendar.showEventDetails(event.id);
+                }));
+            });
+        }
 
         // 指導者の担当を決める（監督・コーチの都合の良い順に出る）
         var coachBtn = document.getElementById('event-coach-btn');

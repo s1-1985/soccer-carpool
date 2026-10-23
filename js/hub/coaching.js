@@ -961,7 +961,7 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
             UI().showAlert('全員が回答済みです', 'info');
             return;
         }
-        var url = location.origin + '/hub/index.html';
+        var url = Utils().lineSafeUrl(location.origin + '/hub/index.html');
         var text = '【指導者の都合のお願い】\nアプリの「参加予定」タブの「指導の予定」のカレンダーで、枠のある日をタップして都合（○ 行ける・△ 一部だけ・× 行けない）を入れてください。\n' +
             lines.join('\n') + '\n' + url;
         if (Utils().copyToClipboard(text)) UI().showAlert('回答のお願いの文面をコピーしました。LINEに貼り付けてください', 'success', 5000);

@@ -58,9 +58,11 @@
         <div class="pending-title">承認をお待ちください</div>
         <div class="pending-msg">
             登録申請を受け付けました。<br>
-            監督・コーチ・役員による承認後、<br>
-            このシステムをご利用いただけます。<br><br>
-            承認完了後、このページを更新してください。
+            監督・コーチ・役員が承認すると、<br>
+            このアプリを使えるようになります。<br><br>
+            承認されたら、このページを開いたときに<br>
+            自動でアプリの画面に進みます。<br>
+            <span style="font-size:12px;color:#888;">お急ぎの場合は、申請したことを監督・役員にお知らせください。</span>
         </div>
         <button class="reload-btn" onclick="checkStatus()">承認状況を確認</button>
         <br>
@@ -91,6 +93,10 @@
             });
             // 開いた時点の状態を反映する（却下済みならその旨を表示。承認済みならHUBへ）
             checkStatus(true);
+            // 開いたまま待っている間・アプリに戻ってきたときにも確かめ、承認されたらそのまま進む
+            // （以前は「承認後にこのページを更新してください」とだけ出ていた）
+            setInterval(function() { if (!document.hidden) checkStatus(true); }, 60000);
+            document.addEventListener('visibilitychange', function() { if (!document.hidden) checkStatus(true); });
         });
 
         async function checkStatus(silent) {

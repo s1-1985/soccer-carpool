@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" href="/img/icon-192.png">
     <link rel="stylesheet" href="../css/common.css?v=20261017a">
     <link rel="stylesheet" href="../css/carpool/common.css?v=20261022a">
-    <link rel="stylesheet" href="../css/carpool/attendance.css?v=20261017a">
+    <link rel="stylesheet" href="../css/carpool/attendance.css?v=20261023a">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -44,6 +44,8 @@
 
         <div class="card">
             <h2>参加者の出欠確認</h2>
+            <!-- 選んだ時点で保存される（以前は「出欠を保存」ボタンがあり、押さないと保存されないように見えた） -->
+            <p class="att-autosave-note">「参加」「不参加」を選ぶと、その場で保存されます（保存ボタンはありません）。</p>
             <div class="table-container">
                 <table id="attendance-table" class="attendance-table">
                     <thead>
@@ -63,7 +65,6 @@
                 </table>
             </div>
             <div class="action-buttons">
-                <button type="button" id="save-attendance">出欠を保存</button>
                 <button type="button" id="reminder-attendance" class="reminder-button">未回答者に<wbr>リマインド</button>
                 <!-- 管理者・指導者・役員が試合・練習で押すと、同じ日の他の予定の選手・その日に予定のない選手から選べる
                      （以前の「他の予定・お休みの選手を入れる」を統合）。それ以外はメンバーの一覧から追加 -->
@@ -111,16 +112,16 @@
 
     <!-- 共通モジュール -->
     <script src="../js/common/global.js?v=20260219"></script>
-    <script src="../js/common/utils.js?v=20261017f"></script>
+    <script src="../js/common/utils.js?v=20261023a"></script>
     <script src="../js/common/storage.js?v=20261016d"></script>
     <script src="../js/common/ui.js?v=20261016d"></script>
     <script src="../js/common/auth.js?v=20261016g"></script>
-    <script src="../js/common/db.js?v=20261022c"></script>
+    <script src="../js/common/db.js?v=20261023a"></script>
 
     <!-- 配車管理用モジュール -->
-    <script src="../js/carpool/overview.js?v=20261022b"></script>
+    <script src="../js/carpool/overview.js?v=20261023a"></script>
     <script src="../js/common/playermove.js?v=20261017e"></script>
-    <script src="../js/carpool/attendance.js?v=20261017a"></script>
+    <script src="../js/carpool/attendance.js?v=20261023a"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', async function() {

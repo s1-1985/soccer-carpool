@@ -110,20 +110,8 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
         const attendance = appData.attendance;
         const removed = new Set(appData.attendanceRemoved || []);
         const existing = new Set(attendance.map(function(a) { return a.name; }));
-        const targetGrades = (event.target && event.target.length > 0) ? event.target : null;
-
-        const names = [];
-        members.forEach(function(m) {
-            if (m.role !== 'player') return;
-            if (targetGrades && !(m.grade && targetGrades.some(function(g) { return String(g) === String(m.grade); }))) return;
-            names.push(m.name);
-        });
-        (event.extraPlayers || []).forEach(function(n) { names.push(n); });
-        if (event.type === 'event') {
-            members.forEach(function(m) {
-                if (FCOjima.Utils.isGuardian(m)) names.push(m.name);
-            });
-        }
+        // 対象者の決め方は概要・HUB の集計と共通（Utils.attendanceTargetNames）
+        const names = FCOjima.Utils.attendanceTargetNames(event, members, appData);
 
         let added = 0;
         names.forEach(function(name) {
@@ -159,10 +147,14 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
             return;
         }
 
+        // ログインしている保護者のお子さんを一番上に出す（以前は学年順の一覧に埋もれ、自分の子を探す必要があった）
+        var mine = Attendance.myChildNames(members);
         // 高学年→低学年の降順ソート。同学年内はメンバー一覧の並び順を優先
         var gradeOrderDesc = { '6': 0, '5': 1, '4': 2, '3': 3, '2': 4, '1': 5, '年長': 6, '年中': 7, '年少': 8 };
         var sortedIndices = attendance.map(function(_, i) { return i; }).sort(function(ia, ib) {
             var a = attendance[ia], b = attendance[ib];
+            var myA = mine.indexOf(a.name) !== -1, myB = mine.indexOf(b.name) !== -1;
+            if (myA !== myB) return myA ? -1 : 1;
             var mA = members.find(function(m) { return m.name === a.name; });
             var mB = members.find(function(m) { return m.name === b.name; });
             var isPlayerA = mA && mA.role === 'player';
@@ -186,10 +178,12 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
             const grade = member && member.grade ? FCOjima.Utils.getGradeLabel(member.grade) : '-';
 
             const row = document.createElement('tr');
+            const isMine = mine.indexOf(item.name) !== -1;
+            if (isMine) row.className = 'att-mine';
             // 出欠ステータスはクラス名に使うため既知の値に限定する
             if (['present', 'absent', 'unknown'].indexOf(item.status) === -1) item.status = 'unknown';
             row.innerHTML =
-                '<td>' + UI.escapeHTML(item.name) + '</td>' +
+                '<td>' + UI.escapeHTML(item.name) + (isMine ? '<span class="att-mine-tag">お子さん</span>' : '') + '</td>' +
                 '<td>' + UI.escapeHTML(grade) + '</td>' +
                 '<td><select class="attendance-select ' + item.status + '" data-index="' + index + '">' +
                     '<option value="unknown"' + (item.status === 'unknown' ? ' selected' : '') + '>未回答</option>' +
@@ -210,6 +204,19 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
                 Attendance._saveRow(index, { notes: this.value });
             });
         });
+    };
+
+    /**
+     * ログインしている人のお子さん（選手）の名前。子供の紐づけはメンバー側を正とする（Utils.resolveChildrenIds）
+     * @param {Array} members
+     * @returns {Array<string>}
+     */
+    Attendance.myChildNames = function(members) {
+        const profile = FCOjima.Auth && FCOjima.Auth.currentUserProfile;
+        if (!profile) return [];
+        const ids = FCOjima.Utils.resolveChildrenIds(profile, members || []).map(String);
+        return (members || []).filter(function(m) { return m.role === 'player' && ids.indexOf(String(m.id)) !== -1; })
+            .map(function(m) { return m.name; });
     };
 
     /**
@@ -309,7 +316,7 @@ FCOjima.Carpool.Attendance = FCOjima.Carpool.Attendance || {};
             '【出欠リマインド】\n' +
             eventInfo +
             '未回答 ' + unknown.length + '名: ' + names + '\n\n' +
-            'ご回答はこちらから:\n' + attendanceUrl + '\n※このリンクはSafari/Chromeで開いてください（LINEブラウザ非対応）';
+            'ご回答はこちらから:\n' + attendanceUrl;
 
         if (FCOjima.Utils.copyToClipboard(message)) {
             UI.showAlert('リマインドメッセージをクリップボードにコピーしました。LINEなどに貼り付けて共有できます。');

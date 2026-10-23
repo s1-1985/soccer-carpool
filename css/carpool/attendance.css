@@ -64,6 +64,30 @@
     color: #383d41;
 }
 
+/* 選ぶとすぐ保存される旨 */
+.att-autosave-note {
+    margin: -4px 0 10px;
+    font-size: 12.5px;
+    color: #6b6355;
+}
+
+/* ログインしている保護者のお子さん（一番上に出す） */
+.attendance-table tr.att-mine {
+    background-color: #fff8e6;
+    box-shadow: inset 4px 0 0 #E8A200;
+}
+.att-mine-tag {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: #E8A200;
+    color: #1C1600;
+    font-size: 11px;
+    font-weight: 700;
+    vertical-align: middle;
+}
+
 /* 備考入力 */
 .attendance-notes {
     width: 100%;

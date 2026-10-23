@@ -217,13 +217,26 @@
         var isInAppBrowser = /Line\/|FBAN|FBAV|Instagram|Twitter|Snapchat|MicroMessenger/i.test(ua)
             || (/Android/.test(ua) && /Version\/[\d.]+.*Chrome\/[\d.]+ Mobile/.test(ua) === false && /wv/.test(ua));
 
+        // LINE の中のブラウザなら、元のページを Safari・Chrome で開き直す（LINE はリンクに openExternalBrowser=1 が
+        // 付いていると外のブラウザで開く）。開き直せなかったとき（付けても LINE の中で開いた）は下の案内を出す
+        var openedUrl = returnPath ? (window.location.origin + returnPath) : window.location.href;
+        if (/Line\//i.test(ua) && !/[?&]openExternalBrowser=1(&|#|$)/.test(openedUrl)) {
+            var tried = false;
+            try { tried = sessionStorage.getItem('fcojima_ext_tried') === '1'; sessionStorage.setItem('fcojima_ext_tried', '1'); } catch (e) {}
+            if (!tried) {
+                var h = openedUrl.indexOf('#');
+                var base = h >= 0 ? openedUrl.slice(0, h) : openedUrl;
+                window.location.replace(base + (base.indexOf('?') >= 0 ? '&' : '?') + 'openExternalBrowser=1' + (h >= 0 ? openedUrl.slice(h) : ''));
+            }
+        }
+
         if (isInAppBrowser) {
             var warning = document.getElementById('browser-warning');
             var urlBox = document.getElementById('current-url');
             var signinBtn = document.getElementById('google-signin-btn');
             // コピーさせるのは元のページのURL（ログインページのURLだと、Safari等で開き直したときに
             // 共有されたイベントのページへ戻れない）
-            var loginUrl = returnPath ? (window.location.origin + returnPath) : window.location.href;
+            var loginUrl = openedUrl.replace(/[?&]openExternalBrowser=1(?=&|#|$)/, '').replace(/\.html&/, '.html?');
 
             warning.style.display = 'block';
             urlBox.textContent = loginUrl;

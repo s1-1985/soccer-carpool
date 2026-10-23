@@ -131,8 +131,8 @@ FCOjima.Hub.Notifications = FCOjima.Hub.Notifications || {};
         var n = notifications[index];
         if (!n) return;
 
-        var url = window.location.origin + '/hub/index.html';
-        var message = '【FC 尾島ジュニア 連絡事項】\n' + (n.date || '') + '\n\n' + (n.text || '') + '\n\n' + url + '\n※このリンクはSafari/Chromeで開いてください（LINEブラウザ非対応）';
+        var url = app.Utils.lineSafeUrl(window.location.origin + '/hub/index.html');
+        var message = '【FC 尾島ジュニア 連絡事項】\n' + (n.date || '') + '\n\n' + (n.text || '') + '\n\n' + url;
 
         var lineUrl = 'https://line.me/R/msg/text/?' + encodeURIComponent(message);
         if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {

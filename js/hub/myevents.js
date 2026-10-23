@@ -125,9 +125,14 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
                 });
                 // 回答の無い行（status 未設定）は未回答として扱う（カレンダーの表示と揃える）
                 var status = (item && item.status) ? item.status : 'unknown';
-                if (status === 'absent') return; // 不参加（移動済み含む）は表示しない
-
-                kids.push({ name: child.name, status: status });
+                // 不参加の子も残す（このタブ・やることで答えるので、答え直せるように）。
+                // 以前は不参加にすると予定ごと消えていた
+                kids.push({
+                    name: child.name,
+                    status: status,
+                    // 乗る車（座席の割り当てで決まっていれば）
+                    car: status === 'present' ? Utils.carOf(dataArr[i], child.name) : null
+                });
             });
 
             if (kids.length > 0) {
@@ -142,6 +147,7 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
                     checklistExtra: ev.checklistExtra,
                     checklist: ev.checklist,
                     dutyGroupName: dutyAssignment ? dutyAssignment.groupName : null,
+                    deadline: ev.attendanceDeadline || '',
                     kids: kids
                 });
             }
@@ -165,6 +171,7 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
             _items = items;
             _changes = MyEvents.diffSnapshot(_items);
             MyEvents.updateBadge();
+            if (app.Hub.Home && app.Hub.Home.update) app.Hub.Home.update();
         });
         _refreshPromise = p;
         return p;
@@ -175,11 +182,103 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
         var snap = {};
         items.forEach(function(it) {
             it.kids.forEach(function(k) {
+                if (k.status === 'absent') return;
                 snap[k.name + '|' + it.eventId] = { d: it.date, t: it.title, s: it.startTime };
             });
         });
         return snap;
     }
+
+    /** 計算済みの参加予定（まだなら null） */
+    MyEvents.items = function() { return _items; };
+
+    /** まだ答えていない（未回答の）子と予定 [{ item, kid }]（日付順） */
+    MyEvents.unanswered = function() {
+        var list = [];
+        (_items || []).forEach(function(it) {
+            it.kids.forEach(function(k) { if (k.status === 'unknown') list.push({ item: it, kid: k }); });
+        });
+        return list;
+    };
+
+    var STATUS_LABEL = { present: '参加', absent: '不参加', unknown: '未回答' };
+
+    /**
+     * 子供の出欠を答える（参加予定のカード・予定の詳細・カレンダーの「やること」から）。
+     * 出欠表（eventData.attendance）のその子の行だけを、最新の内容に対してトランザクションで書き換える
+     * （同じ予定にほかの保護者が同時に答えても消し合わない）。まだ出欠表に行がなければ足す
+     * @param {string} eventId
+     * @param {string} name - 子供（選手）の名前
+     * @param {string} status - 'present' | 'absent'
+     */
+    MyEvents.answer = async function(eventId, name, status) {
+        await FCOjima.DB.updateEventData(eventId, function(cur) {
+            var att = (cur && Array.isArray(cur.attendance)) ? cur.attendance.map(function(a) { return Object.assign({}, a); }) : [];
+            var row = att.find(function(a) { return a && a.name === name; });
+            if (row) row.status = status;
+            else att.push({ name: name, status: status, notes: '' });
+            return { attendance: att };
+        });
+        // 自分で答えた分は「前回から変わった点」に出さない（不参加にした予定を「参加がなくなりました」と知らせない）
+        try {
+            var raw = localStorage.getItem(snapKey());
+            if (raw) {
+                var snap = JSON.parse(raw);
+                var key = name + '|' + String(eventId);
+                var it = (_items || []).find(function(x) { return x.eventId === String(eventId); });
+                if (status === 'absent') delete snap[key];
+                else if (it) snap[key] = { d: it.date, t: it.title, s: it.startTime };
+                localStorage.setItem(snapKey(), JSON.stringify(snap));
+            }
+        } catch (e) {}
+        UI.showAlert(name + '：「' + STATUS_LABEL[status] + '」で保存しました', 'success');
+        await MyEvents.refresh();
+        var tab = document.getElementById('my-events');
+        if (tab && tab.style.display !== 'none') MyEvents.renderList(false);
+    };
+
+    /**
+     * 子供1人分の「参加／不参加」ボタン（押すとすぐ保存）
+     * @param {string} eventId
+     * @param {string} name
+     * @param {string} status - いまの回答
+     * @param {Function} [onDone] - 保存したあとに呼ぶ
+     */
+    MyEvents.answerButtons = function(eventId, name, status, onDone) {
+        var wrap = document.createElement('div');
+        wrap.className = 'me-ans';
+        wrap.setAttribute('role', 'group');
+        wrap.setAttribute('aria-label', name + 'の出欠');
+        [['present', '参加'], ['absent', '不参加']].forEach(function(o) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'me-ans-btn me-ans-' + o[0] + (status === o[0] ? ' is-on' : '');
+            b.dataset.status = o[0];
+            b.textContent = o[1];
+            b.setAttribute('aria-pressed', String(status === o[0]));
+            b.addEventListener('click', async function(e) {
+                e.stopPropagation();
+                if (status === o[0]) return;
+                wrap.querySelectorAll('button').forEach(function(x) { x.disabled = true; });
+                try {
+                    await MyEvents.answer(eventId, name, o[0]);
+                    if (onDone) onDone();
+                } catch (err) {
+                    console.warn('出欠を保存できませんでした:', err);
+                    UI.showAlert('保存できませんでした。通信環境を確認してください', 'error', 6000);
+                    wrap.querySelectorAll('button').forEach(function(x) { x.disabled = false; });
+                }
+            });
+            wrap.appendChild(b);
+        });
+        return wrap;
+    };
+
+    /** 乗る車の表示（「🚗 加藤さんの車」）。決まっていなければ空 */
+    MyEvents.carText = function(car) {
+        if (!car) return '';
+        return car.driver ? '🚗 ' + car.driver + 'さんの車' : '🚗 ' + (car.carIndex + 1) + '台目の車（運転手未定）';
+    };
 
     /**
      * 前回スナップショットとの差分を計算
@@ -236,12 +335,17 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
         });
     };
 
-    /** 参加予定タブの赤丸バッジを更新 */
+    /** 前回見たときから変わった点があるか */
+    MyEvents.hasChanges = function() {
+        return (_changes && _changes.length > 0) || MyEvents.unseenMoves().length > 0;
+    };
+
+    /** 参加予定タブのバッジを更新（未回答があれば件数、変わった点だけなら赤丸。件数は js/hub/home.js） */
     MyEvents.updateBadge = function() {
+        if (app.Hub.Home && app.Hub.Home.renderBadges) { app.Hub.Home.renderBadges(); return; }
         var badge = document.getElementById('my-events-badge');
         if (!badge) return;
-        var on = (_changes && _changes.length > 0) || MyEvents.unseenMoves().length > 0;
-        badge.classList.toggle('on', on);
+        badge.classList.toggle('on', MyEvents.hasChanges());
     };
 
     /**
@@ -381,15 +485,31 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
                     card.appendChild(dutyMeta);
                 }
 
+                // 子供ごとに出欠をその場で答えられる（以前は 予定の詳細 →「配車管理へ」→ 出欠確認 と進んで答えていた）
                 var kidsDiv = document.createElement('div');
                 kidsDiv.className = 'me-kids';
                 it.kids.forEach(function(k) {
-                    var chip = document.createElement('span');
-                    chip.className = 'me-kid' + (k.status === 'unknown' ? ' unknown' : '');
-                    chip.textContent = k.name + (k.status === 'unknown' ? '（未回答）' : '');
-                    kidsDiv.appendChild(chip);
+                    var row = document.createElement('div');
+                    row.className = 'me-kid-row me-st-' + k.status;
+                    var info = document.createElement('div');
+                    info.className = 'me-kid-info';
+                    var nm = document.createElement('span');
+                    nm.className = 'me-kid me-kid-name' + (k.status === 'unknown' ? ' unknown' : '');
+                    nm.textContent = k.name + (k.status === 'unknown' ? '（未回答）' : '');
+                    info.appendChild(nm);
+                    var carText = MyEvents.carText(k.car);
+                    if (carText) {
+                        var car = document.createElement('span');
+                        car.className = 'me-kid-car';
+                        car.textContent = carText;
+                        info.appendChild(car);
+                    }
+                    row.appendChild(info);
+                    row.appendChild(MyEvents.answerButtons(it.eventId, k.name, k.status));
+                    kidsDiv.appendChild(row);
                 });
                 card.appendChild(kidsDiv);
+                if (it.kids.every(function(k) { return k.status === 'absent'; })) card.classList.add('me-all-absent');
                 listEl.appendChild(card);
             });
         }
@@ -401,8 +521,9 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
                 localStorage.setItem(snapKey(), JSON.stringify(toSnapshot(_items)));
                 localStorage.setItem(moveAckKey(), String(Date.now()));
             } catch (e) { console.warn('参加予定の既読状態を保存できませんでした:', e); }
-            var badge = document.getElementById('my-events-badge');
-            if (badge) badge.classList.remove('on');
+            // 見たので変わった点は消す（バナーは今回表示した分を残す）。未回答の件数は残る
+            _changes = [];
+            MyEvents.updateBadge();
         }
     };
 

@@ -1,0 +1,170 @@
+/* FC尾島ジュニア - HUB の「やること」・今週の予定（js/hub/home.js）と、出欠の「参加／不参加」ボタン */
+
+.hub-home { margin: 4px 0 18px; }
+.hh-label {
+    font-size: 13px;
+    font-weight: 800;
+    color: #6b5a2e;
+    letter-spacing: .04em;
+    margin: 0 2px 8px;
+}
+.hh-label small { font-weight: 600; color: #9a8a66; margin-left: 4px; letter-spacing: 0; }
+
+/* やること（カード） */
+.hh-card {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    background: #fff;
+    border: 1.5px solid #f0d58a;
+    border-left: 5px solid #E8A200;
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    text-align: left;
+    font: inherit;
+    color: #1C1600;
+}
+.hh-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.hh-ttl { font-size: 15px; font-weight: 800; }
+.hh-count {
+    font-size: 12px;
+    font-weight: 800;
+    color: #8a5a00;
+    background: #fff3cd;
+    border-radius: 999px;
+    padding: 1px 9px;
+}
+button.hh-link { display: flex; align-items: center; gap: 8px; cursor: pointer; min-height: 48px; }
+button.hh-link .hh-go { margin-left: auto; font-size: 13px; font-weight: 800; color: #b07800; white-space: nowrap; }
+
+/* 出欠の未回答の行（予定・子供と「参加／不参加」） */
+.hh-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 8px 0;
+    border-top: 1px dashed #eadfbf;
+}
+.hh-head + .hh-row { border-top: none; }
+.hh-row-main {
+    flex: 1 1 10em;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    background: none;
+    border: none;
+    padding: 0;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+}
+.hh-row-date { font-size: 12px; font-weight: 700; color: #6b6355; }
+.hh-row-title { font-size: 14.5px; font-weight: 800; color: #1C1600; line-height: 1.35; }
+.hh-row-sub { font-size: 12.5px; color: #4a4232; }
+.hh-dl { margin-left: 8px; font-size: 11.5px; color: #b03a2e; font-weight: 700; }
+.hh-more {
+    display: block;
+    width: 100%;
+    margin-top: 4px;
+    padding: 8px;
+    background: #fff8e6;
+    border: 1px solid #f0d58a;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    color: #8a5a00;
+    cursor: pointer;
+}
+
+/* 今週の予定の状況（マネージャー） */
+.hh-week { margin-top: 6px; }
+.hh-week-row {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    background: #fff;
+    border: 1px solid #e6dcc4;
+    border-radius: 12px;
+    padding: 9px 12px;
+    margin-bottom: 8px;
+    text-align: left;
+    font: inherit;
+    color: #1C1600;
+    cursor: pointer;
+}
+.hh-week-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.hh-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.hh-chip {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: #f2eee4;
+    color: #4a4232;
+    white-space: nowrap;
+}
+.hh-chip small { margin-left: 4px; font-size: 11px; }
+.hh-chip.is-ok { background: #e3f4e6; color: #1e6b33; }
+.hh-chip.is-warn { background: #fde7e4; color: #a3271b; }
+.hh-chip.is-part { background: #fff3cd; color: #8a5a00; }
+.hh-note { font-size: 11.5px; color: #9a8a66; margin: 2px 2px 0; }
+
+/* 出欠の「参加／不参加」（参加予定のカード・予定の詳細・やることで共通。js/hub/myevents.js answerButtons） */
+.me-ans { display: inline-flex; gap: 6px; flex-shrink: 0; }
+.me-ans-btn {
+    min-width: 64px;
+    min-height: 40px;
+    padding: 6px 12px;
+    border-radius: 10px;
+    border: 1.5px solid #d8cfb8;
+    background: #fff;
+    color: #4a4232;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+}
+.me-ans-present { border-color: #8fd09c; color: #1e6b33; }
+.me-ans-absent { border-color: #f1b3ab; color: #a3271b; }
+.me-ans-present.is-on { background: #2e9e4f; border-color: #2e9e4f; color: #fff; }
+.me-ans-absent.is-on { background: #c8473a; border-color: #c8473a; color: #fff; }
+.me-ans-btn:disabled { opacity: .55; cursor: default; }
+
+/* 予定の詳細の「お子さんの出欠」 */
+.ed-mine {
+    background: #fff8e6;
+    border: 1.5px solid #f0d58a;
+    border-radius: 12px;
+    padding: 8px 10px;
+    margin: 0 0 12px;
+}
+.ed-mine-head { font-size: 13px; font-weight: 800; color: #6b5a2e; margin-bottom: 4px; }
+.ed-mine-head span { font-weight: 600; font-size: 11.5px; color: #9a8a66; margin-left: 8px; }
+.ed-mine-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 6px 0;
+    border-top: 1px dashed #eadfbf;
+}
+.ed-mine-head + .ed-mine-row { border-top: none; }
+.ed-mine-info { display: flex; flex-direction: column; min-width: 0; flex: 1 1 8em; }
+.ed-mine-name { font-size: 14.5px; font-weight: 800; color: #1C1600; }
+.ed-mine-name small { margin-left: 6px; font-size: 11.5px; font-weight: 800; color: #8a5a00; background: #fff3cd; border-radius: 999px; padding: 1px 7px; }
+.ed-mine-car { font-size: 12px; color: #2f6b3a; font-weight: 600; }
+
+/* 共通の button（金色のグラデーション・影・ホバーで金色）を打ち消す */
+button.hh-card, button.hh-card:hover,
+button.hh-week-row, button.hh-week-row:hover { background: #fff; box-shadow: none; letter-spacing: 0; }
+button.hh-row-main, button.hh-row-main:hover { background: transparent; box-shadow: none; border-radius: 0; letter-spacing: 0; }
+button.hh-more, button.hh-more:hover { background: #fff8e6; box-shadow: none; }
+button.me-ans-btn, button.me-ans-btn:hover { background: #fff; box-shadow: none; letter-spacing: 0; }
+button.me-ans-present.is-on, button.me-ans-present.is-on:hover { background: #2e9e4f; }
+button.me-ans-absent.is-on, button.me-ans-absent.is-on:hover { background: #c8473a; }
