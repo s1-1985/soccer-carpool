@@ -30,6 +30,8 @@ Vanilla JS + Firebase（Hosting/Firestore/Auth/Storage）。ビルド工程な�
   - `css/common.css` の `button` には金色の背景・影・hover がある。文字だけ・枠だけのボタンは `box-shadow: none` と `:hover` も上書きする
   - ページの CSS の `@media (max-width: 768px)` が、後ろに書いた通常の指定を打ち消すことがある（連絡事項のカードの `flex-direction: column` など）。
     スマホ幅で必ず見る
+- `innerHTML` に入れる値は、出所に関係なく `UI.escapeHTML` を通す。予定の日付（`event.date`）も承認済みなら誰でも書き込めるので、
+  日付として使う前に `YYYY-MM-DD` の形か確かめる（2026-10-23 指導者の画面で日付に仕込んだHTMLが動いた。詳細は handover.md）
 - 画面を変えたら `tests/e2e/` の E2E テストを流す（下の「E2E テスト」）。表示を変えたらテストの期待値も直す（テストを消して通さない）
 
 ## Firestore ルール記述の注意点
@@ -62,7 +64,7 @@ Firebase Console → Firestore → `teams/fc-ojima/users` に手動でドキュ�
 
 ## E2E テスト（`tests/e2e/`。詳しくは `tests/e2e/README.md`）
 
-Firebase エミュレータ＋Playwright で画面を実際に操作して確かめるテスト一式（41ファイル・約565項目。2026-10-23 時点ですべて PASS）。
+Firebase エミュレータ＋Playwright で画面を実際に操作して確かめるテスト一式（43ファイル・587項目。2026-10-23 時点ですべて PASS）。
 本番には配信しない（`firebase.json` の hosting の ignore に `tests/**`）。
 ```bash
 cd tests/e2e

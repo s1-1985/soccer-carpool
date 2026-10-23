@@ -529,6 +529,12 @@ FCOjima.DB = FCOjima.DB || {};
             .collection('users').doc(uid).update({ role });
     };
 
+    /** ログインの名前を変える（名簿のメンバーの名前を直したとき。マネージャーが自分以外の人の分だけ変えられる） */
+    DB.updateUserName = async function(uid, name) {
+        await db.collection('teams').doc(TEAM_ID)
+            .collection('users').doc(String(uid)).update({ name: String(name) });
+    };
+
     // ========== 当番表（グループ設定）==========
 
     DB.loadDutySettings = async function() {

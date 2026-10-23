@@ -18,7 +18,9 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
     var _changes = [];     // 前回スナップショットとの差分
 
     function uid() { return _profile ? _profile.uid : 'anon'; }
-    function snapKey() { return 'fcojima_myevents_snap_' + uid(); }
+    // 前回見たときの参加予定。v2 から不参加と答えた予定も入れる（toSnapshot）。以前の形は oldSnapKey
+    function snapKey() { return 'fcojima_myevents_snap2_' + uid(); }
+    function oldSnapKey() { return 'fcojima_myevents_snap_' + uid(); }
     function moveAckKey() { return 'fcojima_move_ack_' + uid(); }
     function todayISO() {
         var d = new Date();
@@ -179,16 +181,47 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
         return p;
     };
 
-    /** 現在の参加予定をスナップショット形式に変換 */
+    /**
+     * 現在の参加予定をスナップショット形式に変換。
+     * 出欠の答え（参加・不参加）は「前回から変わった点」にしないため、不参加と答えた予定も入れる（a: 1）。
+     * 以前は不参加の予定を入れておらず、配車の出欠ページ（LINE の共有リンク）から自分で「不参加」にすると、
+     * 次に HUB を開いたときに「〇〇の参加がなくなりました」と出てタブに赤丸が付いていた
+     */
     function toSnapshot(items) {
         var snap = {};
         items.forEach(function(it) {
             it.kids.forEach(function(k) {
-                if (k.status === 'absent') return;
-                snap[k.name + '|' + it.eventId] = { d: it.date, t: it.title, s: it.startTime };
+                var v = { d: it.date, t: it.title, s: it.startTime };
+                if (k.status === 'absent') v.a = 1;
+                snap[k.name + '|' + it.eventId] = v;
             });
         });
         return snap;
+    }
+
+    /**
+     * 前回見たときのスナップショット（なければ null）。
+     * 以前の形（不参加の予定が入っていない）しかなければ引き継ぎ、いま不参加と答えてある予定は
+     * 変わっていないものとして足す（足さないと、不参加の予定がすべて「追加されました」になる）
+     */
+    function loadPrevSnapshot(items) {
+        var raw = null, old = null;
+        try {
+            raw = localStorage.getItem(snapKey());
+            if (!raw) old = localStorage.getItem(oldSnapKey());
+        } catch (e) { return null; }
+        var prev;
+        try { prev = JSON.parse(raw || old || 'null'); } catch (e) { return null; }
+        if (!prev || typeof prev !== 'object') return null;
+        if (!raw) {
+            (items || []).forEach(function(it) {
+                it.kids.forEach(function(k) {
+                    var key = k.name + '|' + it.eventId;
+                    if (k.status === 'absent' && !prev[key]) prev[key] = { d: it.date, t: it.title, s: it.startTime, a: 1 };
+                });
+            });
+        }
+        return prev;
     }
 
     /** 計算済みの参加予定（まだなら null） */
@@ -221,15 +254,15 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
             else att.push({ name: name, status: status, notes: '' });
             return { attendance: att };
         });
-        // 自分で答えた分は「前回から変わった点」に出さない（不参加にした予定を「参加がなくなりました」と知らせない）
+        // 自分で答えた分は「前回から変わった点」に出さない（答えはスナップショットの差に入らない。
+        // 以前の形の記録しかない端末でも、答えた予定をいまの形で入れておく）
         try {
-            var raw = localStorage.getItem(snapKey());
-            if (raw) {
-                var snap = JSON.parse(raw);
-                var key = name + '|' + String(eventId);
-                var it = (_items || []).find(function(x) { return x.eventId === String(eventId); });
-                if (status === 'absent') delete snap[key];
-                else if (it) snap[key] = { d: it.date, t: it.title, s: it.startTime };
+            var snap = loadPrevSnapshot(_items);
+            var it = (_items || []).find(function(x) { return x.eventId === String(eventId); });
+            if (snap && it) {
+                var v = { d: it.date, t: it.title, s: it.startTime };
+                if (status === 'absent') v.a = 1;
+                snap[name + '|' + String(eventId)] = v;
                 localStorage.setItem(snapKey(), JSON.stringify(snap));
             }
         } catch (e) {}
@@ -287,10 +320,8 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
      * 初回（スナップショット未保存）は差分なし扱い
      */
     MyEvents.diffSnapshot = function(items) {
-        var raw = localStorage.getItem(snapKey());
-        if (!raw) return [];
-        var prev;
-        try { prev = JSON.parse(raw); } catch (e) { return []; }
+        var prev = loadPrevSnapshot(items);
+        if (!prev) return [];
 
         var cur = toSnapshot(items);
         var changes = [];
@@ -307,7 +338,8 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
             }
         });
         Object.keys(prev).forEach(function(key) {
-            if (!cur[key] && prev[key].d >= today) {
+            // 不参加と答えてあった予定がなくなっても「参加がなくなりました」とは知らせない
+            if (!cur[key] && prev[key] && !prev[key].a && prev[key].d >= today) {
                 var name = key.split('|')[0];
                 changes.push({ type: 'removed', key: key, name: name,
                     msg: fmtDate(prev[key].d) + '「' + prev[key].t + '」の ' + name + ' の参加がなくなりました' });
@@ -539,6 +571,7 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
             // 端末の保存領域がいっぱいでも画面の処理は止めない
             try {
                 localStorage.setItem(snapKey(), JSON.stringify(toSnapshot(_items)));
+                localStorage.removeItem(oldSnapKey());
                 localStorage.setItem(moveAckKey(), String(Date.now()));
             } catch (e) { console.warn('参加予定の既読状態を保存できませんでした:', e); }
             // 見たので変わった点は消す（バナーは今回表示した分を残す）。未回答の件数は残る

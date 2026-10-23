@@ -724,6 +724,8 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
         Storage.saveMembers(members);
         // 出欠・配車・学年外追加は名前で管理しているため、名前を変えたら予定のデータにも反映する
         if (renamedFrom) Members.propagateRename(renamedFrom, name);
+        // ログインの名前も名簿の名前に合わせる（以前の名前のままのログインがあれば。保存し直したときも）
+        if (memberFormId && updated && role !== 'player' && (updated.formerNames || []).length) Members.syncUserNames(updated);
         this.renderMembersList();
 
         UI.closeModal('member-modal');
@@ -783,6 +785,57 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
     /**
      * イベントデータ内の名前を置き換えた差分（変更したフィールドだけ）を返す
      */
+    /**
+     * メンバーの名前を直したら、その人のログインの名前（users の name）も同じにする。
+     * 指導の予定（監督・コーチ）・車提供の運転者・兄弟児の登録・お子さんの紐づけは、ログインの名前とメンバーの名前で
+     * 照合する。以前は名簿の漢字を直すとログインの名前が古いまま残り、コーチ本人の画面で「指導の予定」が使えなくなっていた
+     * （「名前が違う場合は管理者に連絡」の案内が出る）。
+     * 以前の名前（formerNames）のままのログインを探して変える（前に名前を直したときの分も、保存し直せば合う）。
+     * 自分のログインの名前は自分では変えられず（Firestore のルール）、管理者のログインの名前は管理者だけが変えられる
+     * @param {Object} member - 保存したメンバー
+     */
+    Members.syncUserNames = async function(member) {
+        if (!member || !(FCOjima.DB && FCOjima.DB.loadAllUsers && FCOjima.DB.updateUserName)) return;
+        var name = String(member.name || '');
+        var key = Utils.normalizeName(name);
+        var olds = (member.formerNames || []).map(Utils.normalizeName).filter(function(n) { return n && n !== key; });
+        if (!key || olds.length === 0) return;
+        var users;
+        try {
+            users = await FCOjima.DB.loadAllUsers();
+        } catch (e) {
+            console.warn('ログインの名前を確かめられませんでした:', e);
+            return;
+        }
+        var live = users.filter(function(u) { return u.status !== 'rejected'; });
+        // いまの名前のログインがすでにあれば、その人が本人（以前の名前の別の人を変えない）
+        if (live.some(function(u) { return Utils.normalizeName(u.name) === key; })) return;
+        var hits = live.filter(function(u) { return olds.indexOf(Utils.normalizeName(u.name)) !== -1; });
+        if (hits.length === 0) return;
+        if (hits.length > 1) {
+            UI.showAlert('「' + name + '」の以前の名前のログインが' + hits.length + '人います。どの人か分からないため、ログインの名前は変えていません', 'warning', 8000);
+            return;
+        }
+        var u = hits[0];
+        var me = app.Auth && app.Auth.currentUserProfile;
+        if (me && u.uid === me.uid) {
+            UI.showAlert('ご自身のログインの名前（' + u.name + '）は、ご自身では変えられません。指導の予定などは名前で照合するため、' +
+                'ほかの管理者・監督・コーチ・役員の方に、メンバータブで「' + name + '」を開いて保存し直してもらってください', 'warning', 12000);
+            return;
+        }
+        if (u.role === 'admin' && !(me && me.role === 'admin')) {
+            UI.showAlert(u.name + 'さんは管理者のため、ログインの名前は管理者だけが変えられます。管理者に「' + name + '」を開いて保存し直してもらってください', 'warning', 10000);
+            return;
+        }
+        try {
+            await FCOjima.DB.updateUserName(u.uid, name);
+            console.log('ログインの名前を名簿に合わせました: ' + u.name + ' → ' + name);
+        } catch (e) {
+            console.warn('ログインの名前を変えられませんでした:', e);
+            UI.showAlert(u.name + 'さんのログインの名前を「' + name + '」に変えられませんでした。通信環境を確認して、もう一度保存してください', 'error', 8000);
+        }
+    };
+
     Members._renameInEventData = function(data, oldName, newName) {
         var patch = {};
         function rn(n) { return n === oldName ? newName : n; }
