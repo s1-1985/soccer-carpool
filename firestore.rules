@@ -148,6 +148,13 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/teams/$(teamId)/members/$(memberId)).data.get('name', '') == userData(teamId).get('name', '');
     }
 
+    // 書いた人の名前（連絡事項・操作ログの user）が自分のプロフィールの名前か（ほかの人の名前を名乗れない）。
+    // プロフィールに名前がない人（Firebase Console で作った管理者など）は名前を確かめられないので、そのまま通す
+    function isOwnName(teamId, d) {
+      return d.get('user', '') is string
+        && d.get('user', '') == userData(teamId).get('name', d.get('user', ''));
+    }
+
     // 連絡事項を書いたのが管理者か（書いた人の uid がある連絡事項だけ分かる）
     function authorIsAdmin(teamId, d) {
       return d.get('uid', '') is string && d.get('uid', '') != ''
@@ -241,10 +248,23 @@ service cloud.firestore {
         // 新規登録申請: 自分の UID で、status='pending', role='parent' のみ作成可
         // ※ 初代管理者は Firebase Console から手動作成する（自己昇格の穴を塞ぐため
         //    「承認済み0人ならadmin自己作成可」のブートストラップ条項は撤廃済み）
+        // 項目は登録画面が書くものだけ。子供の紐づけ（childrenIds）は空、照合済みの印・承認した人などは承認する人が付ける。
+        // メールはログインのメール（ほかの人のメールを名乗って承認する人をだませない）。
+        // 以前は項目を確かめておらず、申請に子供の紐づけ・照合済みの印・ほかの人のメールを入れて送れた
         allow create: if isAuth()
           && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['name', 'kana', 'requestedRole', 'email', 'role', 'childrenIds', 'childrenNames', 'status', 'registeredAt'])
           && request.resource.data.status == 'pending'
-          && request.resource.data.role == 'parent';
+          && request.resource.data.role == 'parent'
+          && request.resource.data.get('name', '') is string
+          && request.resource.data.get('name', '').size() > 0 && request.resource.data.get('name', '').size() <= 60
+          && (request.resource.data.get('kana', null) == null
+              || (request.resource.data.get('kana', null) is string && request.resource.data.get('kana', '').size() <= 60))
+          && request.resource.data.get('childrenIds', []) == []
+          && request.resource.data.get('childrenNames', []) is list && request.resource.data.get('childrenNames', []).size() <= 10
+          && (request.resource.data.get('email', null) == null
+              || request.resource.data.get('email', null) == request.auth.token.get('email', ''))
+          && (!('registeredAt' in request.resource.data) || request.resource.data.registeredAt == request.time);
 
         // 承認・却下（申請の承認の権限。相手がいまの役割を外せる人のときだけ＝役員はコーチ・監督を却下にできない）、
         // 役割の変更（上の固定のきまり）、名前を名簿に合わせる（承認・名簿の権限）。
@@ -303,13 +323,15 @@ service cloud.firestore {
       }
 
       // ----- 連絡事項 -----
-      // 書くのは承認済みならだれでも（書いた人の uid を付けるなら自分の uid。管理者が書いた印 byAdmin は管理者だけ）。
+      // 書くのは承認済みならだれでも。書いた人の uid（自分の uid）と名前（自分の名前）が要る。管理者が書いた印 byAdmin は管理者だけ。
+      // 以前は uid を省いたり、ほかの人の名前（「管理 太郎」など）を名乗ったりして書けた
       // 消せるのは、書いた本人・管理者・「ほかの人の連絡の削除」の権限がある人（管理者が書いた連絡は管理者だけ）。
       // uid のない以前の連絡は、名前が同じなら本人として消せる
       match /notifications/{notifId} {
         allow read: if isAuth() && isApproved(teamId);
         allow create: if isAuth() && isApproved(teamId)
-          && request.resource.data.get('uid', request.auth.uid) == request.auth.uid
+          && request.resource.data.get('uid', '') == request.auth.uid
+          && isOwnName(teamId, request.resource.data)
           && (!('byAdmin' in request.resource.data) || isAdmin(teamId));
         allow update: if isAuth() && isAdmin(teamId);
         allow delete: if isAuth() && isApproved(teamId) && (
@@ -321,10 +343,11 @@ service cloud.firestore {
       }
 
       // ----- ログ -----
-      // 見るのは「操作ログを見る」の権限がある人、消すのは管理者だけ
+      // 見るのは「操作ログを見る」の権限がある人、消すのは管理者だけ。
+      // 書くのは承認済みならだれでも（操作した人の名前は自分の名前。以前はほかの人の名前で操作を記録できた）
       match /logs/{logId} {
         allow read:   if isAuth() && can(teamId, 'logs_view');
-        allow create: if isAuth() && isApproved(teamId);
+        allow create: if isAuth() && isApproved(teamId) && isOwnName(teamId, request.resource.data);
         allow update: if false;
         allow delete: if isAuth() && isAdmin(teamId);
       }

@@ -5,6 +5,8 @@ const today = new Date(Date.now() + 9 * 3600e3);
 const iso = d => d.toISOString().slice(0, 10);
 // 次の土曜・日曜（今日が土日なら来週の土日）
 const sat = new Date(today); sat.setUTCDate(sat.getUTCDate() + ((6 - sat.getUTCDay() + 7) % 7 || 7));
+// 土日が月をまたぐ（土曜が月末）と、監督のカレンダー（土曜の月）に日曜のマスがないので、次の週末にする
+if (new Date(sat.getTime() + 864e5).getUTCMonth() !== sat.getUTCMonth()) sat.setUTCDate(sat.getUTCDate() + 7);
 const sun = new Date(sat); sun.setUTCDate(sun.getUTCDate() + 1);
 const SAT = iso(sat), SUN = iso(sun);
 await put(`${T}/members/c1`, { name: '佐藤 監督', role: 'coach', abbr: '佐藤' });

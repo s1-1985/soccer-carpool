@@ -71,7 +71,7 @@ Firebase Console → Firestore → `teams/fc-ojima/users` に手動でドキュ�
 
 ## E2E テスト（`tests/e2e/`。詳しくは `tests/e2e/README.md`）
 
-Firebase エミュレータ＋Playwright で画面を実際に操作して確かめるテスト一式（45ファイル・653項目。2026-10-23 時点ですべて PASS）。
+Firebase エミュレータ＋Playwright で画面を実際に操作して確かめるテスト一式（48ファイル・701項目。2026-10-24 時点ですべて PASS）。
 本番には配信しない（`firebase.json` の hosting の ignore に `tests/**`）。
 ```bash
 cd tests/e2e
