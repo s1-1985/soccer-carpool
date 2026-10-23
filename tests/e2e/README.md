@@ -10,7 +10,7 @@
 cd tests/e2e
 ./setup.sh                       # 初回だけ: npm install（playwright・firebase-tools）と vendor/ の取得
 ./emulators.sh > emu.log 2>&1 &  # エミュレータを起動（バックグラウンド）。emu.log に「All emulators ready」が出るまで待つ
-./run-all.sh r1                  # 一式（41ファイル・約565項目、40分ほど）。結果は r1-summary.txt
+./run-all.sh r1                  # 一式（43ファイル・587項目、40分ほど）。結果は r1-summary.txt
 node t-polish.mjs                # 1ファイルだけ流すとき（NO_PROXY=127.0.0.1,localhost を付ける）
 ```
 
@@ -45,6 +45,7 @@ node t-polish.mjs                # 1ファイルだけ流すとき（NO_PROXY=12
 | `t-sibling` `t-playermove` `t-seatmap` `t-weather` | 兄弟児・別の予定への選手の移動・車提供の座席の図・会場の天気（`wx/` の固定データ） |
 | `t-coaching` `t-coachdates` `t-coachlink` `t-driver` `t-cpdebug` | 指導者の都合と担当・聞く日（祝日）・帯同指導者の配車への連携・運転手の移動 |
 | `t-firstday` `t-firstday2` `t-polish` | はじめて使う人の導線（LINE から開く・やること・出欠をその場で・連絡の新着ほか）とブラッシュアップ |
+| `t-round11` `t-round11b` | 全体デバッグ11巡目（予定の日付に仕込んだHTML・削除した指導者・名前の変更とログインの名前・メモ・はじめての端末の新着・自分で答えた出欠の「変わった点」） |
 | `e2e-dock-scroll` `e2e-dock-drag-regression` | 割り当て画面の下のドックのスクロール・ドラッグ（タッチ操作） |
 | `detect.mjs` | スマホの見切れを見つける関数（`t-round10` が使う） |
 | `shots-polish.mjs` | 観察用: 主な画面をスマホ幅で撮る（`node shots-polish.mjs 出力先`）。検証ではない |

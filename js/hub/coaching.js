@@ -45,6 +45,12 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
     function Utils() { return app.Utils; }
     function esc(s) { return app.UI.escapeHTML(String(s == null ? '' : s)); }
     function iso(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+    /**
+     * 'YYYY-MM-DD' の形の日付か。予定は承認済みなら誰でも書き込めるため、アプリを通さずに書いた予定の日付に
+     * HTMLを仕込むこともできる。以前は「2026-11-07"><img onerror=…>」のような日付の予定が聞く日に入り、
+     * そのまま属性に書き出されて監督・コーチの画面でスクリプトが動いた
+     */
+    function isDate(s) { return /^\d{4}-\d{2}-\d{2}$/.test(String(s == null ? '' : s)); }
     function dateOf(s) { return new Date(s + 'T00:00:00'); }
     function fmt(date) { var d = dateOf(date); return (d.getMonth() + 1) + '/' + d.getDate() + '(' + DOW[d.getDay()] + ')'; }
     function holName(date) { return (app.Holidays && app.Holidays.nameOf) ? app.Holidays.nameOf(date) : ''; }
@@ -114,9 +120,9 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
         }
         (app.Hub.events || []).forEach(function(ev) {
             var date = ev && ev.date ? String(ev.date) : '';
-            if (date && ev.type !== 'nighter' && date >= r.from && date < r.to) set[date] = true;
+            if (isDate(date) && ev.type !== 'nighter' && date >= r.from && date < r.to) set[date] = true;
         });
-        Object.keys(datesOf('add')).forEach(function(k) { if (k >= r.from) set[k] = true; });
+        Object.keys(datesOf('add')).forEach(function(k) { if (isDate(k) && k >= r.from) set[k] = true; });
         return Object.keys(set).sort();
     };
 
@@ -338,7 +344,7 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
         var evs = C.eventsOn(date);
         var myEvs = evs.filter(function(ev) { return C.assignedIds(ev.id).indexOf(me) !== -1; });
         var hol = holName(date);
-        return '<div class="co-daypanel" data-date="' + date + '">' +
+        return '<div class="co-daypanel" data-date="' + esc(date) + '">' +
             '<div class="co-dp-head">' +
             '<button type="button" class="co-dp-prev" aria-label="前の日">‹</button>' +
             '<div class="co-dp-title"><span class="co-dp-date' + dayCls(date) + '">' + fmt(date) + '</span>' +
@@ -381,7 +387,7 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
         // あなたの担当（今日以降・日付順）
         var today = iso(new Date());
         var mine = (app.Hub.events || []).filter(function(ev) {
-            return String(ev.date) >= today && C.assignedIds(ev.id).indexOf(me) !== -1;
+            return isDate(ev.date) && String(ev.date) >= today && C.assignedIds(ev.id).indexOf(me) !== -1;
         }).slice().sort(Utils().compareEvents);
 
         var html = '<section class="co-card co-my">' +
@@ -503,8 +509,11 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
         panel.querySelector('.co-memo').addEventListener('click', function() {
             var note = UI().showPrompt(fmt(sel) + ' のメモ（例: 10時から・午後は別会場なら可）', cur ? cur.note : '');
             if (note === null) return;
+            note = String(note).trim();
             // メモは都合の補足。まだ回答していない日にメモだけ書いたときは「△ 時間による」として保存する
-            save(sel, cur ? cur.s : 'part', String(note).trim());
+            // （何も書かずに OK を押したときは何もしない。以前は未回答の日が「△ 時間による」になっていた）
+            if (!cur && !note) return;
+            save(sel, cur ? cur.s : 'part', note);
         });
         var step = function(delta) {
             var i = dates.indexOf(sel) + delta;
@@ -564,11 +573,15 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
         C.renderPlanner();
     };
 
-    /** 日の担当の状態: 予定がなければ ''、担当のいない予定があれば 'warn'、全部決まっていれば 'ok' */
+    /**
+     * 日の担当の状態: 予定がなければ ''、担当のいない予定があれば 'warn'、全部決まっていれば 'ok'。
+     * 担当はメンバーにいる人で数える（以前は担当のID だけを見ていたため、担当の指導者をメンバーから削除した予定が
+     * カレンダーでは ✓ のまま、その日の欄・予定の詳細・配車では「担当なし」になっていた）
+     */
     function dutyState(date) {
         var evs = C.eventsOn(date);
         if (!evs.length) return '';
-        return evs.some(function(ev) { return C.assignedIds(ev.id).length === 0; }) ? 'warn' : 'ok';
+        return evs.some(function(ev) { return C.assignedMembers(ev.id).length === 0; }) ? 'warn' : 'ok';
     }
 
     /** 監督の画面の下: 選んだ日の都合・予定ごとの担当 */
@@ -578,7 +591,7 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
         var head = '<span class="co-dp-date' + dayCls(date) + '">' + fmt(date) + '</span>' +
             (hol ? '<span class="co-hol">' + esc(hol) + '</span>' : '');
         if (info.skipped) {
-            return '<section class="co-pday is-skipped" data-date="' + date + '"><h3 class="co-pday-head">' + head +
+            return '<section class="co-pday is-skipped" data-date="' + esc(date) + '"><h3 class="co-pday-head">' + head +
                 '<span class="co-skip-tag">聞かない日</span>' +
                 '<button type="button" class="co-unskip">聞く日に戻す</button></h3>' +
                 '<p class="co-noev">この日は指導者に都合を聞かない日にしています（活動がない日など）</p>' +
@@ -586,7 +599,7 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
         }
         var g = groupsOn(date);
         var canCome = g.ok.concat(g.am, g.pm, g.part);
-        var html = '<section class="co-pday" data-date="' + date + '">' +
+        var html = '<section class="co-pday" data-date="' + esc(date) + '">' +
             '<h3 class="co-pday-head">' + head +
             // 予定のある日は必ず聞くので、外せるのは予定のない聞く日だけ
             (info.asked && !evs.length ? '<button type="button" class="co-skip">この日は聞かない</button>' : '') + '</h3>';
@@ -658,7 +671,7 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
         C.planDates(true).forEach(function(d) { if (C.isSkipped(d, r)) skippedSet[d] = true; else askedSet[d] = true; });
         // 開ける月: 今月から、聞く日・これからの予定（ナイター練習を除く）がある月まで
         var evDates = (app.Hub.events || []).filter(function(ev) {
-            return ev && ev.type !== 'nighter' && String(ev.date || '') >= today;
+            return ev && ev.type !== 'nighter' && isDate(ev.date) && String(ev.date) >= today;
         }).map(function(ev) { return String(ev.date); });
         var allDates = Object.keys(askedSet).concat(Object.keys(skippedSet), evDates);
         var last = monthsOf(allDates.concat([today])).pop();

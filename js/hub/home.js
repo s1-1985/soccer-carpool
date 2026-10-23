@@ -176,6 +176,11 @@ FCOjima.Hub.Home = FCOjima.Hub.Home || {};
 
     /** やることと今週の予定を出す */
     Home.render = function() {
+        // 初期化（データの読み込み）の前には描かない。Android の Chrome は「ホーム画面に追加」の合図
+        // （beforeinstallprompt）をページを開いてすぐに送ってくることがあり、以前はデータを読む前にここで
+        // 新着の連絡を数えたため、はじめての端末の「7日より前の連絡は読んだことにする」が空の一覧で決まり、
+        // 3か月分の連絡事項が全部「新着」になっていた（初期化のあとに描くときに合図も使う）
+        if (!_profile) return;
         Home.renderBadges();
         var root = document.getElementById('hub-home');
         if (!root) return;

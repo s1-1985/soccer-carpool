@@ -556,7 +556,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         if (hidden > 0) {
             const note = document.createElement('div');
             note.className = 'day-events-hidden';
-            note.textContent = '「自分の子供のみ」の絞り込みで ' + hidden + '件 を表示していません';
+            // ボタンの名前（「わが子だけ」）と同じ言葉で（以前は古い名前の「自分の子供のみ」のままだった）
+            note.textContent = '「わが子だけ」の絞り込みで ' + hidden + '件 を表示していません';
             list.appendChild(note);
         }
         // 指導者に都合を聞く日か（マネージャーのみ）。聞く日にする・外すボタン
