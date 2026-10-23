@@ -6,6 +6,36 @@
 
 ---
 
+## 🧭 2026-10 時点の要点（まずここを読む）
+
+- 最新の状況・経緯は `handover.md`（新しい順）、作業ルールは `CLAUDE.md`、現状と次の候補は `todo.md`、E2E テストは `tests/e2e/README.md`
+- **このファイルの下の方（ファイル構成・実装状況・デプロイフロー・最新の作業状況・デプロイ履歴）は 2026-02〜03 の内容で古い**
+  - 旧ファイル（`carpool/assignment.html`・`carprovision.html`・`hub/calendar.html` など）は削除済み
+  - PR: Claude Code（Web）のセッションでは GitHub の MCP ツールを使う（下の PAT と curl の手順は使っていない）。
+    ドラフトPR → CI がプレビューURLをコメント → ユーザーが確認してマージ → 本番の配信を curl で確認
+- 変更禁止は今も同じ: `firebase-config.js` のプロジェクトID、`firebase.json` の `"public": "."`、デプロイの workflow の push トリガーは main だけ
+
+### 今のファイル構成（2026-10）
+```
+hub/        index.html（HUB。タブ: カレンダー・参加予定・連絡事項・メンバー・会場登録・管理）, login.html, register.html, pending.html
+carpool/    index.html（概要）, attendance.html（出欠）, cars.html（車提供）, assignments.html（座席の割り当て）, notifications.html（連絡）
+js/common/  auth(Auth) db(DB) storage(Storage) ui(UI) utils(Utils) checklist(Checklist 持ち物) eventfiles(EventFiles 添付)
+            holidays(Holidays 祝日) inbox(Inbox 連絡の既読) playermove(PlayerMove 別の予定へ選手を入れる) weather(Weather 天気)
+            firebase-config, global
+js/hub/     main, calendar(Calendar), home(Home やること・今週の予定), myevents(MyEvents 参加予定), coaching(Coaching 指導者の都合・担当),
+            notifications, members, venues, admin(Admin 管理タブ)   ※ いずれも FCOjima.Hub.*
+js/carpool/ overview, attendance, carprovision, assignment, notifications   ※ FCOjima.Carpool.*
+css/        common.css, hub/（calendar・home・coaching・members・notifications・venues）, carpool/
+tests/e2e/  E2E テスト（Firebase エミュレータ＋Playwright。本番には配信しない）
+```
+
+### Firestore（`teams/fc-ojima/` の下）
+`users`（ログインする人・承認）, `members`（名簿）, `events`（予定）, `eventData/{予定ID}`（配車・出欠・予定ごとの連絡）, `venues`,
+`notifications`（チームの連絡事項）, `logs`（マネージャー限定）, `coachAvailability`（指導者の都合）, `coachDates`（都合を聞く日）,
+`coachAssignments`（予定ごとの帯同指導者）, `dutyGroups`・`dutyAssignments`・`dutySettings`（当番）, `luggageSettings`（荷物）, `config`（アプリからは書けない）
+
+---
+
 ## 🔑 基本原則：PR作成・マージは必ずAIが自動で行う
 
 **ユーザーの要望：** PR作成・マージ・デプロイ確認は、エラーで手動操作が必要な場合を除き、すべてAIが自動で実行すること。
