@@ -10,10 +10,13 @@
     <link rel="apple-touch-icon" href="/img/icon-192.png">
     <link rel="stylesheet" href="../css/common.css?v=20261017a">
     <style>
+        /* スマホ幅では左右に余白を残す（以前は画面の端までカードが広がっていた） */
         .pending-container {
             max-width: 420px;
-            margin: 80px auto;
-            padding: 40px 30px;
+            width: calc(100% - 32px);
+            box-sizing: border-box;
+            margin: 60px auto;
+            padding: 32px 22px;
             background: white;
             border-radius: 12px;
             box-shadow: 0 4px 16px rgba(0,0,0,0.12);
@@ -32,6 +35,18 @@
             line-height: 1.8;
             margin-bottom: 24px;
         }
+        .pending-lead { margin: 0 0 12px; font-weight: 700; color: #333; }
+        .pending-steps {
+            text-align: left;
+            margin: 0 0 12px;
+            padding: 12px 14px 12px 32px;
+            background: #faf7ef;
+            border-radius: 10px;
+            font-size: 13.5px;
+            line-height: 1.7;
+        }
+        .pending-steps li { margin: 2px 0; }
+        .pending-note { margin: 0; font-size: 12px; color: #888; line-height: 1.6; }
         .reload-btn {
             background: none;
             border: 1px solid #E8A200;
@@ -50,6 +65,11 @@
             font-size: 13px;
             text-decoration: underline;
         }
+        /* common.css の button の影・金色の hover が、枠線だけ・文字だけのボタンにも当たっていた
+           （「サインアウト」が白いボタンのように見えていた） */
+        .reload-btn, .signout-btn { box-shadow: none; }
+        .reload-btn:hover, .reload-btn:active { background: #fff8e6; box-shadow: none; }
+        .signout-btn:hover, .signout-btn:active { background: none; box-shadow: none; color: #666; }
     </style>
 </head>
 <body style="background: #f0f4f8;">
@@ -57,14 +77,14 @@
         <div class="pending-icon">⏳</div>
         <div class="pending-title">承認をお待ちください</div>
         <div class="pending-msg">
-            登録申請を受け付けました。<br>
-            監督・コーチ・役員が承認すると、<br>
-            このアプリを使えるようになります。<br><br>
-            承認されると、監督・役員から LINE などで<br>
-            お知らせが届きます。<br>
-            届いたらこのページ（またはお知らせのリンク）を開くと、<br>
-            自動でアプリの画面に進みます。<br>
-            <span style="font-size:12px;color:#888;">お急ぎの場合は、申請したことを監督・役員にお知らせください。</span>
+            <p class="pending-lead">登録申請を受け付けました。</p>
+            <!-- これからの流れ（以前は中央そろえの長い文が改行で続き、読みにくかった） -->
+            <ol class="pending-steps">
+                <li>監督・コーチ・役員が申請を確認して承認します</li>
+                <li>承認されると、監督・役員から LINE などでお知らせが届きます</li>
+                <li>お知らせのリンク（またはこのページ）を開くと、自動でアプリの画面に進みます</li>
+            </ol>
+            <p class="pending-note">お急ぎの場合は、申請したことを監督・役員にお知らせください。</p>
         </div>
         <button class="reload-btn" onclick="checkStatus()">承認状況を確認</button>
         <br>

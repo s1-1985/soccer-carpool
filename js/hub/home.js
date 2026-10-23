@@ -167,11 +167,11 @@ FCOjima.Hub.Home = FCOjima.Hub.Home || {};
         var how = kind === 'ios'
             ? 'Safari の画面下の <b>共有ボタン</b>（□に↑）→「<b>ホーム画面に追加</b>」'
             : (_installEvt ? '下の「ホーム画面に追加」を押してください' : 'Chrome の右上の <b>︙</b> →「<b>ホーム画面に追加</b>」（または「アプリをインストール」）');
-        return '<section class="hh-card hh-a2hs"><div class="hh-head"><span class="hh-ttl">📱 ホーム画面に追加しておくと便利です</span></div>' +
+        return '<section class="hh-a2hs"><div class="hh-a2hs-head"><span class="hh-a2hs-ttl">📱 ホーム画面に追加しておくと便利です</span>' +
+            '<button type="button" class="hh-a2hs-close" aria-label="閉じる（次から出さない）">閉じる</button></div>' +
             '<p class="hh-a2hs-text">次からはアイコンを押すだけで開けます。' + how + '</p>' +
-            '<div class="hh-a2hs-actions">' +
             (kind === 'android' && _installEvt ? '<button type="button" class="hh-a2hs-install">ホーム画面に追加</button>' : '') +
-            '<button type="button" class="secondary-button hh-a2hs-close">閉じる（次から出さない）</button></div></section>';
+            '</section>';
     }
 
     /** やることと今週の予定を出す */
@@ -183,21 +183,31 @@ FCOjima.Hub.Home = FCOjima.Hub.Home || {};
         var att = (Me && Me.unanswered) ? Me.unanswered() : [];
         var todos = '';
 
-        // 出欠の回答（その場で「参加／不参加」）
+        // 出欠の回答（その場で「参加／不参加」）。同じ予定の兄弟はまとめて1つの予定の下に並べる
+        // （以前は子どもごとに予定の日付・名前を繰り返していた）
         if (att.length) {
+            var groups = [];
+            att.forEach(function(x, i) {
+                var g = groups.filter(function(y) { return String(y.item.eventId) === String(x.item.eventId); })[0];
+                if (!g) { g = { item: x.item, rows: [] }; groups.push(g); }
+                g.rows.push(i);
+            });
             todos += '<section class="hh-card hh-att"><div class="hh-head"><span class="hh-ttl">📝 出欠の回答</span>' +
                 '<span class="hh-count">未回答 ' + att.length + '件</span></div>' +
-                att.slice(0, MAX_ATT_ROWS).map(function(x, i) {
-                    var dl = x.item.deadline ? new Date(x.item.deadline) : null;
+                groups.slice(0, MAX_ATT_ROWS).map(function(g) {
+                    var dl = g.item.deadline ? new Date(g.item.deadline) : null;
                     var dlText = (dl && !isNaN(dl.getTime())) ? '締切 ' + (dl.getMonth() + 1) + '/' + dl.getDate() : '';
-                    return '<div class="hh-row" data-i="' + i + '">' +
-                        '<button type="button" class="hh-row-main" data-event="' + esc(x.item.eventId) + '">' +
-                        '<span class="hh-row-date">' + fmt(x.item.date) + (x.item.startTime ? ' ' + esc(x.item.startTime) : '') + '</span>' +
-                        '<span class="hh-row-title">' + esc(x.item.title) + '</span>' +
-                        '<span class="hh-row-sub">' + esc(x.kid.name) + (dlText ? '<span class="hh-dl">' + dlText + '</span>' : '') + '</span>' +
-                        '</button></div>';
+                    return '<div class="hh-ev">' +
+                        '<button type="button" class="hh-row-main" data-event="' + esc(g.item.eventId) + '">' +
+                        '<span class="hh-row-date">' + fmt(g.item.date) + (g.item.startTime ? ' ' + esc(g.item.startTime) : '') +
+                        (dlText ? '<span class="hh-dl">' + dlText + '</span>' : '') + '</span>' +
+                        '<span class="hh-row-title">' + esc(g.item.title) + ' <span class="hh-row-go">›</span></span></button>' +
+                        g.rows.map(function(i) {
+                            return '<div class="hh-row" data-i="' + i + '"><span class="hh-row-sub">' + esc(att[i].kid.name) + '</span></div>';
+                        }).join('') +
+                        '</div>';
                 }).join('') +
-                (att.length > MAX_ATT_ROWS ? '<button type="button" class="hh-more" data-go="my-events-tab">ほか ' + (att.length - MAX_ATT_ROWS) + '件は「参加予定」で答える ›</button>' : '') +
+                (groups.length > MAX_ATT_ROWS ? '<button type="button" class="hh-more" data-go="my-events-tab">ほか ' + (groups.length - MAX_ATT_ROWS) + '件の予定は「参加予定」で答える ›</button>' : '') +
                 '</section>';
         }
         // 指導の都合
@@ -219,8 +229,9 @@ FCOjima.Hub.Home = FCOjima.Hub.Home || {};
                 '<span class="hh-count">' + unreadNotes + '件</span><span class="hh-go">見る ›</span></button>';
         }
 
-        var html = a2hsHtml();
-        html += todos ? '<div class="hh-label">やること</div>' + todos : '';
+        // やることを先に。「ホーム画面に追加」は一度だけの案内なので、その下に小さく
+        var html = todos ? '<div class="hh-label">やること</div>' + todos : '';
+        html += a2hsHtml();
         html += weekHtml();
         root.innerHTML = html;
         root.style.display = html ? '' : 'none';
@@ -268,9 +279,11 @@ FCOjima.Hub.Home = FCOjima.Hub.Home || {};
                     '<span class="hh-row-title">' + esc(ev.title || Utils().getEventTypeLabel(ev.type)) + '</span></span>' +
                     '<span class="hh-chips">' +
                     chip(a.unanswered === 0 && a.total > 0 ? 'ok' : a.unanswered > 0 ? 'warn' : '', '出欠 ' + (a.present + a.absent) + '/' + a.total + (a.unanswered ? '<small>未' + a.unanswered + '</small>' : '')) +
-                    chip(seatState, '車の席 ' + st.seats + '/' + st.need) +
                     chip(coachNames ? 'ok' : 'warn', coachNames ? '帯同 ' + esc(coachNames) : '帯同 未定') +
-                    chip(assignState, '割り当て ' + st.assigned + '/' + st.need) +
+                    // まだ誰も「参加」と答えていなければ、席・割り当ては「0/0」ではなく回答待ちと出す
+                    (st.need === 0
+                        ? chip('', st.cars ? '車 ' + st.cars + '台・参加の回答待ち' : '配車は参加の回答待ち')
+                        : chip(seatState, '車の席 ' + st.seats + '/' + st.need) + chip(assignState, '割り当て ' + st.assigned + '/' + st.need)) +
                     '</span></button>';
             }).join('') +
             '<p class="hh-note">「車の席」は乗れる席の数／座席が要る人（参加・帯同指導者）。押すと予定の詳細</p></section>';

@@ -16,8 +16,37 @@
 
 .view-toggle {
     display: flex;
-    gap: 5px;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
 }
+
+/* カレンダー／リストの切り替え（今の表示を塗る） */
+.view-seg {
+    display: inline-flex;
+    border: 1.5px solid #E8A200;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+}
+.view-seg button,
+.view-seg button:hover {
+    background: #fff;
+    color: #6b5a2e;
+    box-shadow: none;
+    border-radius: 0;
+    padding: 8px 16px;
+    font-size: 14px;
+    white-space: nowrap;
+}
+.view-seg button + button { border-left: 1.5px solid #E8A200; }
+.view-seg button.active,
+.view-seg button.active:hover {
+    background: linear-gradient(135deg, #F7C24A 0%, #E8A200 100%);
+    color: #1C1600;
+}
+#my-child-filter { white-space: nowrap; padding: 8px 12px; font-size: 13.5px; }
+#my-child-filter.active { border-color: #E8A200; background: #fff6dd; color: #6b4a00; }
 
 /* カレンダー表示
    列順: 月 火 水 木 金 土 日（月曜始まり）
@@ -198,6 +227,21 @@
 .event-item.event,
 .event-item.other {
     border-left-color: #9b59b6;
+}
+
+/* 種類が「イベント」の項目は class="event-item event" になり、カレンダーのマス用の
+   .event / .event.event（小さい文字・2行で切る・紫の塗り・スマホでは余白1px）まで当たっていた。
+   リスト・その日の予定一覧ではほかの種類と同じ見た目に戻す */
+.event-item.event {
+    display: block;
+    overflow: visible;
+    -webkit-line-clamp: unset;
+    margin: 4px 0;
+    padding: 10px;
+    font-size: inherit;
+    line-height: inherit;
+    word-break: normal;
+    background-color: white;
 }
 
 .event-item.empty {

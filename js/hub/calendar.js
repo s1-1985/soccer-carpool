@@ -310,7 +310,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         var profile = app.Auth && app.Auth.currentUserProfile;
         var hasKids = !!(profile && profile.childrenIds && profile.childrenIds.length);
         btn.style.display = hasKids ? '' : 'none';
-        btn.textContent = (Calendar.myChildOnly ? '☑' : '☐') + ' わが子の予定だけ';
+        btn.textContent = (Calendar.myChildOnly ? '☑' : '☐') + ' わが子だけ';
         btn.classList.toggle('active', Calendar.myChildOnly);
         btn.setAttribute('aria-pressed', String(Calendar.myChildOnly));
     };
@@ -655,7 +655,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             }
         }
         
-        details.textContent = `${timeDisplay} @ ${event.venue || '未設定'}`;
+        // 会場が決まっていないときに「@ 未設定」と出ていたので、ある分だけ並べる
+        details.textContent = [timeDisplay, event.venue].filter(Boolean).join(' ・ ') || '時間・会場は未定';
         
         eventItem.appendChild(title);
         eventItem.appendChild(details);
@@ -912,8 +913,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             </div>
             <div class="ed-facts">${facts}</div>
             <div id="event-weather-${esc(String(event.id))}" class="ed-weather"></div>
-            ${attendanceDisplay}
             ${notesHtml}
+            ${attendanceDisplay}
             ${itemsHtml}
             ${(event.notes || event.description) ? `
             <section class="ed-section detail-item">

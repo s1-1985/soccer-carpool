@@ -249,3 +249,31 @@
     color: #2f6db5;
     text-decoration: none;
 }
+
+/* チームの連絡事項のカード（予定ごとの連絡と同じくらいの大きさに。以前は日時が見出しのように大きく、
+   「LINEで共有」が横いっぱいのボタンで、1件ごとに場所を取っていた） */
+#notificationsList .notification-card {
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    border: 1px solid #e6dcc4;
+    border-left: 4px solid #E8A200;
+    border-radius: 10px;
+    box-shadow: none;
+}
+#notificationsList .notification-header {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: flex-start;
+    gap: 6px;
+    margin-bottom: 4px;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+#notificationsList .notification-date { font-size: 12.5px; color: #6b6355; font-weight: 700; margin-bottom: 0; }
+#notificationsList .notification-author { font-size: 12.5px; color: #888; }
+#notificationsList .notification-author:not(:empty)::before { content: '・'; margin-right: 2px; color: #bbb; }
+#notificationsList .notification-content { margin-bottom: 6px; font-size: 14.5px; line-height: 1.65; }
+#notificationsList .notification-actions { gap: 6px; }
+#notificationsList .notification-actions button { flex: 0 0 auto; font-size: 12px; padding: 5px 12px; min-height: 0; }

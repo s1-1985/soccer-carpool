@@ -9,11 +9,11 @@
     <meta name="theme-color" content="#1C1600">
     <link rel="apple-touch-icon" href="/img/icon-192.png">
     <link rel="stylesheet" href="../css/common.css?v=20261017a">
-    <link rel="stylesheet" href="../css/hub/calendar.css?v=20261023b">
+    <link rel="stylesheet" href="../css/hub/calendar.css?v=20261023c">
     <link rel="stylesheet" href="../css/hub/coaching.css?v=20261022c">
-    <link rel="stylesheet" href="../css/hub/home.css?v=20261023b">
+    <link rel="stylesheet" href="../css/hub/home.css?v=20261023c">
     <link rel="stylesheet" href="../css/hub/members.css?v=20260719">
-    <link rel="stylesheet" href="../css/hub/notifications.css?v=20261023b">
+    <link rel="stylesheet" href="../css/hub/notifications.css?v=20261023c">
     <link rel="stylesheet" href="../css/hub/venues.css?v=20260224a">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -110,8 +110,10 @@
         }
         .me-kid-row.me-st-unknown { background: #fff3cd; }
         .me-kid-info { display: flex; flex-direction: column; min-width: 0; flex: 1 1 8em; }
-        .me-kid { font-size: 13.5px; font-weight: 700; color: #2a2210; }
-        .me-kid.unknown { color: #8a5a00; }
+        .me-kid { font-size: 14px; font-weight: 700; color: #2a2210; }
+        .me-kid.unknown { color: #2a2210; }
+        .me-kid-tag { margin-left: 6px; font-size: 11px; font-weight: 800; color: #8a5a00; background: #fff; border: 1px solid #f0d58a; border-radius: 999px; padding: 0 7px; vertical-align: 1px; }
+        .me-bring { margin-top: 2px; }
         .me-kid-car { font-size: 12px; color: #2f6b3a; font-weight: 600; margin-top: 1px; }
         .me-card.me-all-absent { opacity: .72; border-left-color: #c9c2b2; }
 
@@ -342,9 +344,12 @@
                     })();
                 </script>
                 <div class="view-toggle">
-                    <button id="calendar-view" class="active">カレンダー</button>
-                    <button id="list-view">リスト</button>
-                    <button id="my-child-filter" class="secondary-button" title="お子さんが対象の予定だけを表示" aria-pressed="false" style="display:none;">☐ わが子の予定だけ</button>
+                    <!-- 表示の切り替え（今の表示が塗られる。以前は2つとも同じ金色で、どちらの表示か分からなかった） -->
+                    <div class="view-seg" role="group" aria-label="表示">
+                        <button id="calendar-view" class="active">カレンダー</button>
+                        <button id="list-view">リスト</button>
+                    </div>
+                    <button id="my-child-filter" class="secondary-button" title="お子さんが対象の予定だけを表示" aria-pressed="false" style="display:none;">☐ わが子だけ</button>
                 </div>
             </div>
 
@@ -385,7 +390,7 @@
             <div id="my-coaching"></div>
             <!-- 保護者: お子さんの参加予定 -->
             <div id="my-events-kids">
-                <p style="font-size:12px;color:#888;margin-bottom:12px;">お子さん（兄弟姉妹含む）が参加対象の予定です。「参加」「不参加」を押すと、その場で出欠を回答できます。前回見たときから変わった点は🔔付きで表示されます。</p>
+                <p style="font-size:12px;color:#888;margin-bottom:12px;">お子さんが対象の予定です。「参加」「不参加」を押すとその場で回答できます。変わった点は🔔で知らせます。</p>
                 <div id="my-events-changes"></div>
                 <div id="my-events-list">
                     <p class="loading">読み込み中...</p>
@@ -438,7 +443,7 @@
                 <!-- 連絡事項がJSで動的に生成される -->
             </div>
 
-            <h3>新規連絡事項</h3>
+            <h3>連絡事項を書く</h3>
             <form id="notificationForm">
                 <div>
                     <label for="notificationText">内容:</label>
@@ -483,37 +488,24 @@
                 </div>
             </section>
 
-            <section style="margin-top:24px;">
-                <button id="btn-signup-qr" class="primary-button" style="width:100%;max-width:320px;">📱 入会用QRコード</button>
+            <!-- 管理のメニュー（以前は同じ見た目の金色のボタンが8つ縦に並び、どれが何か分かりにくかった） -->
+            <section class="admin-group">
+                <h3 class="admin-sub">よく使う</h3>
+                <div class="admin-menu">
+                    <button id="btn-coach-planner" type="button" class="admin-tile" onclick="FCOjima.Hub.Coaching.openPlanner()"><span class="admin-tile-icon" aria-hidden="true">🧢</span><span class="admin-tile-body"><b>指導者の予定・担当</b><small>都合を見て、予定ごとの担当を決める</small></span></button>
+                    <button id="btn-attendance-matrix" type="button" class="admin-tile"><span class="admin-tile-icon" aria-hidden="true">📋</span><span class="admin-tile-body"><b>出欠状況</b><small>予定ごと・選手ごとの出欠の表</small></span></button>
+                    <button id="btn-signup-qr" type="button" class="admin-tile"><span class="admin-tile-icon" aria-hidden="true">📱</span><span class="admin-tile-body"><b>入会用QRコード</b><small>新しい人に申請してもらうリンク</small></span></button>
+                    <button id="btn-all-users" type="button" class="admin-tile"><span class="admin-tile-icon" aria-hidden="true">👥</span><span class="admin-tile-body"><b>登録済みユーザー</b><small>役割の変更・却下した人</small></span></button>
+                </div>
             </section>
-
-            <section style="margin-top:12px;">
-                <button id="btn-all-users" class="primary-button" style="width:100%;max-width:320px;">登録済みユーザー一覧</button>
-            </section>
-
-            <section style="margin-top:12px;">
-                <button id="btn-attendance-matrix" class="primary-button" style="width:100%;max-width:320px;">出欠状況</button>
-            </section>
-
-            <section style="margin-top:12px;">
-                <!-- 監督・コーチの土日の都合を見ながら、予定ごとに付くコーチを決める（js/hub/coaching.js） -->
-                <button id="btn-coach-planner" class="primary-button" style="width:100%;max-width:320px;" onclick="FCOjima.Hub.Coaching.openPlanner()">🧢 指導者の予定・担当</button>
-            </section>
-
-            <section style="margin-top:12px;">
-                <button id="btn-driver-stats" class="primary-button" style="width:100%;max-width:320px;">🚗 送迎回数</button>
-            </section>
-
-            <section style="margin-top:12px;">
-                <button id="btn-attendance-rate" class="primary-button" style="width:100%;max-width:320px;">📊 選手の参加率</button>
-            </section>
-
-            <section style="margin-top:12px;">
-                <button id="btn-duty-groups" class="primary-button" style="width:100%;max-width:320px;">🔔 当番グループ設定</button>
-            </section>
-
-            <section style="margin-top:12px;">
-                <button id="btn-luggage-settings" class="primary-button" style="width:100%;max-width:320px;">📦 荷物設定</button>
+            <section class="admin-group">
+                <h3 class="admin-sub">記録・設定</h3>
+                <div class="admin-menu">
+                    <button id="btn-driver-stats" type="button" class="admin-tile"><span class="admin-tile-icon" aria-hidden="true">🚗</span><span class="admin-tile-body"><b>送迎回数</b><small>保護者ごとの運転の回数</small></span></button>
+                    <button id="btn-attendance-rate" type="button" class="admin-tile"><span class="admin-tile-icon" aria-hidden="true">📊</span><span class="admin-tile-body"><b>選手の参加率</b><small>選手ごとの参加の割合</small></span></button>
+                    <button id="btn-duty-groups" type="button" class="admin-tile"><span class="admin-tile-icon" aria-hidden="true">🔔</span><span class="admin-tile-body"><b>当番グループ設定</b><small>当番の組と予定への割り当て</small></span></button>
+                    <button id="btn-luggage-settings" type="button" class="admin-tile"><span class="admin-tile-icon" aria-hidden="true">📦</span><span class="admin-tile-body"><b>荷物設定</b><small>共用の荷物（ボール・テントなど）</small></span></button>
+                </div>
             </section>
         </div>
     </div>
@@ -972,14 +964,14 @@
 
     <!-- HUBページ用モジュール -->
     <script src="../js/hub/main.js?v=20261016g"></script>
-    <script src="../js/hub/calendar.js?v=20261023b"></script>
+    <script src="../js/hub/calendar.js?v=20261023c"></script>
     <script src="../js/hub/members.js?v=20261022b"></script>
-    <script src="../js/hub/notifications.js?v=20261023b"></script>
+    <script src="../js/hub/notifications.js?v=20261023c"></script>
     <script src="../js/hub/venues.js?v=20261016g"></script>
     <script src="../js/hub/coaching.js?v=20261023a"></script>
-    <script src="../js/hub/myevents.js?v=20261023b"></script>
-    <script src="../js/hub/home.js?v=20261023b"></script>
-    <script src="../js/hub/admin.js?v=20261023b"></script>
+    <script src="../js/hub/myevents.js?v=20261023c"></script>
+    <script src="../js/hub/home.js?v=20261023c"></script>
+    <script src="../js/hub/admin.js?v=20261023c"></script>
 
     <script>
         // タブの切り替えに応じてフローティングボタンの表示を制御

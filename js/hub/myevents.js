@@ -463,12 +463,14 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
                     card.appendChild(meta);
                 }
 
+                // 持ち物は1行で（どの予定もほぼ同じなので、チップで並べると出欠のボタンより目立っていた）
                 if (app.Checklist) {
-                    var checklistHtml = app.Checklist.formatChips(it.type, it.checklistExtra, it.checklist);
-                    if (checklistHtml) {
-                        var checklistWrap = document.createElement('div');
-                        checklistWrap.innerHTML = checklistHtml;
-                        card.appendChild(checklistWrap.firstChild);
+                    var items = app.Checklist.getItems(it.type, it.checklistExtra, it.checklist);
+                    if (items.length) {
+                        var bring = document.createElement('div');
+                        bring.className = 'me-meta me-bring';
+                        bring.textContent = '🎒 ' + items.join('・');
+                        card.appendChild(bring);
                     }
                 }
 
@@ -497,7 +499,13 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
                     info.className = 'me-kid-info';
                     var nm = document.createElement('span');
                     nm.className = 'me-kid me-kid-name' + (k.status === 'unknown' ? ' unknown' : '');
-                    nm.textContent = k.name + (k.status === 'unknown' ? '（未回答）' : '');
+                    nm.textContent = k.name;
+                    if (k.status === 'unknown') {
+                        var tag = document.createElement('small');
+                        tag.className = 'me-kid-tag';
+                        tag.textContent = '未回答';
+                        nm.appendChild(tag);
+                    }
                     info.appendChild(nm);
                     var carText = MyEvents.carText(k.car);
                     if (carText) {

@@ -76,6 +76,7 @@
     background-color: #fff8e6;
     box-shadow: inset 4px 0 0 #E8A200;
 }
+.attendance-table tr.att-mine td:first-child { padding-left: 12px; }
 .att-mine-tag {
     display: inline-block;
     margin-left: 6px;
