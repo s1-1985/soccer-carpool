@@ -53,6 +53,25 @@ const cars = async () => (await get(`${T}/eventData/${E1}`)).carRegistrations ||
   await page.click('.cp-car button.cp-seat >> nth=0');
   await page.waitForSelector('#cp-seat-modal', { state: 'visible', timeout: 5000 });
   chk('絵の上の席をタップすると席の選択が開く', true);
+  // 画像の書き出し: 左右のタイヤが切れない（絵を箱の中に収める）・最後の列がガラスに重ならない
+  await page.goto(BASE + '/carpool/assignments.html?event=' + E1);
+  await page.waitForSelector('.car-top-view .car-art', { timeout: 25000 });
+  const ex = await page.evaluate(async () => {
+    const A = FCOjima.Carpool.Assignment;
+    let seen = null;
+    const orig = document.body.appendChild.bind(document.body);
+    document.body.appendChild = function(n) { const r = orig(n); if (n.style && n.style.left === '-9999px') seen = n; return r; };
+    A._downloadImage = () => {};
+    A.exportAssignmentsAsImage();
+    document.body.appendChild = orig;
+    if (!seen) return null;
+    const box = seen.querySelector('.car-top-view'), svg = box && box.querySelector(':scope > .car-art');
+    const last = box.querySelector('.seat-row:last-child .seat:last-child');
+    const br = box.getBoundingClientRect(), sr = svg.getBoundingClientRect(), lr = last.getBoundingClientRect();
+    return { inset: box.dataset.carartInset, svgInside: sr.left >= br.left - 1 && sr.right <= br.right + 1 && sr.top >= br.top - 1 && sr.bottom <= br.bottom + 1,
+      rowAboveGlass: lr.bottom <= br.bottom - 30, seatInsideBody: lr.right <= br.right - 9, d: [br.left, br.right, br.top, br.bottom, lr.left, lr.right, lr.bottom, last.className] };
+  });
+  chk('画像の書き出し: 絵が箱の中に収まり（タイヤが切れない）、最後の列が後ろのガラスに重ならない', ex && ex.inset === '1' && ex.svgInside && ex.rowAboveGlass && ex.seatInsideBody, JSON.stringify(ex));
   chk('車の画面でページエラーなし', errs.filter(e => !/favicon|manifest|net::ERR|404/.test(e)).length === 0, errs.join(' | ').slice(0, 200));
   await ctx.close();
 }

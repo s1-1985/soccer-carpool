@@ -3207,7 +3207,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         var carCount = carsContainer.children.length;
         var carsPerRow = Math.min(4, carCount);
         var numRows = Math.ceil(carCount / 4);
-        var exportWidth = Math.max(960, carsPerRow * 300 + 48);
+        var exportWidth = Math.max(960, carsPerRow * 360 + 48); // 3席の列（72px×3）と車の絵の左右の余白が収まる幅
         // ヘッダー+情報行の高さ + 車両行ごとの高さ
         var carRowHeight = 480; // 1行分の車両エリア高さ（目安）
         var headerHeight = 120; // ヘッダー・情報エリア高さ
@@ -3319,7 +3319,16 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             el.style.overflow = 'visible';
             el.style.maxHeight = 'none';
             el.style.height = 'auto';
-            el.style.paddingBottom = '10px';
+            // 車の絵（左右のタイヤ・ミラーが箱の外にはみ出す）が切れないよう、左右に余白を取る。
+            // 下はリアガラスの分（絵と同じ余白。以前の10pxだと最後の列がガラスに重なっていた）
+            el.style.boxSizing = 'border-box';
+            el.style.width = 'auto';
+            el.style.maxWidth = 'none';
+            el.style.margin = '0 4px';
+            el.style.paddingTop = '45px';
+            el.style.paddingLeft = '19px';
+            el.style.paddingRight = '19px';
+            el.style.paddingBottom = '39px';
         });
         // クローン内の不要なボタン類を非表示（座席数変更ボタン含む）
         carsClone.querySelectorAll('.seat-clear-btn, .seat-count-adjuster, .seat-count-change-btn').forEach(function(el) {
@@ -3346,7 +3355,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
 
         document.body.appendChild(wrap);
         // 書き出し用の複製は箱の大きさが違うので、車の絵を描き直す（複製した絵は元の大きさのまま）
-        if (app.CarArt) carsClone.querySelectorAll('.car-top-view').forEach(function(b) { app.CarArt.attach(b); });
+        if (app.CarArt) carsClone.querySelectorAll('.car-top-view').forEach(function(b) { app.CarArt.attach(b, { inset: true }); });
 
         // 実際のラッパー高さを取得（コンテンツに合わせる）
         var actualHeight = wrap.scrollHeight || exportHeight;

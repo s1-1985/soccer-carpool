@@ -48,8 +48,8 @@ FCOjima.CarArt = FCOjima.CarArt || {};
         var wh = Math.max(26, Math.min(48, H * 0.2));
         [0.2, 0.8].forEach(function(f) {
             var cy = y0 + H * f - wh / 2;
-            svg.appendChild(el('rect', { x: x0 - 5, y: cy, width: 12, height: wh, rx: 5, fill: '#3b4048' }));
-            svg.appendChild(el('rect', { x: x1 - 7, y: cy, width: 12, height: wh, rx: 5, fill: '#3b4048' }));
+            svg.appendChild(el('rect', { x: x0 - 8, y: cy, width: 14, height: wh, rx: 5, fill: '#3b4048' }));
+            svg.appendChild(el('rect', { x: x1 - 6, y: cy, width: 14, height: wh, rx: 5, fill: '#3b4048' }));
         });
 
         // ボディ
@@ -95,13 +95,16 @@ FCOjima.CarArt = FCOjima.CarArt || {};
         var w = box.clientWidth, h = box.clientHeight;
         if (!w || !h) return;
         if (old && old.dataset.w === String(w) && old.dataset.h === String(h)) return;
-        var svg = CarArt.build(w, h);
+        // inset: 箱の中に収める（左右・上下の余白に、タイヤ・ミラーなどのはみ出しを入れる）。
+        // 箱の外にはみ出す通常の描き方は、画像の書き出し（html2canvas）で左側が切れるため、書き出し用の複製ではこちらを使う
+        var inset = box.dataset.carartInset === '1';
+        var svg = inset ? CarArt.build(w - SIDE * 2, h - VERT * 2) : CarArt.build(w, h);
         svg.dataset.w = String(w);
         svg.dataset.h = String(h);
-        svg.style.left = (-SIDE) + 'px';
-        svg.style.top = (-VERT) + 'px';
-        svg.style.width = (w + SIDE * 2) + 'px';
-        svg.style.height = (h + VERT * 2) + 'px';
+        svg.style.left = inset ? '0px' : (-SIDE) + 'px';
+        svg.style.top = inset ? '0px' : (-VERT) + 'px';
+        svg.style.width = (inset ? w : w + SIDE * 2) + 'px';
+        svg.style.height = (inset ? h : h + VERT * 2) + 'px';
         if (old) old.remove();
         box.insertBefore(svg, box.firstChild);
     }
@@ -109,9 +112,11 @@ FCOjima.CarArt = FCOjima.CarArt || {};
     /**
      * 箱に車の絵を敷く（何度呼んでもよい。箱の中身を作り直したあとも呼ぶ）
      * @param {HTMLElement} box - .car-top-view / .cp-car
+     * @param {{inset?: boolean}} [opt] - inset: 絵を箱の中に収める（画像の書き出し用。箱に左右 SIDE・上下 VERT の余白を取っておくこと）
      */
-    CarArt.attach = function(box) {
+    CarArt.attach = function(box, opt) {
         if (!box) return;
+        if (opt && opt.inset) box.dataset.carartInset = '1';
         box.classList.add('has-car-art');
         redraw(box);
         if (!box._carArtObserver && typeof ResizeObserver === 'function') {
