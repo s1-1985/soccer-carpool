@@ -39,6 +39,7 @@ Vanilla JS + Firebase（Hosting/Firestore/Auth/Storage）。ビルド工程な�
   新しい機能を権限で絞るときは `js/common/permissions.js` の `FEATURES` と、`firestore.rules` の `permFeatures`・`parentFeatures`・`defaultPerm` を**両方**直す。
   管理タブ・登録済みユーザー・権限の設定を開けるかだけは `Auth.isManager()`（管理者・監督・コーチ・役員）。
   役割のきまり（監督は1人・任命と解任・管理者に対する操作は管理者だけ・ログの削除は管理者だけ）は設定では変えられない。詳細は handover.md
+- 監督の操作は増やさない（「週末の段取り」で 予定を出す・参加の調整 の2つだけ）。チームの週の流れと改善の考え方は handover.md の「週末の段取り」
 - 画面を変えたら `tests/e2e/` の E2E テストを流す（下の「E2E テスト」）。表示を変えたらテストの期待値も直す（テストを消して通さない）
 
 ## Firestore ルール記述の注意点

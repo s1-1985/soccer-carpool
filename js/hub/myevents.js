@@ -56,6 +56,10 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
                 if (showCoach) Coaching.renderMine(document.getElementById('my-coaching'), Coaching.myCoach(_profile));
                 if (hasKids) MyEvents.renderList(true);
             });
+            // LINE に流したリンク（?tab=my-events）から開いたときは、参加予定のタブを開く
+            try {
+                if (new URLSearchParams(location.search).get('tab') === 'my-events') setTimeout(function() { tabBtn.click(); }, 0);
+            } catch (e) { /* 古いブラウザ */ }
         }
         if (!hasKids) return;
 

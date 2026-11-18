@@ -1261,7 +1261,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
     };
     
     // 予定フォームで編集する項目（保存するイベントはこれと id だけで組み立てる）
-    var EVENT_FORM_FIELDS = ['date', 'type', 'title', 'target', 'extraPlayers', 'targetNotes', 'attendanceDeadline',
+    var EVENT_FORM_FIELDS = ['date', 'type', 'title', 'target', 'extraPlayers', 'targetNotes', 'minPlayers', 'attendanceDeadline',
         'departureTime', 'meetingPlace', 'venue', 'startTime', 'endTime', 'notes', 'checklist', 'luggage'];
 
     /**
@@ -1294,6 +1294,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             target: Array.from(targetCheckboxes).map(cb => cb.value),
             extraPlayers: extraPlayersVal && extraPlayersVal.value ? extraPlayersVal.value.split(',').filter(Boolean) : [],
             targetNotes: document.getElementById('event-target-notes').value,
+            // 必要な人数（試合の人数など。参加が足りないと「週末の段取り」で知らせる）。空なら 0＝決めない
+            minPlayers: Math.max(0, parseInt((document.getElementById('event-min-players') || {}).value, 10) || 0),
             attendanceDeadline,
             departureTime: document.getElementById('event-departure-time').value,
             meetingPlace: document.getElementById('event-meeting-place').value,
@@ -1413,6 +1415,7 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 target,
                 extraPlayers,
                 targetNotes,
+                minPlayers: form.minPlayers,
                 attendanceDeadline,
                 departureTime,
                 meetingPlace,
@@ -1482,6 +1485,8 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         document.getElementById('event-type').value = event.type;
         document.getElementById('event-title').value = event.title;
         document.getElementById('event-target-notes').value = event.targetNotes || '';
+        var minEl = document.getElementById('event-min-players');
+        if (minEl) minEl.value = event.minPlayers ? String(event.minPlayers) : '';
         
         // 出欠回答期限を設定
         if (event.attendanceDeadline) {

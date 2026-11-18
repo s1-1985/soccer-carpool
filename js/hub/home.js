@@ -250,6 +250,8 @@ FCOjima.Hub.Home = FCOjima.Hub.Home || {};
         root.querySelectorAll('[data-event]').forEach(function(b) {
             b.addEventListener('click', function() { app.Hub.Calendar.showEventDetails(b.dataset.event); });
         });
+        var wk = root.querySelector('.hh-weekend');
+        if (wk) wk.addEventListener('click', function() { if (app.Hub.Weekend) app.Hub.Weekend.open(); });
         root.querySelectorAll('[data-go]').forEach(function(b) {
             b.addEventListener('click', function() { openTab(b.dataset.go); });
         });
@@ -292,7 +294,8 @@ FCOjima.Hub.Home = FCOjima.Hub.Home || {};
                         : chip(seatState, '車の席 ' + st.seats + '/' + st.need) + chip(assignState, '割り当て ' + st.assigned + '/' + st.need)) +
                     '</span></button>';
             }).join('') +
-            '<p class="hh-note">「車の席」は乗れる席の数／座席が要る人（参加・帯同指導者）。押すと予定の詳細</p></section>';
+            '<p class="hh-note">「車の席」は乗れる席の数／座席が要る人（参加・帯同指導者）。押すと予定の詳細</p>' +
+            '<button type="button" class="hh-weekend">🗓 週末の段取りを開く（出欠・参加の調整・車・配車表）›</button></section>';
     }
 
 })(window.FCOjima);
