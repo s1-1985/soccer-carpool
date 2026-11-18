@@ -94,7 +94,7 @@ const pageOverflow = () => document.documentElement.scrollWidth > document.docum
   await page.tap('#defaultTab');
   await page.evaluate(() => FCOjima.Hub.openLogsModal('calendar'));
   await page.waitForTimeout(400);
-  const lg = await page.evaluate(() => ({ n: document.querySelectorAll('#logs-content .log-item').length, del: document.querySelectorAll('#logs-content .log-delete').length, all: !!document.querySelector('.log-delete-all') }));
+  const lg = await page.evaluate(() => ({ n: document.querySelectorAll('#logs-content .log-item').length, del: document.querySelectorAll('#logs-content .log-deletable').length, all: !!document.querySelector('.log-delete-all') }));
   chk('役員はログを見られるが、削除ボタンはない', lg.n === 2 && lg.del === 0 && !lg.all, JSON.stringify(lg));
   const real = errs.filter(e => !ignorable(e));
   chk('役員の画面でページエラーなし', real.length === 0, real.join(' | '));
@@ -139,8 +139,16 @@ const pageOverflow = () => document.documentElement.scrollWidth > document.docum
   await page.evaluate(() => { document.getElementById('all-users-modal').style.display = 'none'; });
 
   await page.evaluate(() => FCOjima.Hub.openLogsModal('calendar'));
-  await page.waitForSelector('#logs-content .log-delete', { timeout: 5000 });
-  await page.click('#logs-content .log-delete');
+  await page.waitForSelector('#logs-content .log-deletable', { timeout: 5000 });
+  // 長押し（0.6秒）で確認が出る。短く押しただけでは消えない
+  const box = await (await page.$('#logs-content .log-deletable')).boundingBox();
+  await page.mouse.move(box.x + 20, box.y + box.height / 2);
+  await page.mouse.down(); await page.waitForTimeout(200); await page.mouse.up();
+  await page.waitForTimeout(800);
+  const afterTap = (await list(`${T}/logs`)).length;
+  chk('管理者: ログを短く押しただけでは消えない', afterTap === 3, String(afterTap));
+  await page.mouse.move(box.x + 20, box.y + box.height / 2);
+  await page.mouse.down(); await page.waitForTimeout(900); await page.mouse.up();
   await page.waitForTimeout(1500);
   const left1 = (await list(`${T}/logs`)).map(l => l.id).sort();
   chk('管理者はログを1件ずつ消せる', left1.length === 2 && left1.includes('lg3'), JSON.stringify(left1));

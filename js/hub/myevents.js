@@ -150,6 +150,8 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
                     checklist: ev.checklist,
                     dutyGroupName: dutyAssignment ? dutyAssignment.groupName : null,
                     deadline: ev.attendanceDeadline || '',
+                    // 自分（保護者）の車の提供（車提供の登録。なければ null＝未回答）
+                    myCar: MyEvents.findMyCar(dataArr[i]),
                     // この予定の連絡（配車の「連絡」）
                     notes: ((dataArr[i] && dataArr[i].notifications) || []).filter(function(n) { return n && n.text; }),
                     kids: kids
@@ -157,6 +159,55 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
             }
         });
         return items;
+    };
+
+    function myName() { return String((_profile && _profile.name) || '').trim(); }
+
+    /** この予定の車提供の登録のうち、自分の分（なければ null） */
+    MyEvents.findMyCar = function(eventData) {
+        var me = myName();
+        if (!me) return null;
+        var regs = (eventData && Array.isArray(eventData.carRegistrations)) ? eventData.carRegistrations : [];
+        return regs.filter(function(c) { return c && Utils.carOwner(c) === me; })[0] || null;
+    };
+
+    /** 車の提供の表示（「🚗 出せる（往復・空き4席）」「出せない」「まだ答えていません」） */
+    MyEvents.myCarText = function(car) {
+        if (!car) return 'まだ答えていません';
+        if (car.canDrive === 'no') return '出せない';
+        var label = { both: '往復', to: '行きのみ', from: '帰りのみ' }[car.canDrive] || '往復';
+        var extra = (car.extraPassengers || []).length;
+        var seats = (parseInt(car.frontSeat, 10) || 0) + (parseInt(car.middleSeat, 10) || 0) + (parseInt(car.backSeat, 10) || 0) - extra;
+        return '出せる（' + label + '・空き' + Math.max(0, seats) + '席）';
+    };
+
+    /**
+     * 自分の車の提供を「出せる／出せない」で答える（車提供の登録を、最新の内容に対してトランザクションで書き換える）。
+     * すでに登録があれば座席などは残し、出せる＝「出せない」だったものを往復に戻す。なければ標準の席（助手席1・中列3）で登録する。
+     * 行きだけ・席の数・兄弟児などは「くわしく設定」（車提供のページ）で
+     * @param {string} eventId
+     * @param {string} status - 'yes' | 'no'
+     */
+    MyEvents.answerCar = async function(eventId, status) {
+        var me = myName();
+        if (!me) throw new Error('ログインの名前がありません');
+        await FCOjima.DB.updateEventData(eventId, function(cur) {
+            var regs = (cur && Array.isArray(cur.carRegistrations)) ? cur.carRegistrations.map(function(c) { return Object.assign({}, c); }) : [];
+            var mine = regs.filter(function(c) { return Utils.carOwner(c) === me; })[0];
+            if (status === 'no') {
+                if (mine) mine.canDrive = 'no';
+                else regs.push({ parent: me, canDrive: 'no', frontSeat: 0, middleSeat: 0, backSeat: 0, notes: '', extraPassengers: [] });
+            } else if (mine) {
+                if (mine.canDrive === 'no') mine.canDrive = 'both';
+            } else {
+                regs.push({ parent: me, canDrive: 'both', frontSeat: 1, middleSeat: 3, backSeat: 0, notes: '', extraPassengers: [] });
+            }
+            return { carRegistrations: regs };
+        });
+        UI.showAlert('車の提供：「' + (status === 'no' ? '出せない' : '出せる') + '」で保存しました', 'success');
+        await MyEvents.refresh();
+        var tab = document.getElementById('my-events');
+        if (tab && tab.style.display !== 'none') MyEvents.renderList(false);
     };
 
     /**
@@ -551,6 +602,57 @@ FCOjima.Hub.MyEvents = FCOjima.Hub.MyEvents || {};
                     kidsDiv.appendChild(row);
                 });
                 card.appendChild(kidsDiv);
+                // 親の車の提供（以前は車提供のページに行かないと答えられなかった）。全員不参加の予定には出さない
+                if (!it.kids.every(function(k) { return k.status === 'absent'; })) {
+                    var carRow = document.createElement('div');
+                    carRow.className = 'me-car-row me-car-' + (!it.myCar ? 'unknown' : (it.myCar.canDrive === 'no' ? 'no' : 'yes'));
+                    var carInfo = document.createElement('div');
+                    carInfo.className = 'me-car-info';
+                    var carLabel = document.createElement('span');
+                    carLabel.className = 'me-car-label';
+                    carLabel.textContent = '🚗 車の提供';
+                    var carState = document.createElement('span');
+                    carState.className = 'me-car-state';
+                    carState.textContent = MyEvents.myCarText(it.myCar);
+                    carInfo.appendChild(carLabel);
+                    carInfo.appendChild(carState);
+                    carRow.appendChild(carInfo);
+                    var carBtns = document.createElement('div');
+                    carBtns.className = 'me-ans me-car-btns';
+                    carBtns.setAttribute('role', 'group');
+                    carBtns.setAttribute('aria-label', '車の提供');
+                    var curCar = !it.myCar ? '' : (it.myCar.canDrive === 'no' ? 'no' : 'yes');
+                    [['yes', '出せる'], ['no', '出せない']].forEach(function(o) {
+                        var b = document.createElement('button');
+                        b.type = 'button';
+                        b.className = 'me-ans-btn me-ans-' + (o[0] === 'yes' ? 'present' : 'absent') + (curCar === o[0] ? ' is-on' : '');
+                        b.dataset.car = o[0];
+                        b.textContent = o[1];
+                        b.setAttribute('aria-pressed', String(curCar === o[0]));
+                        b.addEventListener('click', async function(e) {
+                            e.stopPropagation();
+                            if (curCar === o[0]) return;
+                            if (o[0] === 'no' && it.myCar && !UI.showConfirm('登録済みの車を「出せない」にします。座席割り当てで運転手になっている場合は外れます。よろしいですか？')) return;
+                            carBtns.querySelectorAll('button').forEach(function(x) { x.disabled = true; });
+                            try {
+                                await MyEvents.answerCar(it.eventId, o[0]);
+                            } catch (err) {
+                                console.warn('車の提供を保存できませんでした:', err);
+                                UI.showAlert('保存できませんでした。通信環境を確認してください', 'error', 6000);
+                                carBtns.querySelectorAll('button').forEach(function(x) { x.disabled = false; });
+                            }
+                        });
+                        carBtns.appendChild(b);
+                    });
+                    carRow.appendChild(carBtns);
+                    var carLink = document.createElement('a');
+                    carLink.className = 'me-car-link';
+                    carLink.href = '../carpool/cars.html?event=' + encodeURIComponent(it.eventId);
+                    carLink.textContent = '行きだけ・席の数など、くわしく設定 ›';
+                    carLink.addEventListener('click', function(e) { e.stopPropagation(); });
+                    carRow.appendChild(carLink);
+                    card.appendChild(carRow);
+                }
                 // この予定の連絡（新着があれば件数）。押すとその予定の連絡のページ
                 if (it.notes && it.notes.length) {
                     var unread = app.Inbox ? app.Inbox.eventUnread(it.eventId, it.notes).length : 0;

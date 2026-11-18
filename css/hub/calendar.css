@@ -543,6 +543,21 @@
 }
 .ed-att-icon { flex: 0 0 14px; text-align: center; font-weight: 700; }
 .ed-att-name { min-width: 0; overflow-wrap: anywhere; line-height: 1.3; }
+.ed-att-hint { margin: 0 0 6px; font-size: 11px; color: #8a8f94; }
+.ed-att[role="button"] { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.ed-att[role="button"]:active { filter: brightness(.95); }
+.ed-att-edit { margin-top: 8px; padding: 10px 12px; border: 1px solid #e8d9a8; border-radius: 10px; background: #fffaf0; }
+.ed-att-edit[hidden] { display: none; }
+.ed-att-edit-head { font-weight: 700; font-size: 14px; margin-bottom: 8px; }
+.ed-att-edit-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+button.ed-att-edit-btn { flex: 1 1 auto; min-height: 38px; padding: 6px 12px; font-size: 13px; background: #fff; color: #444; border: 1px solid #d9d4c4; border-radius: 8px; box-shadow: none; }
+button.ed-att-edit-btn:hover { background: #fff; box-shadow: none; }
+button.ed-att-edit-present { border-color: #8fd09c; color: #1e6b33; }
+button.ed-att-edit-absent { border-color: #f1b3ab; color: #a3271b; }
+button.ed-att-edit-present.is-on { background: #2e9e4f; border-color: #2e9e4f; color: #fff; }
+button.ed-att-edit-absent.is-on { background: #c8473a; border-color: #c8473a; color: #fff; }
+button.ed-att-edit-unknown.is-on { background: #8a8f94; border-color: #8a8f94; color: #fff; }
+button.ed-att-edit-btn:disabled { opacity: .55; }
 .ed-att-p { background: #e8f5e9; color: #1d4d2f; }
 .ed-att-p .ed-att-icon { color: #2e7d32; }
 .ed-att-u { background: #f4f2ec; color: #5c5540; }

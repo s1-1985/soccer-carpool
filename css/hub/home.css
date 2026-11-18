@@ -122,6 +122,14 @@ button.hh-link .hh-go { margin-left: auto; font-size: 13px; font-weight: 800; co
 
 /* 出欠の「参加／不参加」（参加予定のカード・予定の詳細・やることで共通。js/hub/myevents.js answerButtons） */
 .me-ans { display: inline-flex; gap: 6px; flex-shrink: 0; }
+/* 親の車の提供（子供の出欠の下） */
+.me-car-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; margin-top: 8px; padding: 8px 10px; border-radius: 10px; background: #f4f7fb; border: 1px solid #dde5ee; }
+.me-car-row.me-car-yes { background: #eef7f0; border-color: #cfe6d4; }
+.me-car-row.me-car-unknown { background: #fff8e6; border-color: #ecd9a0; }
+.me-car-info { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+.me-car-label { font-weight: 700; font-size: 13px; }
+.me-car-state { font-size: 12px; color: #666; }
+.me-car-link { flex: 1 0 100%; font-size: 11px; color: #8a6d1d; text-decoration: none; }
 .me-ans-btn {
     min-width: 64px;
     min-height: 40px;
@@ -290,8 +298,10 @@ button.reject-btn, button.reject-btn:hover {
 
 /* ===== 操作ログの削除（管理者だけ） ===== */
 .log-item { position: relative; }
-button.log-delete { margin-left: 8px; padding: 2px 8px; min-height: 0; font-size: 11px; background: #fff; color: #c0392b; border: 1px solid #e8b4ad; box-shadow: none; }
-button.log-delete:hover { background: #fdecea; }
+/* 管理者: ログの内容を長押しで削除（押している間は薄く赤く。選択・端末のメニューは出さない） */
+.log-item.log-deletable { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: pan-y; transition: background .15s; }
+.log-item.log-pressing { background: #fdecea; }
+.log-item.log-removing { opacity: .4; }
 .log-admin-tools { margin-top: 12px; padding-top: 10px; border-top: 1px solid #eee; }
 .log-admin-note { color: #888; font-size: 12px; margin: 6px 0 0; }
 
