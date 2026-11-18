@@ -830,16 +830,16 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
             const pct = n => targetMembers.length ? (n * 100 / targetMembers.length).toFixed(1) : 0;
             // 参加 → 未回答 → 不参加 の順に並べる（同じ回答の中はメンバーの順）
             const order = { p: 0, u: 1, a: 2 };
+            const stName = m => statusMap[m.name] === 'present' ? 'present' : statusMap[m.name] === 'absent' ? 'absent' : 'unknown';
             const rows = targetMembers.slice().sort((a, b) => order[stOf(a)] - order[stOf(b)]).map(m => {
                 const st = stOf(m);
                 const icon = st === 'p' ? '○' : st === 'a' ? '×' : '－';
-                return `<div class="ed-att ed-att-${st}"><span class="ed-att-icon">${icon}</span><span class="ed-att-name">${esc(m.name)}</span></div>`;
+                return `<div class="ed-att ed-att-${st}" role="button" tabindex="0" data-name="${esc(m.name)}" data-status="${stName(m)}"><span class="ed-att-icon">${icon}</span><span class="ed-att-name">${esc(m.name)}</span></div>`;
             }).join('');
             // ログインしている保護者のお子さん: ここで「参加／不参加」を答えられる（ボタンは表示したあとに付ける）。
             // 以前は「配車管理へ」→「出欠確認」へ進み、全員の一覧から自分の子を探して答える必要があった
             const myKids = (app.Hub.MyEvents && app.Hub.MyEvents.getChildren) ? app.Hub.MyEvents.getChildren() : [];
             const mine = targetMembers.filter(m => myKids.some(k => k.name === m.name));
-            const stName = m => statusMap[m.name] === 'present' ? 'present' : statusMap[m.name] === 'absent' ? 'absent' : 'unknown';
             const mineHtml = mine.length ? `<div class="ed-mine"><div class="ed-mine-head">お子さんの出欠<span>押すとすぐ保存されます</span></div>` +
                 mine.map(m => {
                     const car = stName(m) === 'present' ? Utils.carOf(eventData, m.name) : null;
@@ -853,7 +853,9 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 <div class="ed-att-bar" aria-hidden="true"><span class="ed-bar-p" style="width:${pct(presentCount)}%"></span><span class="ed-bar-u" style="width:${pct(pendingCount)}%"></span><span class="ed-bar-a" style="width:${pct(absentCount)}%"></span></div>
                 <div class="ed-att-legend"><span class="ed-leg-p">参加 <b>${presentCount}</b></span><span class="ed-leg-u">未回答 <b>${pendingCount}</b></span><span class="ed-leg-a">不参加 <b>${absentCount}</b></span></div>
                 ${deadlineHtml}
+                <div class="ed-att-hint">名前をタップすると、その子の出欠を直せます</div>
                 <div class="ed-att-grid">${rows}</div>
+                <div class="ed-att-edit" id="ed-att-edit" hidden></div>
                 ${addBtn}
             </section>`;
         } else if (deadlineHtml || addBtn) {
@@ -961,6 +963,51 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
                 row.appendChild(app.Hub.MyEvents.answerButtons(String(event.id), row.dataset.name, row.dataset.status, function() {
                     Calendar.showEventDetails(event.id);
                 }));
+            });
+        }
+
+        // 出欠の一覧の名前をタップ: ほかの人のお子さんの出欠もここで直せる（自分のお子さんは参加予定で答えるのが基本）
+        var attGrid = content.querySelector('.ed-att-grid');
+        var attEdit = document.getElementById('ed-att-edit');
+        if (attGrid && attEdit && app.Hub.MyEvents && app.Hub.MyEvents.answer) {
+            var openAttEdit = function(row) {
+                var name = row.dataset.name, cur = row.dataset.status;
+                if (!attEdit.hidden && attEdit.dataset.name === name) { attEdit.hidden = true; return; }
+                attEdit.dataset.name = name;
+                attEdit.innerHTML = '';
+                var head = document.createElement('div');
+                head.className = 'ed-att-edit-head';
+                head.textContent = name + ' の出欠';
+                attEdit.appendChild(head);
+                var btns = document.createElement('div');
+                btns.className = 'ed-att-edit-btns';
+                [['present', '参加'], ['absent', '不参加'], ['unknown', '未回答に戻す']].forEach(function(o) {
+                    var b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'ed-att-edit-btn ed-att-edit-' + o[0] + (cur === o[0] ? ' is-on' : '');
+                    b.textContent = o[1];
+                    b.setAttribute('aria-pressed', String(cur === o[0]));
+                    b.addEventListener('click', async function() {
+                        if (cur === o[0]) { attEdit.hidden = true; return; }
+                        btns.querySelectorAll('button').forEach(function(x) { x.disabled = true; });
+                        try {
+                            await app.Hub.MyEvents.answer(String(event.id), name, o[0]);
+                            Calendar.showEventDetails(event.id);
+                        } catch (err) {
+                            console.warn('出欠を保存できませんでした:', err);
+                            UI.showAlert('保存できませんでした。通信環境を確認してください', 'error', 6000);
+                            btns.querySelectorAll('button').forEach(function(x) { x.disabled = false; });
+                        }
+                    });
+                    btns.appendChild(b);
+                });
+                attEdit.appendChild(btns);
+                attEdit.hidden = false;
+                attEdit.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            };
+            attGrid.querySelectorAll('.ed-att').forEach(function(row) {
+                row.addEventListener('click', function() { openAttEdit(row); });
+                row.addEventListener('keydown', function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openAttEdit(row); } });
             });
         }
 

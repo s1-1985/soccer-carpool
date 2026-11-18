@@ -1853,3 +1853,38 @@ body.canvas-select-active #canvas-mode .driver-seat.driver-empty {
     line-height: 1.2;
 }
 .seat-outside-warning { background: #fff8e6; border-color: #f1d28a; color: #7a5200; }
+
+/* ── 車の絵（js/common/carart.js のSVG）──
+   箱そのものの飾り（丸い角・ガラスの弧・タイヤの背景画像）はSVGに替わったので消し、席は絵の上に出す。
+   絵は席の後ろ（pointer-events なし）。.has-car-art が付いていない間（読み込み前）は従来の見た目のまま */
+.car-art {
+    position: absolute;
+    pointer-events: none;
+    overflow: visible;
+    z-index: 0;
+}
+.car-top-view.has-car-art,
+.cp-car.has-car-art {
+    background: none;
+    border-color: transparent;
+}
+.car-top-view.has-car-art::before,
+.car-top-view.has-car-art::after,
+.cp-car.has-car-art::before,
+.cp-car.has-car-art::after {
+    display: none;
+}
+.car-top-view.has-car-art {
+    padding-top: 40px;
+    padding-bottom: 30px;
+}
+.car-top-view.has-car-art > .seat-row,
+.cp-car.has-car-art > .cp-row {
+    position: relative;
+    z-index: 1;
+}
+@media (max-width: 768px) {
+    .car-top-view.has-car-art {
+        padding: 36px 2px 28px;
+    }
+}

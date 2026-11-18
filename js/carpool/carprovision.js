@@ -839,6 +839,8 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
             steppers.appendChild(wrap);
         });
 
+        if (FCOjima.CarArt) FCOjima.CarArt.attach(car);
+
         var total = CarProvision._seats.frontSeat + CarProvision._seats.middleSeat + CarProvision._seats.backSeat;
         var taken = CarProvision._passengers.length;
         var sum = document.getElementById('cp-seat-summary');

@@ -172,12 +172,11 @@ FCOjima.Hub.openLogsModal = function(type) {
     } else {
         logsContent.innerHTML = filtered.slice().reverse().slice(0, 50).map(function(log) {
             const dt = new Date(log.datetime).toLocaleString('ja-JP');
-            return `<div class="log-item">
+            return `<div class="log-item${isAdmin ? ' log-deletable' : ''}" data-id="${esc(String(log.id || ''))}">
                 <span class="log-time">${esc(dt)}</span>
                 <span class="log-user">${esc(log.user)}</span>
                 <span class="log-action">${esc(log.action)}</span>
                 <span class="log-details">${esc(log.details)}</span>
-                ${isAdmin ? `<button type="button" class="log-delete" data-id="${esc(String(log.id || ''))}" aria-label="このログを削除">削除</button>` : ''}
             </div>`;
         }).join('');
     }
@@ -186,21 +185,41 @@ FCOjima.Hub.openLogsModal = function(type) {
         tools.className = 'log-admin-tools';
         tools.innerHTML = '<button type="button" class="delete-button log-delete-all">' +
             (type ? 'この種類のログをすべて削除' : 'すべてのログを削除') + '</button>' +
-            '<p class="log-admin-note">ログを削除できるのは管理者だけです（3か月より前の分も消えます）</p>';
+            '<p class="log-admin-note">ログの内容を長押しすると、そのログを削除できます（管理者だけ。3か月より前の分も消えます）</p>';
         logsContent.appendChild(tools);
-        logsContent.querySelectorAll('.log-delete').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                const id = btn.dataset.id;
-                if (!id || !FCOjima.UI.showConfirm('このログを削除しますか？')) return;
-                btn.disabled = true;
-                FCOjima.DB.deleteLogs([id]).then(function() {
-                    FCOjima.Hub._removeLogs(function(l) { return String(l.id) === id; });
-                    FCOjima.Hub.openLogsModal(type);
-                }).catch(function(e) {
-                    btn.disabled = false;
-                    FCOjima.UI.showAlert('ログを削除できませんでした: ' + e.message, 'error', 6000);
-                });
+        // 1件ずつの削除: ログの内容を長押し（0.6秒）すると確認が出る。指を動かした・離した場合はやめる
+        logsContent.querySelectorAll('.log-deletable').forEach(function(item) {
+            let timer = null, sx = 0, sy = 0;
+            const cancel = function() { if (timer) { clearTimeout(timer); timer = null; } item.classList.remove('log-pressing'); };
+            item.addEventListener('pointerdown', function(e) {
+                if (e.pointerType === 'mouse' && e.button !== 0) return;
+                sx = e.clientX; sy = e.clientY;
+                item.classList.add('log-pressing');
+                cancel();
+                item.classList.add('log-pressing');
+                timer = setTimeout(function() {
+                    timer = null;
+                    item.classList.remove('log-pressing');
+                    const id = item.dataset.id;
+                    if (!id) return;
+                    const text = (item.querySelector('.log-action') || {}).textContent + ' ' + ((item.querySelector('.log-details') || {}).textContent || '');
+                    if (!FCOjima.UI.showConfirm('このログを削除しますか？\n\n' + text.trim())) return;
+                    item.classList.add('log-removing');
+                    FCOjima.DB.deleteLogs([id]).then(function() {
+                        FCOjima.Hub._removeLogs(function(l) { return String(l.id) === id; });
+                        FCOjima.Hub.openLogsModal(type);
+                    }).catch(function(err) {
+                        item.classList.remove('log-removing');
+                        FCOjima.UI.showAlert('ログを削除できませんでした: ' + err.message, 'error', 6000);
+                    });
+                }, 600);
             });
+            item.addEventListener('pointermove', function(e) {
+                if (timer && (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10)) cancel();
+            });
+            ['pointerup', 'pointerleave', 'pointercancel'].forEach(function(n) { item.addEventListener(n, cancel); });
+            // 長押しで出る端末のメニュー（コピー・共有）は出さない
+            item.addEventListener('contextmenu', function(e) { e.preventDefault(); });
         });
         tools.querySelector('.log-delete-all').addEventListener('click', function() {
             if (!FCOjima.UI.showConfirm((type ? 'この種類のログ' : 'すべてのログ') + 'を削除しますか？（元に戻せません）')) return;

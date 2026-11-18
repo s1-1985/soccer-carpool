@@ -2314,6 +2314,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         
         carSeatLayout.appendChild(carView);
         carLayout.appendChild(carSeatLayout);
+        // 車の絵（まだ画面に付いていないので、大きさが分かる時点で描かれる。箱の大きさが変わるたびに描き直す）
+        if (app.CarArt) app.CarArt.attach(carView);
         
         // 既存の配置データを反映
         var epNames = new Set((car.extraPassengers || []).map(function(ep) { return ep.name; }));
@@ -3343,6 +3345,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         wrap.appendChild(carsClone);
 
         document.body.appendChild(wrap);
+        // 書き出し用の複製は箱の大きさが違うので、車の絵を描き直す（複製した絵は元の大きさのまま）
+        if (app.CarArt) carsClone.querySelectorAll('.car-top-view').forEach(function(b) { app.CarArt.attach(b); });
 
         // 実際のラッパー高さを取得（コンテンツに合わせる）
         var actualHeight = wrap.scrollHeight || exportHeight;

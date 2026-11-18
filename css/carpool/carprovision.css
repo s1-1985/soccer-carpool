@@ -478,3 +478,11 @@ button.cp-seat-clear { width: 100%; margin-top: 14px; }
 /* 座席の割り当てで運転手を替えた車: 運転手未定・持ち主 */
 .car-no-driver { color: #c0392b; font-weight: 700; }
 .car-owner-note { margin-left: 4px; font-size: 12px; font-weight: 400; color: #6c757d; }
+
+/* 車の絵（js/common/carart.js）が付いたときは、上の枠・弧・タイヤの代わりにSVGを使う（assignment.css の .has-car-art）。
+   cars.html は assignment.css を読まないので、ここにも同じ指定を置く */
+.car-art { position: absolute; pointer-events: none; overflow: visible; z-index: 0; }
+.cp-car.has-car-art { background: none; border-color: transparent; padding-top: 40px; padding-bottom: 28px; }
+.cp-car.has-car-art::before,
+.cp-car.has-car-art::after { display: none; }
+.cp-car.has-car-art > .cp-row { position: relative; z-index: 1; }
