@@ -33,6 +33,8 @@ E2E テストは `tests/e2e/`（`README.md`）。このファイルは新しい�
   ③ 絵は箱の外（左右9px）にはみ出して描くが、html2canvas では左側が切れた（右は出る）。
   → 書き出し用の複製は、箱の中に余白（左右19px・上45px・下39px）を取り、絵を箱の中に収める（`CarArt.attach(box, { inset: true })`）。1台の幅を360pxに。
   観察用 `shots-export.mjs`（書き出した画像を保存する）で確かめた。`t-cars` に書き出しの寸法の確認を足した
+- **台数を増やした画像出力**（ユーザーの質問「車の台数を増やしても大丈夫？」→10台で確認）: 1行4台・3行で切れずに出た（2976×3120px。台数分だけ高さが伸びる）。
+  ただし1台の幅が端数で4台目が次の行に折り返し、右が空いていたので、1台の幅を2px引いた（`carItemWidth - 2`）。観察用 `shots-export10.mjs`（10台）
 E2E: 新規 `t-cars`（18項目）、`t-perm-ui` のログ削除を長押しに。観察用 `shots-cars.mjs`（車の絵・参加予定・出欠の編集の画面を撮る）
 キャッシュバスト: 新規 `common/carart.js` `?v=20261118a`、`assignment.js/css`・`carprovision.js/css`・`main.js`・`home.css`・`calendar.js/css`・`myevents.js` も `?v=20261118a`
 

@@ -57,6 +57,7 @@ node t-polish.mjs                # 1ファイルだけ流すとき（NO_PROXY=12
 | `t-cars` | 車のSVGの絵（箱の大きさに合わせて描く・席が手前でタップできる）・予定の詳細でほかの人のお子さんの出欠も直せる・参加予定で親の車の提供（出せる／出せない） |
 | `e2e-dock-scroll` `e2e-dock-drag-regression` | 割り当て画面の下のドックのスクロール・ドラッグ（タッチ操作） |
 | `detect.mjs` | スマホの見切れを見つける関数（`t-round10` が使う） |
+| `shots-export10.mjs` | 観察用: 10台の配車を画像出力する（台数が多いときの折り返し・見切れの確認） |
 | `shots-export.mjs` | 観察用: 配車の画像出力（html2canvas）の結果の画像を保存する（`node shots-export.mjs 出力先.png`）。検証ではない |
 | `shots-cars.mjs` | 観察用: 車の絵・参加予定の車の提供・出欠の編集を撮る（`node shots-cars.mjs 出力先`）。検証ではない |
 | `shots-polish.mjs` | 観察用: 主な画面をスマホ幅で撮る（`node shots-polish.mjs 出力先`）。検証ではない |
