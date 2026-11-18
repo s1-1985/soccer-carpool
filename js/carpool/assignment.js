@@ -3296,7 +3296,7 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
 
         // 実際の cars-container をクローン（4台/行でラップ）
         var carsClone = carsContainer.cloneNode(true);
-        var carItemWidth = Math.floor((exportWidth - 32 - (carsPerRow - 1) * 12) / carsPerRow);
+        var carItemWidth = Math.floor((exportWidth - 32 - (carsPerRow - 1) * 12) / carsPerRow) - 2; // -2: 端数で4台目が次の行に折り返さないように
         carsClone.style.cssText = 'overflow:visible;max-height:none;height:auto;display:flex;flex-direction:row;flex-wrap:wrap;gap:12px;align-items:flex-start;';
         // 各car-layoutを指定幅で表示（box-sizing:border-boxでpadding込みの幅にする）
         carsClone.querySelectorAll('.car-layout').forEach(function(el) {
