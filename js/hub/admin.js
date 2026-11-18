@@ -43,6 +43,7 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
 
     // 管理タブのボタンと、それを使える機能（権限の設定）。権限がなければボタンを出さない
     var TILE_FEATURES = {
+        'btn-weekend': 'attendance_view',
         'btn-coach-planner': 'coach_plan',
         'btn-attendance-matrix': 'attendance_view',
         'btn-driver-stats': 'attendance_view',

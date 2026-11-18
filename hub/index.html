@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="../css/common.css?v=20261017a">
     <link rel="stylesheet" href="../css/hub/calendar.css?v=20261118a">
     <link rel="stylesheet" href="../css/hub/coaching.css?v=20261022c">
-    <link rel="stylesheet" href="../css/hub/home.css?v=20261118a">
+    <link rel="stylesheet" href="../css/hub/home.css?v=20261118d">
     <link rel="stylesheet" href="../css/hub/members.css?v=20260719">
     <link rel="stylesheet" href="../css/hub/notifications.css?v=20261023c">
     <link rel="stylesheet" href="../css/hub/venues.css?v=20260224a">
@@ -492,6 +492,7 @@
             <section class="admin-group">
                 <h3 class="admin-sub">よく使う</h3>
                 <div class="admin-menu">
+                    <button id="btn-weekend" type="button" class="admin-tile admin-tile-primary" onclick="FCOjima.Hub.Weekend.open()"><span class="admin-tile-icon" aria-hidden="true">🗓</span><span class="admin-tile-body"><b>週末の段取り</b><small>予定を出す → 出欠 → 参加の調整 → 車 → 配車表 を順に</small></span></button>
                     <button id="btn-coach-planner" type="button" class="admin-tile" onclick="FCOjima.Hub.Coaching.openPlanner()"><span class="admin-tile-icon" aria-hidden="true">🧢</span><span class="admin-tile-body"><b>指導者の予定・担当</b><small>都合を見て、予定ごとの担当を決める</small></span></button>
                     <button id="btn-attendance-matrix" type="button" class="admin-tile"><span class="admin-tile-icon" aria-hidden="true">📋</span><span class="admin-tile-body"><b>出欠状況</b><small>予定ごと・選手ごとの出欠の表</small></span></button>
                     <button id="btn-signup-qr" type="button" class="admin-tile"><span class="admin-tile-icon" aria-hidden="true">📱</span><span class="admin-tile-body"><b>入会用QRコード</b><small>新しい人に申請してもらうリンク</small></span></button>
@@ -710,6 +711,8 @@
                     </div>
                     <input type="hidden" id="event-extra-players" value="">
                     <input type="text" id="event-target-notes" placeholder="備考（例: 〇〇君のみ参加）" style="margin-top:6px;">
+                    <label for="event-min-players" style="display:block;margin-top:8px;">必要な人数 <small style="color:#888;font-weight:normal;">（試合の人数など。足りないと「週末の段取り」で知らせます。空欄なら決めない）</small></label>
+                    <input type="number" id="event-min-players" min="0" max="40" inputmode="numeric" placeholder="例: 8" style="max-width:120px;">
                 </div>
                 <div class="form-group">
                     <label for="event-attendance-deadline">出欠回答期限</label>
@@ -966,14 +969,15 @@
 
     <!-- HUBページ用モジュール -->
     <script src="../js/hub/main.js?v=20261118a"></script>
-    <script src="../js/hub/calendar.js?v=20261118a"></script>
+    <script src="../js/hub/calendar.js?v=20261118d"></script>
     <script src="../js/hub/members.js?v=20261023e"></script>
     <script src="../js/hub/notifications.js?v=20261023e"></script>
     <script src="../js/hub/venues.js?v=20261023e"></script>
     <script src="../js/hub/coaching.js?v=20261023e"></script>
-    <script src="../js/hub/myevents.js?v=20261118a"></script>
-    <script src="../js/hub/home.js?v=20261023e"></script>
-    <script src="../js/hub/admin.js?v=20261023f"></script>
+    <script src="../js/hub/myevents.js?v=20261118d"></script>
+    <script src="../js/hub/home.js?v=20261118d"></script>
+    <script src="../js/hub/admin.js?v=20261118d"></script>
+    <script src="../js/hub/weekend.js?v=20261118a"></script>
     <script src="../js/hub/permsettings.js?v=20261023e"></script>
 
     <script>
