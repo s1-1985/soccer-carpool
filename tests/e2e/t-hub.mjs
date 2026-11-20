@@ -37,7 +37,7 @@ const vis = await pp.evaluate(() => {
   document.querySelector('.tablinks[onclick*="members"]').click();
   const fab = getComputedStyle(document.getElementById('floating-add-button')).display;
   return { add: shown('add-member'), edit: shown('edit-member'), del: shown('delete-member'), addVenue: shown('add-venue'),
-    venueEdit: !!document.querySelector('#venues-list button[onclick*="editVenue"]'), fab };
+    venueEdit: !!document.querySelector('#venues-list .venue-act-edit'), fab };
 });
 chk('保護者にはメンバー追加・編集・削除ボタンが出ない', !vis.add && !vis.edit && !vis.del, JSON.stringify(vis));
 chk('保護者には会場の追加・編集ボタンが出ない', !vis.addVenue && !vis.venueEdit);

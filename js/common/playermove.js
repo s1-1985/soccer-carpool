@@ -144,19 +144,29 @@ FCOjima.PlayerMove = FCOjima.PlayerMove || {};
      * @returns {Promise<Object>} 元に戻すための記録
      */
     PM.move = async function(member, fromEv, toEv) {
+        if (!PM.canUse()) throw new Error('選手の参加変更の権限がありません');
         var rec = { member: member, fromEv: fromEv || null, toEv: toEv, addedExtra: false, prevTo: null, prevFrom: null, noticeId: null };
         // 対象学年外なら学年外追加に（その1人だけを追加。他の人が同時に変えた項目には触れない）
-        if (!U().isTargetFor(member, toEv)) {
-            await app.DB.addEventExtraPlayer(toEv.id, member.name);
-            toEv.extraPlayers = (toEv.extraPlayers || []).concat([member.name]);
-            rec.addedExtra = true;
-            PM._syncHubEvent(toEv.id, function(ev) {
-                if ((ev.extraPlayers || []).indexOf(member.name) === -1) ev.extraPlayers = (ev.extraPlayers || []).concat([member.name]);
-            });
-        }
-        rec.prevTo = await setRow(toEv.id, member, { status: 'present', notes: '' });
-        if (fromEv) {
-            rec.prevFrom = await setRow(fromEv.id, member, { status: 'absent', notes: '「' + titleOf(toEv) + '」へ移動' });
+        // 3つの書き込みを順に行う。途中で失敗したら、済んだ分を逆順に戻してから失敗を投げる
+        // （以前は戻さず、選手が移動元・移動先の両方に「参加」で残り、画面から直せなかった）
+        try {
+            if (!U().isTargetFor(member, toEv)) {
+                await app.DB.addEventExtraPlayer(toEv.id, member.name);
+                toEv.extraPlayers = (toEv.extraPlayers || []).concat([member.name]);
+                rec.addedExtra = true;
+                PM._syncHubEvent(toEv.id, function(ev) {
+                    if ((ev.extraPlayers || []).indexOf(member.name) === -1) ev.extraPlayers = (ev.extraPlayers || []).concat([member.name]);
+                });
+            }
+            rec.prevTo = await setRow(toEv.id, member, { status: 'present', notes: '' });
+            rec.toDone = true; // prevTo は「もとは行がなかった」で null になるので、済んだかは別の印で持つ
+            if (fromEv) {
+                rec.prevFrom = await setRow(fromEv.id, member, { status: 'absent', notes: '「' + titleOf(toEv) + '」へ移動' });
+                rec.fromDone = true;
+            }
+        } catch (err) {
+            await PM._compensate(rec);
+            throw err;
         }
 
         // 連絡事項へ変更のお知らせ（保護者の変更ダイアログ・参加予定タブが参照する）
@@ -196,16 +206,48 @@ FCOjima.PlayerMove = FCOjima.PlayerMove || {};
         return rec;
     };
 
+    /**
+     * 途中で失敗した移動の、済んだ書き込みを逆順に戻す（戻すのに失敗しても続け、記録だけ残す）
+     * @param {Object} rec - PM.move の記録（途中まで）
+     */
+    PM._compensate = async function(rec) {
+        var undone = [];
+        if (rec.fromDone && rec.fromEv) {
+            try { await restoreRow(rec.fromEv.id, rec.member, rec.prevFrom); } catch (e) { undone.push('移動元の出欠'); console.warn('移動元の出欠を戻せませんでした:', e); }
+        }
+        if (rec.toDone) {
+            try { await restoreRow(rec.toEv.id, rec.member, rec.prevTo); } catch (e) { undone.push('移動先の出欠'); console.warn('移動先の出欠を戻せませんでした:', e); }
+        }
+        if (rec.addedExtra) {
+            try {
+                await app.DB.removeEventExtraPlayer(rec.toEv.id, rec.member.name);
+                rec.toEv.extraPlayers = (rec.toEv.extraPlayers || []).filter(function(n) { return n !== rec.member.name; });
+                PM._syncHubEvent(rec.toEv.id, function(ev) {
+                    ev.extraPlayers = (ev.extraPlayers || []).filter(function(n) { return n !== rec.member.name; });
+                });
+            } catch (e) { undone.push('学年外の追加'); console.warn('学年外の追加を戻せませんでした:', e); }
+        }
+        return undone;
+    };
+
     /** 移動を取り消す（出欠・学年外追加・お知らせを移動前に戻す） */
     PM.undo = async function(rec) {
-        await restoreRow(rec.toEv.id, rec.member, rec.prevTo);
-        if (rec.fromEv) await restoreRow(rec.fromEv.id, rec.member, rec.prevFrom);
+        if (!PM.canUse()) throw new Error('選手の参加変更の権限がありません');
+        // 各ステップを個別に行い、失敗しても残りを続ける（以前は1つ目の失敗で止まり、出欠だけ戻って学年外の追加が残った）。
+        // 失敗したステップは最後にまとめて投げる
+        var failed = [];
+        try { await restoreRow(rec.toEv.id, rec.member, rec.prevTo); } catch (e) { failed.push('移動先の出欠'); console.warn(e); }
+        if (rec.fromEv) {
+            try { await restoreRow(rec.fromEv.id, rec.member, rec.prevFrom); } catch (e) { failed.push('移動元の出欠'); console.warn(e); }
+        }
         if (rec.addedExtra) {
-            await app.DB.removeEventExtraPlayer(rec.toEv.id, rec.member.name);
-            rec.toEv.extraPlayers = (rec.toEv.extraPlayers || []).filter(function(n) { return n !== rec.member.name; });
-            PM._syncHubEvent(rec.toEv.id, function(ev) {
-                ev.extraPlayers = (ev.extraPlayers || []).filter(function(n) { return n !== rec.member.name; });
-            });
+            try {
+                await app.DB.removeEventExtraPlayer(rec.toEv.id, rec.member.name);
+                rec.toEv.extraPlayers = (rec.toEv.extraPlayers || []).filter(function(n) { return n !== rec.member.name; });
+                PM._syncHubEvent(rec.toEv.id, function(ev) {
+                    ev.extraPlayers = (ev.extraPlayers || []).filter(function(n) { return n !== rec.member.name; });
+                });
+            } catch (e) { failed.push('学年外の追加'); console.warn(e); }
         }
         if (rec.noticeId) {
             try { await app.DB.deleteNotification(rec.noticeId); } catch (e) { console.warn('お知らせの削除に失敗:', e); }
@@ -215,6 +257,7 @@ FCOjima.PlayerMove = FCOjima.PlayerMove || {};
             }
         }
         addLog('参加イベント変更の取り消し', rec.member.name + ': ' + titleOf(rec.toEv));
+        if (failed.length) throw new Error('戻せなかった項目: ' + failed.join('・'));
     };
 
     /** 操作ログ（HUB 以外の画面では端末に保存済みのログに追記し、手元のログを消さない） */
@@ -297,10 +340,24 @@ FCOjima.PlayerMove = FCOjima.PlayerMove || {};
         await PM.render();
     };
 
+    /** 一覧の描画。失敗してもモーダルが「読み込み中...」のまま固まらないよう、エラーを表示する */
     PM.render = async function() {
+        try {
+            await PM._renderBody();
+        } catch (e) {
+            console.warn('参加変更の一覧を描けませんでした:', e);
+            var m = document.getElementById('player-move-modal');
+            var l = m && m.querySelector('.pm-list');
+            if (l) l.innerHTML = '<p style="color:#c00;">一覧を表示できませんでした。いちど閉じて開き直してください</p>';
+        }
+    };
+
+    PM._renderGen = 0;
+    PM._renderBody = async function() {
         var st = PM._state;
         var modal = document.getElementById('player-move-modal');
         if (!st || !modal) return;
+        var gen = ++PM._renderGen; // 古い描画が、あとから新しい一覧を上書きしないよう（読み込みのあとで確かめる）
         var esc = app.UI.escapeHTML;
         var toEv = st.toEv;
         var listEl = modal.querySelector('.pm-list');
@@ -318,6 +375,7 @@ FCOjima.PlayerMove = FCOjima.PlayerMove || {};
             listEl.innerHTML = '<p style="color:#c00;">読み込めませんでした。通信環境を確認してください</p>';
             return;
         }
+        if (gen !== PM._renderGen || PM._state !== st) return;
         // 最新の予定（学年外追加など）を使う
         var latestTo = events.find(function(e) { return String(e.id) === String(toEv.id); });
         if (latestTo) { st.toEv = toEv = latestTo; }

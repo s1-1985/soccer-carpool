@@ -46,7 +46,7 @@ const pageOverflow = () => document.documentElement.scrollWidth > document.docum
   await page.tap('#admin-tab');
   await page.waitForSelector('#pending-users-list .pending-card', { timeout: 10000 });
   const tiles = await page.evaluate(() => [...document.querySelectorAll('#admin .admin-tile')].filter(b => b.style.display !== 'none').map(b => b.id));
-  chk('役員の管理タブに「権限の設定」が出る（初期値ではほかのボタンも全部）', tiles.length === 9 && tiles.includes('btn-permissions'), JSON.stringify(tiles));
+  chk('役員の管理タブに「権限の設定」が出る（初期値ではほかのボタンも全部）', tiles.length === 10 && tiles.includes('btn-permissions') && tiles.includes('btn-weekend'), JSON.stringify(tiles));
   const ap = await page.evaluate(() => [...document.querySelector('#pending-users-list .pending-card .pending-role-select').options].map(o => o.textContent + (o.selected ? '*' : '')));
   chk('承認カードの役割は、役員が付けられるものだけ（保護者・役員）。コーチの申請でも初期値は保護者', JSON.stringify(ap) === JSON.stringify(['保護者*', '役員']), JSON.stringify(ap));
   await page.tap('#btn-all-users');
@@ -141,13 +141,13 @@ const pageOverflow = () => document.documentElement.scrollWidth > document.docum
   await page.evaluate(() => FCOjima.Hub.openLogsModal('calendar'));
   await page.waitForSelector('#logs-content .log-deletable', { timeout: 5000 });
   // 長押し（0.6秒）で確認が出る。短く押しただけでは消えない
-  const box = await (await page.$('#logs-content .log-deletable')).boundingBox();
-  await page.mouse.move(box.x + 20, box.y + box.height / 2);
+  const lbox = await (await page.$('#logs-content .log-deletable')).boundingBox();
+  await page.mouse.move(lbox.x + 20, lbox.y + lbox.height / 2);
   await page.mouse.down(); await page.waitForTimeout(200); await page.mouse.up();
   await page.waitForTimeout(800);
   const afterTap = (await list(`${T}/logs`)).length;
   chk('管理者: ログを短く押しただけでは消えない', afterTap === 3, String(afterTap));
-  await page.mouse.move(box.x + 20, box.y + box.height / 2);
+  await page.mouse.move(lbox.x + 20, lbox.y + lbox.height / 2);
   await page.mouse.down(); await page.waitForTimeout(900); await page.mouse.up();
   await page.waitForTimeout(1500);
   const left1 = (await list(`${T}/logs`)).map(l => l.id).sort();

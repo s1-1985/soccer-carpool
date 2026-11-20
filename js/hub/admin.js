@@ -422,13 +422,14 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
             lines += '\n子供: ' + (names.length > 0 ? names.join('、') : '（なし）');
         }
         // 監督として承認するときは、いまの監督（ほかに「監督」の役割の人）はコーチになる（監督は1人だけ）
-        if (extra.role === 'coach') {
-            var others = (await Admin._ensureUsers()).filter(function(x) { return x.role === 'coach' && x.uid !== uid; });
-            extra.demoteUids = others.map(function(x) { return x.uid; });
-            if (others.length) lines += '\n今の監督（' + others.map(function(x) { return x.name || x.uid; }).join('・') + '）はコーチになります';
-        }
-        if (!confirm((name || uid) + ' を承認しますか？' + lines)) return;
+        // ユーザー一覧を読めなければ、前の監督を知れないので承認しない（以前は未処理の失敗で、ボタンを押しても何も起きなかった）
         try {
+            if (extra.role === 'coach') {
+                var others = (await Admin._ensureUsers()).filter(function(x) { return x.role === 'coach' && x.uid !== uid; });
+                extra.demoteUids = others.map(function(x) { return x.uid; });
+                if (others.length) lines += '\n今の監督（' + others.map(function(x) { return x.name || x.uid; }).join('・') + '）はコーチになります';
+            }
+            if (!confirm((name || uid) + ' を承認しますか？' + lines)) return;
             var currentUid = app.Auth && app.Auth.getCurrentUser() ? app.Auth.getCurrentUser().uid : null;
             await FCOjima.DB.approveUser(uid, currentUid, childrenIds, extra);
             if (UI) UI.showAlert((extra.name || name || uid) + ' を承認しました', 'success');
@@ -620,7 +621,12 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
      * ユーザー役割を変更
      */
     Admin.updateRole = async function(uid, newRole, name) {
-        var users = await Admin._ensureUsers().catch(function() { return []; });
+        // ユーザー一覧を読めなければ中断する（以前は空の一覧で続け、監督を指定しても前の監督がコーチにならなかった）
+        var users;
+        try { users = await Admin._ensureUsers(); } catch (e) {
+            if (UI) UI.showAlert('ユーザー一覧を読み込めなかったため、役割を変更できませんでした: ' + e.message, 'error');
+            return;
+        }
         var target = users.filter(function(x) { return x.uid === uid; })[0] || {};
         if (target.role === newRole) return;
         try {

@@ -120,24 +120,21 @@ FCOjima.Auth = FCOjima.Auth || {};
                 if (v !== undefined && !Array.isArray(v)) profile[k] = (v === null || v === '' || typeof v === 'object') ? [] : [String(v)];
             });
 
-            if (profile.status === 'pending') {
-                window.location.href = '/hub/pending.html';
-                return null;
-            }
-            if (profile.status === 'rejected') {
-                // 却下の案内は承認待ちページで出す（サインアウトボタンがあるため）。以前はこの場で
-                // 画面を「アクセスが拒否されました」だけに差し替えており、ログアウトする手段がなく、
-                // 間違ったGoogleアカウントで申請した人が別のアカウントで入り直せなかった
-                window.location.href = '/hub/pending.html';
-                return null;
-            }
-
-            // 前にこの端末でログインしていたのが別の人なら、端末に残っているその人のデータを消す
+            // 前にこの端末でログインしていたのが別の人なら、端末に残っているその人のデータを消す。
+            // 承認待ち・却下の人も、このあと承認待ちのページへ移すので、その前に消す（以前は消す前に移っていたため、
+            // 共用の端末に前の人のデータが残った）
             try {
                 const last = localStorage.getItem(CACHE_UID_KEY);
                 if (last && last !== user.uid && window.FCOjima && FCOjima.Storage && FCOjima.Storage.clearTeamData) FCOjima.Storage.clearTeamData();
                 localStorage.setItem(CACHE_UID_KEY, user.uid);
             } catch (e) { /* 端末に保存できなくても続ける */ }
+
+            // 承認済みだけが入れる。承認待ち・却下・status のないドキュメントは承認待ちのページへ
+            // （却下の案内は承認待ちページで出す。サインアウトのボタンがあり、間違った Google アカウントで申請した人が入り直せる）
+            if (profile.status !== 'approved') {
+                window.location.href = '/hub/pending.html';
+                return null;
+            }
 
             Auth.currentUserProfile = profile;
             await Auth.loadPermissions();

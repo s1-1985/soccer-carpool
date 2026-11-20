@@ -457,8 +457,8 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
             var infoHtml = '';
             if (member.role === 'player') {
                 var parts = [roleLabels['player']];
-                if (member.grade) parts.push(Utils.getGradeLabel(member.grade));
-                if (member.number) parts.push('#' + member.number);
+                if (member.grade) parts.push(UI.escapeHTML(String(Utils.getGradeLabel(member.grade))));
+                if (member.number) parts.push('#' + UI.escapeHTML(String(member.number)));
                 infoHtml = '<div class="member-info-line">' + parts.join(' | ') + '</div>';
             } else if (member.role === 'father' || member.role === 'mother') {
                 // 保護者カード: 氏名、性別、子どもの名前
@@ -533,10 +533,10 @@ FCOjima.Hub.Members = FCOjima.Hub.Members || {};
             html += '<tr><td style="padding:6px;font-weight:bold;">生年月日</td><td style="padding:6px;">' + birthStr + '</td></tr>';
         }
         if (member.grade) {
-            html += '<tr><td style="padding:6px;font-weight:bold;">学年</td><td style="padding:6px;">' + Utils.getGradeLabel(member.grade) + '</td></tr>';
+            html += '<tr><td style="padding:6px;font-weight:bold;">学年</td><td style="padding:6px;">' + UI.escapeHTML(String(Utils.getGradeLabel(member.grade))) + '</td></tr>';
         }
         if (member.number) {
-            html += '<tr><td style="padding:6px;font-weight:bold;">背番号</td><td style="padding:6px;">' + member.number + '</td></tr>';
+            html += '<tr><td style="padding:6px;font-weight:bold;">背番号</td><td style="padding:6px;">' + UI.escapeHTML(String(member.number)) + '</td></tr>';
         }
         // 保護者: 子どもの名前を表示
         if (Members._roleHasChildren(member.role) && member.childrenIds && member.childrenIds.length > 0) {

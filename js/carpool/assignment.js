@@ -645,7 +645,8 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
         });
         app.Carpool.appData.assignments = [];
         app.Carpool.saveData();
-        Assignment.updateMembersList();
+        // 座席も描き直す（メンバー外の人＝兄弟児などの席が、リセット直後だけ画面から消えていた）
+        Assignment.updateAssignments();
         UI.showAlert('座席割り当てをリセットしました。');
     };
 
@@ -3252,12 +3253,11 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             }
             infoRows.push({ label: '参加指導者', value: coachNames.length > 0 ? coachNames.join('、') : '未設定' });
 
-            // 参加選手名（座席に配置された選手 + 未配置の対象選手）
+            // 参加選手名（この予定の対象の選手で、不参加でない人。座席に置いたかどうかは問わない）
+            // 以前は座席に置いた選手だけで、置いていない参加の選手が漏れ、割り当て後に不参加になった選手が載っていた
             var playerNames = [];
-            document.querySelectorAll('.seat.filled').forEach(function(s) {
-                if (!s.dataset.person) return;
-                var m = (app.Carpool.members || []).find(function(x) { return x.name === s.dataset.person; });
-                if (m && m.role === 'player' && !playerNames.includes(m.name)) playerNames.push(m.name);
+            Assignment.getEventFilteredMembers().forEach(function(m) {
+                if (m.role === 'player' && playerNames.indexOf(m.name) === -1) playerNames.push(m.name);
             });
             infoRows.push({ label: '参加選手', value: playerNames.length > 0 ? playerNames.join('、') : '未設定' });
 

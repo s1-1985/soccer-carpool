@@ -64,8 +64,13 @@ FCOjima.EventFiles = FCOjima.EventFiles || {};
      * @param {string|number} eventId
      * @param {HTMLElement} listEl
      */
-    EventFiles.render = async function(eventId, listEl) {
+    EventFiles.render = async function(eventId, listEl, opts) {
         if (!listEl) return;
+        // 削除できるのは「予定の追加・編集・削除」の権限がある人（権限の設定）。呼び出し側が readOnly を明示してもよい。
+        // 以前は権限に関係なく削除ボタンが出ていた（根本の対策は storage.rules。ここは表示の出し分け）
+        var readOnly = (opts && typeof opts.readOnly === 'boolean') ? opts.readOnly
+            : !(FCOjima.Auth && FCOjima.Auth.can ? FCOjima.Auth.can('events') : true);
+        listEl._filesReadOnly = readOnly;
         // 同じ一覧の要素（管理タブのイベント概要など）で別の予定を開き直したとき、前の予定の読み込みが
         // 後から終わって一覧に混ざらないよう、最後に始めた描画だけを反映する。以前は前の予定の添付
         // （とその削除ボタン）が今の予定の一覧に並ぶことがあった
@@ -122,7 +127,7 @@ FCOjima.EventFiles = FCOjima.EventFiles || {};
                     };
                 })(item));
                 row.appendChild(a);
-                row.appendChild(del);
+                if (!readOnly) row.appendChild(del);
                 listEl.appendChild(row);
             }
         } catch (e) {
