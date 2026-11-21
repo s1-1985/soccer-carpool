@@ -429,6 +429,10 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
                 extra.demoteUids = others.map(function(x) { return x.uid; });
                 if (others.length) lines += '\n今の監督（' + others.map(function(x) { return x.name || x.uid; }).join('・') + '）はコーチになります';
             }
+            // 同じ名前で登録済みの人がいれば、承認の確認にも出す（なりすまし・2つ目のアカウントでないか確かめてもらう）
+            var key = FCOjima.Utils.normalizeName(extra.name || name);
+            var same = (await Admin._ensureUsers()).filter(function(x) { return x.uid !== uid && x.status === 'approved' && key && FCOjima.Utils.normalizeName(x.name) === key; });
+            if (same.length) lines += '\n\n⚠ 同じ名前で登録済みの人がいます（' + same.map(function(x) { return x.email || x.name; }).join('、') + '）。別の人・2つ目のアカウントでないことを確かめましたか？';
             if (!confirm((name || uid) + ' を承認しますか？' + lines)) return;
             var currentUid = app.Auth && app.Auth.getCurrentUser() ? app.Auth.getCurrentUser().uid : null;
             await FCOjima.DB.approveUser(uid, currentUid, childrenIds, extra);
@@ -1080,7 +1084,9 @@ FCOjima.Hub.Admin = FCOjima.Hub.Admin || {};
 
             // 1. 今シーズンのイベントのみ取得（過去含む・ナイターも含めて集計対象とする）
             var events = await FCOjima.DB.loadEvents();
-            var seasonEvents = events.filter(function(ev) { return ev.date && ev.date >= seasonStart; });
+            // 今日までの予定だけ数える（以前は先の予定の車登録も数え、実績のない運転手が上位に出ていた）
+            var todayStr = FCOjima.Utils.formatDate(new Date());
+            var seasonEvents = events.filter(function(ev) { return ev.date && ev.date >= seasonStart && ev.date <= todayStr; });
 
             if (seasonEvents.length === 0) {
                 container.innerHTML = '<p style="color:#999;padding:8px;">今シーズンのイベントがありません。</p>';

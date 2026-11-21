@@ -215,7 +215,7 @@
         // LINEなどのアプリ内ブラウザを検出（Google OAuthが使えない）
         var ua = navigator.userAgent;
         var isInAppBrowser = /Line\/|FBAN|FBAV|Instagram|Twitter|Snapchat|MicroMessenger/i.test(ua)
-            || (/Android/.test(ua) && /Version\/[\d.]+.*Chrome\/[\d.]+ Mobile/.test(ua) === false && /wv/.test(ua));
+            || (/Android/.test(ua) && /; wv\)/.test(ua));
 
         // LINE の中のブラウザなら、元のページを Safari・Chrome で開き直す（LINE はリンクに openExternalBrowser=1 が
         // 付いていると外のブラウザで開く）。開き直せなかったとき（付けても LINE の中で開いた）は下の案内を出す

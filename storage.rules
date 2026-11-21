@@ -13,7 +13,8 @@ service firebase.storage {
         && firestore.get(/databases/(default)/documents/teams/$(teamId)/users/$(request.auth.uid)).data.status == 'approved';
     }
 
-    match /teams/{teamId}/{allPaths=**} {
+    // 添付ファイルの場所は予定ごと（teams/チーム/events/予定ID/ファイル名）だけ。それ以外の場所には置けない・触れない
+    match /teams/{teamId}/events/{eventId}/{fileName} {
       allow read, delete: if isApproved(teamId);
       // 書き込みは1ファイル10MBまで（クライアント側チェックと二重の防御）
       allow create, update: if isApproved(teamId)

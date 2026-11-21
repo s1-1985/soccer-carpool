@@ -169,7 +169,7 @@
     <script src="../js/common/inbox.js?v=20261023b"></script>
 
     <!-- 配車管理用モジュール -->
-    <script src="../js/carpool/overview.js?v=20261120a"></script>
+    <script src="../js/carpool/overview.js?v=20261121a"></script>
     <script src="../js/carpool/carprovision.js?v=20261120a"></script>
 
     <script>
@@ -225,8 +225,8 @@
             // 次へボタンの設定
             document.getElementById('next-to-assignments').addEventListener('click', function() {
                 // 車両登録の保存が終わってから移動（移動で書き込みが途切れないように）
-                FCOjima.Carpool.whenSaved().then(function() {
-                    window.location.href = 'assignments.html';
+                FCOjima.Carpool.confirmLeave().then(function(ok) {
+                    if (ok) window.location.href = 'assignments.html';
                 });
             });
         });

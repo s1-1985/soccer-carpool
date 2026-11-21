@@ -361,8 +361,12 @@ service cloud.firestore {
       }
 
       // ----- イベント固有データ（配車・出欠・座席割り当て）-----
+      // 出欠・車・配車・予定ごとの連絡は、承認済みなら全員で編集できる（みんなで直せる運用）。
+      // ただしドキュメントごとの削除（予定のデータが全部消える）は、予定を消せる人（予定の権限）だけ。
+      // 項目ごとの書き込みの検証は入れていない（運用が不便になるため。2026-11 ユーザーの判断）
       match /eventData/{dataId} {
-        allow read, write: if isAuth() && isApproved(teamId);
+        allow read, create, update: if isAuth() && isApproved(teamId);
+        allow delete: if isAuth() && can(teamId, 'events');
       }
 
       // ----- 当番表 設定（機能ON/OFF）-----
