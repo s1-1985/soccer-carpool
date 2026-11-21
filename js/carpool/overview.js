@@ -620,9 +620,11 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         removedIdx.forEach(function(bi) {
             var k = J(base[bi]);
             var ri = result.findIndex(function(r) { return J(r) === k; });
-            // 件数が同じで同じ位置が入れ替わっている＝その場での編集（座席数変更など）。
+            // 同じ位置が入れ替わっている＝その場での編集（座席数変更など）。
             // 並び順（座席割り当てが車の順番を参照している）を崩さないよう置き換える
-            if (base.length === local.length && addedSet.has(bi)) {
+            // （件数が変わっても、同じ位置が入れ替わっていればその場の編集。以前は件数が同じときだけで、
+            //  編集と追加を同時にすると編集した車が末尾へ移り、座席割り当ての車の順番がずれた）
+            if (addedSet.has(bi)) {
                 replaced.add(bi);
                 if (ri >= 0) result[ri] = local[bi];
                 return;

@@ -226,7 +226,8 @@ FCOjima.Weather = FCOjima.Weather || {};
 
         var hours = Weather.hoursForEvent(ev);
         // v2: 活動時間帯でまとめる（v1 は24時間の日別の値。古い表示を引き継がない）
-        var sessionKey = 'fcojima_weatherdays_v2_' + (venueName || address) + '_' + eventDateISO + '_' +
+        // v3: 会場名に住所も含める（同じ名前で住所の違う会場の予報を取り違えないように）
+        var sessionKey = 'fcojima_weatherdays_v3_' + (venueName || '') + '|' + (address || '') + '_' + eventDateISO + '_' +
             hours.from + '-' + hours.to + '_' + todayISO();
         try {
             var cached = sessionStorage.getItem(sessionKey);

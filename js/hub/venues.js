@@ -141,10 +141,19 @@ FCOjima.Hub.Venues = FCOjima.Hub.Venues || {};
                     (venue.notes ? '<div class="venue-notes">' + UI.escapeHTML(venue.notes) + '</div>' : '') +
                 '</div>' +
                 '<div class="venue-card-actions">' +
-                    '<button type="button" class="secondary-button" onclick="window.open(\'' + mapsUrl + '\',\'_blank\')">地図を開く</button>' +
-                    (isManager ? '<button type="button" class="secondary-button" onclick="FCOjima.Hub.Venues.editVenue(\'' + venue.id + '\')">編集</button>' : '') +
-                    (isManager ? '<button type="button" class="delete-button" onclick="FCOjima.Hub.Venues.deleteVenue(\'' + venue.id + '\')">削除</button>' : '') +
+                    '<button type="button" class="secondary-button venue-act-map">地図を開く</button>' +
+                    (isManager ? '<button type="button" class="secondary-button venue-act-edit">編集</button>' : '') +
+                    (isManager ? '<button type="button" class="delete-button venue-act-del">削除</button>' : '') +
                 '</div>';
+            // 会場IDは名前などと違いエスケープせず onclick の文字列に入れていた（細工したIDで他の人の画面で実行された）。
+            // ボタンの onclick をやめ、ここで直接つなぐ（IDは値のまま渡す）
+            var vid = venue.id;
+            var mapBtn = card.querySelector('.venue-act-map');
+            if (mapBtn) mapBtn.addEventListener('click', function() { window.open(mapsUrl, '_blank'); });
+            var editBtn = card.querySelector('.venue-act-edit');
+            if (editBtn) editBtn.addEventListener('click', function() { app.Hub.Venues.editVenue(vid); });
+            var delBtn = card.querySelector('.venue-act-del');
+            if (delBtn) delBtn.addEventListener('click', function() { app.Hub.Venues.deleteVenue(vid); });
 
             listEl.appendChild(card);
         });

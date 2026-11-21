@@ -347,7 +347,15 @@ service cloud.firestore {
       // 書くのは承認済みならだれでも（操作した人の名前は自分の名前。以前はほかの人の名前で操作を記録できた）
       match /logs/{logId} {
         allow read:   if isAuth() && can(teamId, 'logs_view');
-        allow create: if isAuth() && isApproved(teamId) && isOwnName(teamId, request.resource.data);
+        // 項目は画面が書くものだけ・文字列は長さを制限する（以前は何でも入れられ、巨大な文字列や関係のない項目でログを汚せた）
+        allow create: if isAuth() && isApproved(teamId) && isOwnName(teamId, request.resource.data)
+          && request.resource.data.keys().hasOnly(['datetime', 'user', 'type', 'action', 'details', 'canRestore', 'restoreDeadline', 'eventId'])
+          && request.resource.data.get('datetime', '') is string && request.resource.data.get('datetime', '').size() <= 40
+          && request.resource.data.get('type', '') is string && request.resource.data.get('type', '').size() <= 40
+          && request.resource.data.get('action', '') is string && request.resource.data.get('action', '').size() <= 200
+          && request.resource.data.get('details', '') is string && request.resource.data.get('details', '').size() <= 2000
+          && request.resource.data.get('user', '') is string && request.resource.data.get('user', '').size() <= 100
+          && request.resource.data.get('canRestore', false) is bool;
         allow update: if false;
         allow delete: if isAuth() && isAdmin(teamId);
       }

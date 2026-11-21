@@ -120,7 +120,8 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
         const carRegistrations = FCOjima.Carpool.appData.carRegistrations || [];
         // 同じ運転者の登録がすでにあれば確認する（ボタンの二度押しや登録し直しで同じ車が
         // 2台になり、座席割り当てに同じ車が重複して出ていた）
-        if (carRegistrations.some(function(c) { return (c.parent || '').trim() === parentName || FCOjima.Carpool.carOwner(c) === parentName; }) &&
+        const parentKey = FCOjima.Utils.normalizeName(parentName);
+        if (carRegistrations.some(function(c) { return FCOjima.Utils.normalizeName(c.parent) === parentKey || FCOjima.Utils.normalizeName(FCOjima.Carpool.carOwner(c)) === parentKey; }) &&
             !UI.showConfirm(parentName + 'さんの車はすでに登録されています。もう1台追加しますか？\n（内容を変えたい場合は、登録済みの車を削除してから登録し直してください）')) {
             return;
         }
@@ -147,12 +148,16 @@ FCOjima.Carpool.CarProvision = FCOjima.Carpool.CarProvision || {};
      * 選手・兄弟児（メンバーの兄弟児・この車に乗せる兄弟児など）は運転者にしない
      */
     CarProvision._cannotDriveReason = function(name) {
+        // 名前は空白・全角半角・かな/カナの違いを無視して照合する（「田中太郎」と「田中 太郎」を別人にして、
+        // 選手を運転者にできてしまっていた）。ほかの画面（兄弟児・運転者の初期値）と同じ Utils.normalizeName
+        const N = FCOjima.Utils.normalizeName;
+        const key = N(name);
         const members = FCOjima.Carpool.members || [];
-        const m = members.find(function(x) { return x.name === name; });
+        const m = members.find(function(x) { return N(x.name) === key; });
         if (m) return m.role === 'player' ? name + 'さんは選手なので運転者にできません' : '';
         const isSibling = members.some(function(x) {
-            return (x.siblings || []).some(function(sib) { return sib && String(sib.name || '').trim() === name; });
-        }) || CarProvision._passengers.some(function(p) { return p.name === name; });
+            return (x.siblings || []).some(function(sib) { return sib && N(sib.name) === key; });
+        }) || CarProvision._passengers.some(function(p) { return N(p.name) === key; });
         return isSibling ? name + 'さんは兄弟児なので運転者にできません' : '';
     };
 

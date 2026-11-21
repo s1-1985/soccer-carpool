@@ -36,6 +36,8 @@ FCOjima.Carpool.Notifications = FCOjima.Carpool.Notifications || {};
         const event = FCOjima.Storage.getSelectedEvent();
         if (event) {
             await FCOjima.Carpool.loadEventDataForSelected();
+            // 帯同指導者（ほかのタブと同じ。連絡タブだけ読んでおらず、帯同の指導者が出なかった）
+            if (FCOjima.Carpool.loadEventCoaches) await FCOjima.Carpool.loadEventCoaches();
         }
 
         const header = document.getElementById('event-header');

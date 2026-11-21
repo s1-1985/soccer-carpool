@@ -80,22 +80,31 @@ FCOjima.Hub.Weekend = FCOjima.Hub.Weekend || {};
         }).slice().sort(U().compareEvents);
     };
 
+    W._loadSeq = 0;
     W.load = async function() {
         var body = document.querySelector('#weekend-modal .wk-body');
         if (!body) return;
+        // 週を続けて切り替えたとき、先に始めた読み込みがあとから終わって新しい週の集計を上書きしないよう、最後の読み込みだけ使う
+        var seq = ++W._loadSeq;
         body.innerHTML = '<p class="loading">読み込み中...</p>';
-        var evs = W.events();
-        var members = app.Hub.members || [];
-        var assign = {};
-        try { assign = await app.DB.loadCoachAssignments(); } catch (e) { assign = {}; }
-        var datas = await Promise.all(evs.map(function(ev) { return app.DB.loadEventData(ev.id).catch(function() { return null; }); }));
-        W._data = {};
-        evs.forEach(function(ev, i) {
-            var ed = datas[i] || {};
-            var coaches = (assign[String(ev.id)] || []).map(function(id) { return members.find(function(m) { return String(m.id) === String(id); }); }).filter(Boolean);
-            W._data[String(ev.id)] = { ed: ed, st: U().carpoolStatus(ev, members, ed, coaches), coaches: coaches };
-        });
-        W.render();
+        try {
+            var evs = W.events();
+            var members = app.Hub.members || [];
+            var assign = {};
+            try { assign = await app.DB.loadCoachAssignments(); } catch (e) { assign = {}; }
+            var datas = await Promise.all(evs.map(function(ev) { return app.DB.loadEventData(ev.id).catch(function() { return null; }); }));
+            if (seq !== W._loadSeq) return;
+            W._data = {};
+            evs.forEach(function(ev, i) {
+                var ed = datas[i] || {};
+                var coaches = (assign[String(ev.id)] || []).map(function(id) { return members.find(function(m) { return String(m.id) === String(id); }); }).filter(Boolean);
+                W._data[String(ev.id)] = { ed: ed, st: U().carpoolStatus(ev, members, ed, coaches), coaches: coaches };
+            });
+            W.render();
+        } catch (e) {
+            console.warn('週末の段取りを読み込めませんでした:', e);
+            if (seq === W._loadSeq) body.innerHTML = '<p style="color:#c00;">読み込めませんでした。通信環境を確認して、開き直してください</p>';
+        }
     };
 
     // ---------- 集計 ----------

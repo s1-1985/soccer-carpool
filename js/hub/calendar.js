@@ -1034,10 +1034,12 @@ FCOjima.Hub.Calendar = FCOjima.Hub.Calendar || {};
         // 添付ファイル（配車管理画面と同じStorageパスを参照＝同期される）
         if (app.EventFiles) {
             var filesEl = document.getElementById('calendar-event-files');
-            app.EventFiles.render(event.id, filesEl);
+            // 添付の追加・削除は、予定を変えられる人だけ（権限の設定の「予定」）。見るのはだれでも
+            app.EventFiles.render(event.id, filesEl, { readOnly: !Calendar.canEdit() });
             var fileBtn = document.getElementById('calendar-event-file-btn');
             var fileInput = document.getElementById('calendar-event-file-input');
-            if (fileBtn && fileInput) {
+            if (fileBtn && !Calendar.canEdit()) fileBtn.style.display = 'none';
+            if (fileBtn && fileInput && Calendar.canEdit()) {
                 fileBtn.addEventListener('click', function() { fileInput.value = ''; fileInput.click(); });
                 fileInput.addEventListener('change', function() {
                     if (fileInput.files.length) app.EventFiles.upload(event.id, fileInput.files, filesEl);

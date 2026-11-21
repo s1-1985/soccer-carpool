@@ -874,8 +874,10 @@ FCOjima.Hub.Coaching = FCOjima.Hub.Coaching || {};
             else if (a < today) msg = '今日より前の日は追加できません';
             else if (b < a) msg = 'おわりの日は、はじめの日と同じか後の日にしてください';
             else {
-                for (var d = dateOf(a); iso(d) <= b; d.setDate(d.getDate() + 1)) picked.push(iso(d));
-                if (picked.length > 31) { msg = '一度に追加できるのは31日までです'; picked = []; }
+                // 日数を先に数える（以前は全日を作ってから31日を確かめていたので、年を打ち間違えると固まった）
+                var days = Math.round((dateOf(b) - dateOf(a)) / 86400000) + 1;
+                if (days > 31) msg = '一度に追加できるのは31日までです';
+                else for (var d = dateOf(a); iso(d) <= b; d.setDate(d.getDate() + 1)) picked.push(iso(d));
             }
             if (picked.length) {
                 var asked = {};
