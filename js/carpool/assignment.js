@@ -783,8 +783,10 @@ FCOjima.Carpool.Assignment = FCOjima.Carpool.Assignment || {};
             list.appendChild(clearBtn);
         }
 
-        // 候補: 選手以外のメンバー＋メンバーでない運転手（この予定の車の持ち主・運転手、以前の運転手）
-        var candidates = (app.Carpool.members || []).filter(function(m) { return m.role !== 'player'; });
+        // 候補: 選手以外のメンバー＋メンバーでない運転手（この予定の車の持ち主・運転手、以前の運転手）。
+        // 出欠を「不参加」にしている人は新しく選べない（いまの運転手はそのまま出す）
+        var absentNow = Assignment._absentNameSet();
+        var candidates = (app.Carpool.members || []).filter(function(m) { return m.role !== 'player' && (!absentNow.has(m.name) || m.name === car.parent); });
         var memberNames = new Set(candidates.map(function(m) { return m.name; }));
         (app.Carpool.members || []).forEach(function(m) { memberNames.add(m.name); });
         app.Carpool.driverPool().concat(app.Carpool.appData.manualDriverNames || []).forEach(function(n) {

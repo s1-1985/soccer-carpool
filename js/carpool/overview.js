@@ -494,8 +494,8 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
     Overview.goToMainPage = function() {
         console.log('HUBページに戻ります...');
         // 保存中のデータがあれば書き込み完了を待ってから移動（移動で通信が切られないように）
-        app.Carpool.whenSaved().then(function() {
-            window.location.href = '../hub/index.html';
+        app.Carpool.confirmLeave().then(function(ok) {
+            if (ok) window.location.href = '../hub/index.html';
         });
     };
 
@@ -742,7 +742,10 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         _savePending++;
         _saveChain = _saveChain.then(function() {
             return self._syncEventData(eventId);
+        }).then(function() {
+            app.Carpool._saveFailed = false;
         }).catch(function(e) {
+            app.Carpool._saveFailed = true;
             console.warn('Firestore saveEventData失敗:', e);
             if (UI && UI.showAlert) {
                 UI.showAlert('サーバーへの保存に失敗しました。通信環境を確認して、もう一度保存してください', 'error', 6000);
@@ -756,6 +759,18 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
     /** 保存待ちがすべて終わったら解決するPromise（ページ移動前に待つ） */
     app.Carpool.whenSaved = function() {
         return _saveChain;
+    };
+
+    /**
+     * ページを移ってよいか: 保存待ちが終わるまで待ち、最後の保存が失敗していたら確認する
+     * （以前は失敗しても黙って移り、サーバーに保存できていない編集が失われた）
+     * @returns {Promise<boolean>}
+     */
+    app.Carpool.confirmLeave = function() {
+        return _saveChain.then(function() {
+            if (!app.Carpool._saveFailed) return true;
+            return !!window.confirm('サーバーに保存できていない変更があります。このまま移動すると、その変更は失われます。移動しますか？\n（「キャンセル」で残って、もう一度保存できます）');
+        });
     };
 
     app.Carpool._syncEventData = function(eventId) {
@@ -815,7 +830,7 @@ FCOjima.Carpool.Overview = FCOjima.Carpool.Overview || {};
         if (a.origin !== window.location.origin) return;
         e.preventDefault();
         var href = a.href;
-        app.Carpool.whenSaved().then(function() { window.location.href = href; });
+        app.Carpool.confirmLeave().then(function(ok) { if (ok) window.location.href = href; });
     });
 
     /**
